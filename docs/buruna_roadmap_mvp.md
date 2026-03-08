@@ -242,3 +242,4 @@
 ---
 ## Backlog — Features Futuras
 - Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
+- Notificar todos os usuários com role ADMIN ao invés de um e-mail fixo (`ADMIN_EMAIL`)

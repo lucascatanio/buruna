@@ -326,6 +326,7 @@
 - Versionamento de API
 - Integração com APIs externas (MyAnimeList ID, Anilist ID)
 - Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
+- Notificar todos os usuários com role ADMIN ao invés de um e-mail fixo (`ADMIN_EMAIL`)
 
 ---
 
