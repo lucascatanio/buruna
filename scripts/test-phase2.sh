@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # config
-BASE_URL="${BASE_URL:-http://localhost:8080/api}"
+BASE_URL="${BASE_URL:-http://localhost/api}"
 DB_CONTAINER="${DB_CONTAINER:-buruna_postgres}"
 DB_USER="${DB_USER:-buruna_user}"
 DB_NAME="${DB_NAME:-buruna}"
@@ -86,6 +86,14 @@ parse_json()  { echo "$1" | python3 -c "import sys,json; d=json.load(sys.stdin);
 # pre flight
 section "Pre-flight checks"
 
+echo -n "  Checking dependencies (curl, jq, python3) ... "
+if command -v curl &>/dev/null && command -v jq &>/dev/null && command -v python3 &>/dev/null; then
+  echo -e "${GREEN}OK${RESET}"
+else
+  echo -e "${RED}MISSING — install curl, jq and python3${RESET}"
+  exit 1
+fi
+
 echo -n "  Checking backend at $BASE_URL ... "
 if curl -s --max-time 5 "$BASE_URL/auth/login" -X POST \
     -H "Content-Type: application/json" \
@@ -131,6 +139,14 @@ REGISTER_ADMIN=$(http_post "/auth/register" '{
 }')
 STATUS=$(parse_status "$REGISTER_ADMIN")
 expect_status "Register admin user" 201 "$STATUS" "$(parse_body "$REGISTER_ADMIN")"
+
+REGISTER_REJECT=$(http_post "/auth/register" '{
+  "email": "reject@buruna.test",
+  "username": "test_reject",
+  "password": "Reject@123456",
+  "presentationMessage": "I will be rejected"
+}')
+expect_status "Pre-register reject user" 201 "$(parse_status "$REGISTER_REJECT")" "$(parse_body "$REGISTER_REJECT")"
 
 # promote to ADMIN + ACTIVE via SQL
 docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -q -c "
@@ -263,12 +279,6 @@ UPDATE_QUOTA=$(http_patch "/admin/users/$READER_ID/quota" '{"quotaGb": 10.5}' "$
 expect_status "PATCH /admin/users/:id/quota" 200 "$(parse_status "$UPDATE_QUOTA")" "$(parse_body "$UPDATE_QUOTA")"
 
 # 2.10 reject a new pending user
-REJECT_REG=$(http_post "/auth/register" '{
-  "email": "reject@buruna.test",
-  "username": "test_reject",
-  "password": "Reject@123456",
-  "presentationMessage": "I will be rejected"
-}')
 REJECT_ID=$(docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -c \
   "SELECT id FROM users WHERE email = 'reject@buruna.test';" | tr -d ' \n')
 
@@ -329,7 +339,7 @@ for i in $(seq 1 6); do
   }")
   STATUS=$(parse_status "$RES")
   if [ "$STATUS" -eq 201 ] || [ "$STATUS" -eq 409 ]; then
-    ((RATE_PASS++))
+    RATE_PASS=$((RATE_PASS + 1))
   fi
 done
 
