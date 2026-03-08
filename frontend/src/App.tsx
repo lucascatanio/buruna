@@ -5,6 +5,8 @@ import {LoginPage} from "@/pages/LoginPage";
 import {RegisterPage} from "@/pages/RegisterPage";
 import {PendingUsersPage} from "@/pages/admin/PendingUsersPage";
 import {UsersPage} from "@/pages/admin/UsersPage";
+import {TagsPage} from "@/pages/admin/TagsPage";
+import {AdminLayout} from "@/components/AdminLayout.tsx";
 
 export default function App() {
     return (
@@ -18,8 +20,11 @@ export default function App() {
                 </Route>
 
                 <Route element={<ProtectedRoute requiredRole="ADMIN"/>}>
-                    <Route path="/admin/users/pending" element={<PendingUsersPage/>}/>
-                    <Route path="/admin/users" element={<UsersPage/>}/>
+                    <Route element={<AdminLayout/>}>
+                        <Route path="/admin/users/pending" element={<PendingUsersPage/>}/>
+                        <Route path="/admin/users" element={<UsersPage/>}/>
+                        <Route path="/admin/tags" element={<TagsPage/>}/>
+                    </Route>
                 </Route>
 
                 <Route path="*" element={<Navigate to="/" replace/>}/>

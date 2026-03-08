@@ -1,8 +1,6 @@
 import {useEffect, useState} from "react";
-import {useNavigate} from "react-router-dom";
 import {toast} from "sonner";
 import api from "@/lib/axios";
-import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
@@ -16,9 +14,6 @@ interface PendingUser {
 }
 
 export function PendingUsersPage() {
-    const navigate = useNavigate();
-    const clearAuth = useAuthStore((s) => s.clearAuth);
-
     const [users, setUsers] = useState<PendingUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -67,88 +62,62 @@ export function PendingUsersPage() {
         }
     }
 
-    function handleLogout() {
-        clearAuth();
-        navigate("/login");
-    }
-
     return (
-        <div className="min-h-screen bg-background">
-            <header className="border-b px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-xl font-semibold">Burūna Admin</h1>
-                    <nav className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/users/pending")}>
-                            Pending
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => navigate("/admin/users")}>
-                            All Users
-                        </Button>
-                    </nav>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                    Sign out
-                </Button>
-            </header>
+        <div className="max-w-4xl mx-auto px-6 py-8">
+            <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-2xl font-bold">Pending approvals</h2>
+                <Badge variant="secondary">{users.length}</Badge>
+            </div>
 
-            <main className="max-w-4xl mx-auto px-6 py-8">
-                <div className="flex items-center gap-3 mb-6">
-                    <h2 className="text-2xl font-bold">Pending approvals</h2>
-                    <Badge variant="secondary">{users.length}</Badge>
-                </div>
+            {loading && <p className="text-muted-foreground">Loading…</p>}
 
-                {loading && (
-                    <p className="text-muted-foreground">Loading…</p>
-                )}
+            {!loading && users.length === 0 && (
+                <Card>
+                    <CardContent className="py-12 text-center text-muted-foreground">
+                        No pending registrations
+                    </CardContent>
+                </Card>
+            )}
 
-                {!loading && users.length === 0 && (
-                    <Card>
-                        <CardContent className="py-12 text-center text-muted-foreground">
-                            No pending registrations
+            <div className="space-y-4">
+                {users.map((user) => (
+                    <Card key={user.id}>
+                        <CardHeader className="pb-2">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <CardTitle className="text-base">{user.username}</CardTitle>
+                                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                    {new Date(user.createdAt).toLocaleDateString("pt-BR")}
+                                </span>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm mb-4 text-foreground/80">
+                                "{user.presentationMessage}"
+                            </p>
+                            <div className="flex gap-2">
+                                <Button
+                                    size="sm"
+                                    onClick={() => handleApprove(user.id)}
+                                    disabled={actionLoading !== null}
+                                >
+                                    {actionLoading === user.id + "-approve" ? "Approving…" : "Approve"}
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleReject(user.id)}
+                                    disabled={actionLoading !== null}
+                                >
+                                    {actionLoading === user.id + "-reject" ? "Rejecting…" : "Reject"}
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
-                )}
-
-                <div className="space-y-4">
-                    {users.map((user) => (
-                        <Card key={user.id}>
-                            <CardHeader className="pb-2">
-                                <div className="flex items-start justify-between">
-                                    <div>
-                                        <CardTitle className="text-base">{user.username}</CardTitle>
-                                        <p className="text-sm text-muted-foreground">{user.email}</p>
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">
-                    {new Date(user.createdAt).toLocaleDateString("pt-BR")}
-                  </span>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm mb-4 text-foreground/80">
-                                    "{user.presentationMessage}"
-                                </p>
-                                <div className="flex gap-2">
-                                    <Button
-                                        size="sm"
-                                        onClick={() => handleApprove(user.id)}
-                                        disabled={actionLoading !== null}
-                                    >
-                                        {actionLoading === user.id + "-approve" ? "Approving…" : "Approve"}
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => handleReject(user.id)}
-                                        disabled={actionLoading !== null}
-                                    >
-                                        {actionLoading === user.id + "-reject" ? "Rejecting…" : "Reject"}
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </main>
+                ))}
+            </div>
         </div>
     );
 }
