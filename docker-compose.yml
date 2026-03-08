@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: buruna_postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: buruna_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      REFRESH_TOKEN_EXPIRATION: ${REFRESH_TOKEN_EXPIRATION}
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
+      GCS_CREDENTIALS_PATH: ${GCS_CREDENTIALS_PATH}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB}
+      RATE_LIMIT_REGISTER_PER_HOUR: ${RATE_LIMIT_REGISTER_PER_HOUR}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./gcs-credentials.json:/app/gcs-credentials.json:ro
+
+  frontend:
+    build: ./frontend
+    container_name: buruna_frontend
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    container_name: buruna_nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
