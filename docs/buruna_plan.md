@@ -1,4 +1,4 @@
-# Burūna — Documento de Planejamento e Requisitos
+# Burūna — Documento Inicial de Planejamento e Requisitos
 
 > Documento gerado ao final das Etapas 1, 2 e 3 do ciclo de desenvolvimento.
 > Projeto: Biblioteca pessoal de mangás com autenticação, upload e leitor web.
@@ -325,10 +325,11 @@
 - Swagger/OpenAPI
 - Versionamento de API
 - Integração com APIs externas (MyAnimeList ID, Anilist ID)
+- Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
 
 ---
 
-## Estrutura do Repositório (sugerida)
+## Estrutura do Repositório
 
 ```
 /

@@ -58,7 +58,7 @@
 - [ ] `PATCH /admin/users/{id}/role` — alterar role
 - [ ] `PATCH /admin/users/{id}/status` — ativar/desativar
 - [ ] `PATCH /admin/users/{id}/quota` — configurar cota de GB
-- [ ] Rate limit + Captcha no cadastro
+- [ ] ~~Rate limit + Captcha no cadastro~~ — Captcha movido para backlog; rate limit implementado via `RateLimitFilter`
 - [ ] `SecurityConfig` com rotas públicas e protegidas
 - [ ] `JwtFilter` na filter chain
 
@@ -238,3 +238,7 @@
 | 7    | Engajamento             | 78% → 87%  |
 | 8    | Dashboard e jobs        | 87% → 93%  |
 | 9    | Infra e deploy          | 93% → 100% |
+
+---
+## Backlog — Features Futuras
+- Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
