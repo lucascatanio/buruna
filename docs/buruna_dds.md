@@ -425,7 +425,7 @@ RefreshToken
 
 ```
 1. Usuário preenche formulário (email, username, senha, foto, mensagem)
-2. Backend: valida campos + verifica captcha + aplica rate limit
+2. Backend: valida campos + aplica rate limit (rate limit de 5 req/hora por IP)
 3. Backend: salva User com status=PENDING, senha com BCrypt
 4. Backend: dispara e-mail assíncrono ao admin (@Async)
 5. Admin acessa painel → visualiza cadastros pendentes
@@ -510,7 +510,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    ports: ["443:443", "80:80"]
+    ports: ["80:80"]
     depends_on: [frontend, backend]
     volumes: [./nginx/nginx.conf:/etc/nginx/nginx.conf]
 ```
@@ -519,21 +519,31 @@ services:
 
 ```nginx
 server {
-    listen 443 ssl;
+    listen 80;
 
-    # Serve frontend estático
     location / {
-        root /usr/share/nginx/html;
-        try_files $uri /index.html;
+      proxy_pass              http://frontend:80;
+      proxy_set_header        Host $host;
+      proxy_set_header        X-Real-IP $remote_addr;
+      proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_intercept_errors  on;
+      error_page              404 = @fallback;
     }
 
-    # Proxy para o backend
-    location /api/ {
-        proxy_pass http://backend:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+    location @fallback {
+      rewrite ^ /index.html break;
+      proxy_pass       http://frontend:80;
+      proxy_set_header Host $host;
     }
-}
+
+    location /api/ {
+      proxy_pass         http://backend:8080;
+      proxy_set_header   Host $host;
+      proxy_set_header   X-Real-IP $remote_addr;
+      proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_read_timeout 120s;
+    }
+  }
 ```
 
 ### 6.3 Variáveis de Ambiente (.env)
@@ -574,15 +584,15 @@ RATE_LIMIT_REGISTER_PER_HOUR=5
 
 ## 7. Decisões Técnicas Registradas (ADRs)
 
-| #   | Decisão                                                                     | Alternativa descartada              | Motivo                                                  |
-| --- | --------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------- |
-| 1   | Monolito modular                                                            | Microsserviços                      | Complexidade desnecessária para projeto solo/pequeno    |
-| 2   | Upload via backend                                                          | Upload direto GCS                   | Validações centralizadas (hash, tamanho, cota, formato) |
-| 3   | @Async/@Scheduled                                                           | Kafka                               | Over-engineering para volume de 10–100 usuários         |
-| 4   | nginx reverse proxy                                                         | API Gateway externo                 | Gratuito, já dominado, suficiente para o escopo         |
-| 5   | Offset/page                                                                 | Cursor-based                        | Volume de dados pequeno, simplicidade de implementação  |
-| 6   | BCrypt                                                                      | SHA-256 puro                        | BCrypt é o padrão para senhas — adaptativo e seguro     |
-| 7   | GCS URLs assinadas                                                          | URLs públicas                       | Impede acesso a arquivos sem autenticação               |
-| 8   | UptimeRobot                                                                 | Implementação custom                | Gratuito, zero manutenção, resolve o requisito          |
-| 9   | 7 índices explícitos (FKs críticas + file_hash + tag_id + ratings manga_id) | Índice em toda FK e coluna filtrada | Tabelas com <1000 linhas e colunas de baixa cardinalidade (ENUM, BOOLEAN) têm Seq Scan mais eficiente que manutenção de B-tree. Índices adicionados apenas onde há query específica de alta frequência ou tabela com crescimento ilimitado.                                                        |
-| 10 | Rate limit no /auth/register sem captcha | Rate limit + hCaptcha | Projeto solo com aprovação manual pelo admin. Captcha adiciona complexidade de integração externa sem ganho proporcional para 10–100 usuários. Rate limit de 5 req/hora por IP é suficiente para o MVP. |
+| #   | Decisão                                                                     | Alternativa descartada              | Motivo                                                                                                                                                                                                                                      |
+| --- | --------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Monolito modular                                                            | Microsserviços                      | Complexidade desnecessária para projeto solo/pequeno                                                                                                                                                                                        |
+| 2   | Upload via backend                                                          | Upload direto GCS                   | Validações centralizadas (hash, tamanho, cota, formato)                                                                                                                                                                                     |
+| 3   | @Async/@Scheduled                                                           | Kafka                               | Over-engineering para volume de 10–100 usuários                                                                                                                                                                                             |
+| 4   | nginx reverse proxy                                                         | API Gateway externo                 | Gratuito, já dominado, suficiente para o escopo                                                                                                                                                                                             |
+| 5   | Offset/page                                                                 | Cursor-based                        | Volume de dados pequeno, simplicidade de implementação                                                                                                                                                                                      |
+| 6   | BCrypt                                                                      | SHA-256 puro                        | BCrypt é o padrão para senhas — adaptativo e seguro                                                                                                                                                                                         |
+| 7   | GCS URLs assinadas                                                          | URLs públicas                       | Impede acesso a arquivos sem autenticação                                                                                                                                                                                                   |
+| 8   | UptimeRobot                                                                 | Implementação custom                | Gratuito, zero manutenção, resolve o requisito                                                                                                                                                                                              |
+| 9   | 7 índices explícitos (FKs críticas + file_hash + tag_id + ratings manga_id) | Índice em toda FK e coluna filtrada | Tabelas com <1000 linhas e colunas de baixa cardinalidade (ENUM, BOOLEAN) têm Seq Scan mais eficiente que manutenção de B-tree. Índices adicionados apenas onde há query específica de alta frequência ou tabela com crescimento ilimitado. |
+| 10  | Rate limit no /auth/register sem captcha                                    | Rate limit + hCaptcha               | Projeto solo com aprovação manual pelo admin. Captcha adiciona complexidade de integração externa sem ganho proporcional para 10–100 usuários. Rate limit de 5 req/hora por IP é suficiente para o MVP.                                     |

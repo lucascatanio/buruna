@@ -45,30 +45,30 @@
 
 **Backend:**
 
-- [ ] Entidade `User` + enums `Role` e `UserStatus`
-- [ ] `POST /auth/register` — cadastro com BCrypt + envio de e-mail ao admin (@Async)
-- [ ] `POST /auth/login` — JWT + Refresh Token
-- [ ] `POST /auth/refresh` — renovar access token
-- [ ] `POST /auth/logout` — invalidar refresh token
-- [ ] `DELETE /auth/account` — exclusão de conta pelo usuário
-- [ ] `GET /admin/users/pending` — listar cadastros pendentes
-- [ ] `POST /admin/users/{id}/approve` — aprovar + e-mail ao usuário (@Async)
-- [ ] `POST /admin/users/{id}/reject` — rejeitar + e-mail ao usuário (@Async)
-- [ ] `GET /admin/users` — listar todos os usuários (paginado)
-- [ ] `PATCH /admin/users/{id}/role` — alterar role
-- [ ] `PATCH /admin/users/{id}/status` — ativar/desativar
-- [ ] `PATCH /admin/users/{id}/quota` — configurar cota de GB
-- [ ] ~~Rate limit + Captcha no cadastro~~ — Captcha movido para backlog; rate limit implementado via `RateLimitFilter`
-- [ ] `SecurityConfig` com rotas públicas e protegidas
-- [ ] `JwtFilter` na filter chain
+- [x] Entidade `User` + enums `Role` e `UserStatus`
+- [x] `POST /auth/register` — cadastro com BCrypt + envio de e-mail ao admin (@Async)
+- [x] `POST /auth/login` — JWT + Refresh Token
+- [x] `POST /auth/refresh` — renovar access token
+- [x] `POST /auth/logout` — invalidar refresh token
+- [x] `DELETE /auth/account` — exclusão de conta pelo usuário
+- [x] `GET /admin/users/pending` — listar cadastros pendentes
+- [x] `POST /admin/users/{id}/approve` — aprovar + e-mail ao usuário (@Async)
+- [x] `POST /admin/users/{id}/reject` — rejeitar + e-mail ao usuário (@Async)
+- [x] `GET /admin/users` — listar todos os usuários (paginado)
+- [x] `PATCH /admin/users/{id}/role` — alterar role
+- [x] `PATCH /admin/users/{id}/status` — ativar/desativar
+- [x] `PATCH /admin/users/{id}/quota` — configurar cota de GB
+- [x] ~~Rate limit + Captcha no cadastro~~ — Captcha movido para backlog; rate limit implementado via `RateLimitFilter`
+- [x] `SecurityConfig` com rotas públicas e protegidas
+- [x] `JwtFilter` na filter chain
 
 **Frontend:**
 
-- [ ] Tela de cadastro (email, username, senha, foto, mensagem)
-- [ ] Tela de login
-- [ ] Lógica de refresh token automático (interceptor Axios)
-- [ ] Painel admin: lista de pendentes + aprovar/rejeitar
-- [ ] Painel admin: lista de usuários + gestão de roles
+- [x] Tela de cadastro (email, username, senha, foto, mensagem)
+- [x] Tela de login
+- [x] Lógica de refresh token automático (interceptor Axios)
+- [x] Painel admin: lista de pendentes + aprovar/rejeitar
+- [x] Painel admin: lista de usuários + gestão de roles
 
 ---
 
