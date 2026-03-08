@@ -574,13 +574,14 @@ RATE_LIMIT_REGISTER_PER_HOUR=5
 
 ## 7. Decisões Técnicas Registradas (ADRs)
 
-| #   | Decisão             | Alternativa descartada | Motivo                                                  |
-| --- | ------------------- | ---------------------- | ------------------------------------------------------- |
-| 1   | Monolito modular    | Microsserviços         | Complexidade desnecessária para projeto solo/pequeno    |
-| 2   | Upload via backend  | Upload direto GCS      | Validações centralizadas (hash, tamanho, cota, formato) |
-| 3   | @Async/@Scheduled   | Kafka                  | Over-engineering para volume de 10–100 usuários         |
-| 4   | nginx reverse proxy | API Gateway externo    | Gratuito, já dominado, suficiente para o escopo         |
-| 5   | Offset/page         | Cursor-based           | Volume de dados pequeno, simplicidade de implementação  |
-| 6   | BCrypt              | SHA-256 puro           | BCrypt é o padrão para senhas — adaptativo e seguro     |
-| 7   | GCS URLs assinadas  | URLs públicas          | Impede acesso a arquivos sem autenticação               |
-| 8   | UptimeRobot         | Implementação custom   | Gratuito, zero manutenção, resolve o requisito          |
+| #   | Decisão                                                                     | Alternativa descartada              | Motivo                                                  |
+| --- | --------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------- |
+| 1   | Monolito modular                                                            | Microsserviços                      | Complexidade desnecessária para projeto solo/pequeno    |
+| 2   | Upload via backend                                                          | Upload direto GCS                   | Validações centralizadas (hash, tamanho, cota, formato) |
+| 3   | @Async/@Scheduled                                                           | Kafka                               | Over-engineering para volume de 10–100 usuários         |
+| 4   | nginx reverse proxy                                                         | API Gateway externo                 | Gratuito, já dominado, suficiente para o escopo         |
+| 5   | Offset/page                                                                 | Cursor-based                        | Volume de dados pequeno, simplicidade de implementação  |
+| 6   | BCrypt                                                                      | SHA-256 puro                        | BCrypt é o padrão para senhas — adaptativo e seguro     |
+| 7   | GCS URLs assinadas                                                          | URLs públicas                       | Impede acesso a arquivos sem autenticação               |
+| 8   | UptimeRobot                                                                 | Implementação custom                | Gratuito, zero manutenção, resolve o requisito          |
+| 9   | 7 índices explícitos (FKs críticas + file_hash + tag_id + ratings manga_id) | Índice em toda FK e coluna filtrada |                                                         |

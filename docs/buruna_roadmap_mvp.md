@@ -23,19 +23,19 @@
 
 **Objetivo:** todas as tabelas do MVP criadas e versionadas.
 
-- [ ] `V1__create_users_table.sql`
-- [ ] `V2__create_refresh_tokens_table.sql`
-- [ ] `V3__create_tag_categories_table.sql`
-- [ ] `V4__create_tags_table.sql`
-- [ ] `V5__create_mangas_table.sql`
-- [ ] `V6__create_manga_tags_table.sql`
-- [ ] `V7__create_volumes_table.sql`
-- [ ] `V8__create_reading_progress_table.sql`
-- [ ] `V9__create_reading_history_table.sql`
-- [ ] `V10__create_reading_list_table.sql`
-- [ ] `V11__create_ratings_table.sql`
-- [ ] `V12__seed_tag_categories.sql` (categorias iniciais)
-- [ ] `V13__seed_tags.sql` (lista inicial de tags)
+- [x] `V1__create_users_table.sql`
+- [x] `V2__create_refresh_tokens_table.sql`
+- [x] `V3__create_tag_categories_table.sql`
+- [x] `V4__create_tags_table.sql`
+- [x] `V5__create_mangas_table.sql`
+- [x] `V6__create_manga_tags_table.sql`
+- [x] `V7__create_volumes_table.sql`
+- [x] `V8__create_reading_progress_table.sql`
+- [x] `V9__create_reading_history_table.sql`
+- [x] `V10__create_reading_list_table.sql`
+- [x] `V11__create_ratings_table.sql`
+- [x] `V12__seed_tag_categories.sql` (categorias iniciais)
+- [x] `V13__seed_tags.sql` (lista inicial de tags)
 
 ---
 
