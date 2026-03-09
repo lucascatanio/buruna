@@ -180,7 +180,7 @@ backend/
   "alternativeTitles": ["string"],
   "synopsis": "string (opcional)",
   "coverBase64": "string (opcional)",
-  "format": "MANGA | MANHWA | MANHUA | WEBTOON | ONE_SHOT",
+  "format": "MANGA | MANHWA | MANHUA | WEBTOON | ONESHOT",
   "originCountry": "string (opcional)",
   "statusOrigin": "ONGOING | COMPLETED | HIATUS | CANCELLED",
   "statusSite": "COMPLETE | INCOMPLETE",
@@ -596,3 +596,4 @@ RATE_LIMIT_REGISTER_PER_HOUR=5
 | 8   | UptimeRobot                                                                 | Implementação custom                | Gratuito, zero manutenção, resolve o requisito                                                                                                                                                                                              |
 | 9   | 7 índices explícitos (FKs críticas + file_hash + tag_id + ratings manga_id) | Índice em toda FK e coluna filtrada | Tabelas com <1000 linhas e colunas de baixa cardinalidade (ENUM, BOOLEAN) têm Seq Scan mais eficiente que manutenção de B-tree. Índices adicionados apenas onde há query específica de alta frequência ou tabela com crescimento ilimitado. |
 | 10  | Rate limit no /auth/register sem captcha                                    | Rate limit + hCaptcha               | Projeto solo com aprovação manual pelo admin. Captcha adiciona complexidade de integração externa sem ganho proporcional para 10–100 usuários. Rate limit de 5 req/hora por IP é suficiente para o MVP.                                     |
+| 11  | Listas (`alternative_titles`, `content_warnings`) como `TEXT` serializado em JSON | `TEXT[]` nativo do PostgreSQL | `TEXT[]` exige type mapping customizado no Hibernate/JPA e não é portável. `TEXT` com `@Converter` via Jackson mantém a serialização no lado Java, é transparente para o ORM, e listas desses campos têm cardinalidade baixa (< 20 itens), sem necessidade de indexação individual dos elementos. |

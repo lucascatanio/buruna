@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -83,7 +83,7 @@ public class AuthService {
             throw new UserNotActiveException("Your account has been deactivated");
         }
 
-        user.setLastAccessAt(Instant.now());
+        user.setLastAccessAt(OffsetDateTime.now());
         userRepository.save(user);
 
         String accessToken = tokenService.generateAccessToken(user);

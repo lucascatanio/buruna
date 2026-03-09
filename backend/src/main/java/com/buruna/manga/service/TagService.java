@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -82,7 +83,7 @@ public class TagService {
     @Transactional
     public void deleteTag(UUID id) {
         Tag tag = findActiveTagById(id);
-        tag.setDeletedAt(LocalDateTime.now());
+        tag.setDeletedAt(OffsetDateTime.now());
         tagRepository.save(tag);
     }
 

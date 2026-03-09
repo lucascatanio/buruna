@@ -1,7 +1,7 @@
 package com.buruna.user.dto;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record UserResponse(
@@ -13,6 +13,6 @@ public record UserResponse(
         String role,
         String status,
         BigDecimal quotaGb,
-        Instant createdAt
+        OffsetDateTime createdAt
 ) {
 }

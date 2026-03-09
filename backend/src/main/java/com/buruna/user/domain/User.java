@@ -8,7 +8,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -51,23 +51,23 @@ public class User {
     private BigDecimal quotaGb;
 
     @Column(name = "last_access_at")
-    private Instant lastAccessAt;
+    private OffsetDateTime lastAccessAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    private OffsetDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    private OffsetDateTime updatedAt;
 
     @PrePersist
     void prePersist() {
-        createdAt = Instant.now();
-        updatedAt = Instant.now();
+        createdAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
     @PreUpdate
     void preUpdate() {
-        updatedAt = Instant.now();
+        updatedAt = OffsetDateTime.now();
     }
 
     @Override

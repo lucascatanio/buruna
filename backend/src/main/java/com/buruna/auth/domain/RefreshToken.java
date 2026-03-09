@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -28,13 +28,13 @@ public class RefreshToken {
     private User user;
 
     @Column(name = "expires_at", nullable = false)
-    private Instant expiresAt;
+    private OffsetDateTime expiresAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    private OffsetDateTime createdAt;
 
     @PrePersist
     void prePersist() {
-        createdAt = Instant.now();
+        createdAt = OffsetDateTime.now();
     }
 }

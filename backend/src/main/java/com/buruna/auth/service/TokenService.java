@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.SecretKey;
 import java.security.SecureRandom;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
@@ -50,7 +50,7 @@ public class TokenService {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken(generateSecureToken());
         refreshToken.setUser(user);
-        refreshToken.setExpiresAt(Instant.now().plusSeconds(appProperties.jwt().refreshTokenExpiration()));
+        refreshToken.setExpiresAt(OffsetDateTime.now().plusSeconds(appProperties.jwt().refreshTokenExpiration()));
 
         return refreshTokenRepository.save(refreshToken);
     }
@@ -73,7 +73,7 @@ public class TokenService {
         RefreshToken existing = refreshTokenRepository.findByToken(rawToken)
                 .orElseThrow(InvalidTokenException::new);
 
-        if (existing.getExpiresAt().isBefore(Instant.now())) {
+        if (existing.getExpiresAt().isBefore(OffsetDateTime.now())) {
             refreshTokenRepository.delete(existing);
             throw new InvalidTokenException();
         }
@@ -84,7 +84,7 @@ public class TokenService {
         RefreshToken rotated = new RefreshToken();
         rotated.setToken(generateSecureToken());
         rotated.setUser(user);
-        rotated.setExpiresAt(Instant.now().plusSeconds(appProperties.jwt().refreshTokenExpiration()));
+        rotated.setExpiresAt(OffsetDateTime.now().plusSeconds(appProperties.jwt().refreshTokenExpiration()));
 
         return refreshTokenRepository.save(rotated);
     }

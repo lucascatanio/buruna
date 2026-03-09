@@ -78,18 +78,18 @@
 
 **Backend:**
 
-- [ ] Entidades `TagCategory` + `Tag`
-- [ ] `GET /tags` — listar tags ativas por categoria
-- [ ] `GET /tag-categories` — listar categorias
-- [ ] `POST /tags` — criar tag (admin)
-- [ ] `PUT /tags/{id}` — editar tag (admin)
-- [ ] `DELETE /tags/{id}` — soft delete de tag (admin)
-- [ ] `POST /tag-categories` — criar categoria (admin)
+- [x] Entidades `TagCategory` + `Tag`
+- [x] `GET /tags` — listar tags ativas por categoria
+- [x] `GET /tag-categories` — listar categorias
+- [x] `POST /tags` — criar tag (admin)
+- [x] `PUT /tags/{id}` — editar tag (admin)
+- [x] `DELETE /tags/{id}` — soft delete de tag (admin)
+- [x] `POST /tag-categories` — criar categoria (admin)
 
 **Frontend:**
 
-- [ ] Painel admin: gerenciar tags e categorias
-- [ ] Componente de seleção de tags reutilizável (para uso no upload de mangás)
+- [x] Painel admin: gerenciar tags e categorias
+- [x] Componente de seleção de tags reutilizável (para uso no upload de mangás)
 
 ---
 
@@ -240,6 +240,8 @@
 | 9    | Infra e deploy          | 93% → 100% |
 
 ---
+
 ## Backlog — Features Futuras
+
 - Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
 - Notificar todos os usuários com role ADMIN ao invés de um e-mail fixo (`ADMIN_EMAIL`)

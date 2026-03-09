@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -28,12 +28,16 @@ public class Tag {
     private TagCategory category;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private OffsetDateTime createdAt;
 
     @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
+    private OffsetDateTime deletedAt;
 
     public boolean isActive() {
         return deletedAt == null;
+    }
+
+    protected void onCreate() {
+        createdAt = OffsetDateTime.now();
     }
 }
