@@ -37,6 +37,7 @@ public class Tag {
         return deletedAt == null;
     }
 
+    @PrePersist
     protected void onCreate() {
         createdAt = OffsetDateTime.now();
     }
