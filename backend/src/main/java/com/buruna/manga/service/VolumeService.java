@@ -70,6 +70,12 @@ public class VolumeService {
                 .orElseThrow(() -> new MangaNotFoundException(mangaId));
 
         assertCanModify(manga, uploader);
+
+        if (!manga.isPublic()) {
+            throw new DomainException(HttpStatus.FORBIDDEN,
+                    "Use /my/mangas para fazer upload em mangás privados");
+        }
+
         validateFile(file);
 
         if (volumeRepository.existsByMangaIdAndVolumeNumber(mangaId, volumeNumber)) {
@@ -163,6 +169,14 @@ public class VolumeService {
         boolean isAdmin = user.getRole() == Role.ADMIN;
         boolean isOwner = manga.getOwner().getId().equals(user.getId());
         if (!isAdmin && !isOwner) {
+            throw new DomainException(HttpStatus.FORBIDDEN,
+                    "Você não tem permissão para modificar os volumes deste mangá");
+        }
+    }
+
+    @SuppressWarnings("unused") // fase 5
+    private void assertIsOwner(Manga manga, User user) {
+        if (!manga.getOwner().getId().equals(user.getId())) {
             throw new DomainException(HttpStatus.FORBIDDEN,
                     "Você não tem permissão para modificar os volumes deste mangá");
         }

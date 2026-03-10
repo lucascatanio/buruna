@@ -2,6 +2,7 @@ package com.buruna.manga.service;
 
 import com.buruna.infra.exception.DomainException;
 import com.buruna.infra.storage.StorageClient;
+import com.buruna.infra.storage.StorageUploadHelper;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;
@@ -150,31 +151,7 @@ public class MangaService {
             } catch (Exception ignored) {
             }
         }
-
-        String base64Data;
-        String contentType = "image/jpeg";
-
-        if (coverBase64.startsWith("data:")) {
-            int commaIndex = coverBase64.indexOf(',');
-            String header = coverBase64.substring(5, commaIndex); // "image/jpeg;base64"
-            contentType = header.split(";")[0];
-            base64Data = coverBase64.substring(commaIndex + 1);
-        } else {
-            base64Data = coverBase64;
-        }
-
-        String extension = contentType.contains("/") ? contentType.split("/")[1] : "jpg";
-        String objectName = "covers/" + UUID.randomUUID() + "." + extension;
-        byte[] bytes = Base64.getDecoder().decode(base64Data);
-
-        storageClient.upload(
-                new ByteArrayInputStream(bytes),
-                objectName,
-                contentType,
-                bytes.length
-        );
-
-        return objectName;
+        return StorageUploadHelper.uploadBase64Image(storageClient, coverBase64, "covers");
     }
 
     private String generateUniqueSlug(String title) {
@@ -201,6 +178,14 @@ public class MangaService {
         boolean isAdmin = user.getRole() == Role.ADMIN;
         boolean isOwner = manga.getOwner().getId().equals(user.getId());
         if (!isAdmin && !isOwner) {
+            throw new DomainException(HttpStatus.FORBIDDEN,
+                    "Você não tem permissão para modificar este mangá");
+        }
+    }
+
+    @SuppressWarnings("unused") // fase 5
+    private void assertIsOwner(Manga manga, User user) {
+        if (!manga.getOwner().getId().equals(user.getId())) {
             throw new DomainException(HttpStatus.FORBIDDEN,
                     "Você não tem permissão para modificar este mangá");
         }

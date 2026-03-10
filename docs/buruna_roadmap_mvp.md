@@ -99,18 +99,18 @@
 
 **Backend:**
 
-- [ ] Entidades `Manga` + `Volume` + `MangaTag`
-- [ ] Integração com Google Cloud Storage (`GcsStorageClient`)
-- [ ] Geração de nome ofuscado (UUID) para arquivos no GCS
-- [ ] Cálculo de hash SHA-256 para detecção de duplicatas
-- [ ] `POST /mangas` — criar mangá (colaborador/admin)
-- [ ] `GET /mangas` — listar/buscar com filtros e paginação
-- [ ] `GET /mangas/{slug}` — detalhes de um mangá
-- [ ] `PUT /mangas/{id}` — editar mangá
-- [ ] `DELETE /mangas/{id}` — deletar mangá + arquivo no GCS
-- [ ] `POST /mangas/{id}/volumes` — upload de volume (multipart)
-- [ ] `DELETE /mangas/{id}/volumes/{volumeId}` — deletar volume
-- [ ] Validação de permissões por role (admin vs. colaborador)
+- [x] Entidades `Manga` + `Volume` + `MangaTag`
+- [x] Integração com Google Cloud Storage (`GcsStorageClient`)
+- [x] Geração de nome ofuscado (UUID) para arquivos no GCS
+- [x] Cálculo de hash SHA-256 para detecção de duplicatas
+- [x] `POST /mangas` — criar mangá (colaborador/admin)
+- [x] `GET /mangas` — listar/buscar com filtros e paginação
+- [x] `GET /mangas/{slug}` — detalhes de um mangá
+- [x] `PUT /mangas/{id}` — editar mangá
+- [x] `DELETE /mangas/{id}` — deletar mangá + arquivo no GCS
+- [x] `POST /mangas/{id}/volumes` — upload de volume (multipart)
+- [x] `DELETE /mangas/{id}/volumes/{volumeId}` — deletar volume
+- [x] Validação de permissões por role (admin vs. colaborador)
 
 **Frontend:**
 
@@ -240,8 +240,3 @@
 | 9    | Infra e deploy          | 93% → 100% |
 
 ---
-
-## Backlog — Features Futuras
-
-- Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
-- Notificar todos os usuários com role ADMIN ao invés de um e-mail fixo (`ADMIN_EMAIL`)

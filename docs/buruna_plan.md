@@ -323,10 +323,26 @@
 - Suporte a formato CBZ/CBR
 - Suporte a tablet
 - Swagger/OpenAPI
-- Versionamento de API
-- Integração com APIs externas (MyAnimeList ID, Anilist ID)
+- Versionamento de API - Fora de necessidade total no momento
+- Integração com APIs externas (MyAnimeList ID, Anilist ID) - Em Análise
 - Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
 - Notificar todos os usuários com role ADMIN ao invés de um e-mail fixo (`ADMIN_EMAIL`)
+- Email profissional para notificações
+
+## Qualidade/Corretude
+- N+1 em findPublic — @EntityGraph no repository resolve
+- DataIntegrityViolationException → 500 — mapear no GlobalExceptionHandler para 409
+- RateLimitFilter sem limpeza — leak de memória gradual
+- VolumeService.upload carrega arquivo inteiro em heap — SHA-256 via stream
+- toResponse package-private — mudar para private
+
+## Baixa prioridade
+- Filtro de tags OR vs AND — nova ADR
+- file_hash sem UNIQUE constraint — adicionar migration
+- Signed URL no GCS com ADC — verificar quando for fazer **DEPLOY - Phase 9**
+- filterByTitle não busca alternativeTitles — limitação conhecida
+- Inconsistência de idioma nas mensagens — normalizar antes do **DEPLOY - Phase 9**
+- JwtFilter com query por request — irrelevante no volume atual
 
 ---
 

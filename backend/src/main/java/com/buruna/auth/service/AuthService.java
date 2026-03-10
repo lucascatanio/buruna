@@ -4,6 +4,8 @@ import com.buruna.auth.domain.RefreshToken;
 import com.buruna.auth.dto.*;
 import com.buruna.infra.config.AppProperties;
 import com.buruna.infra.notification.EmailService;
+import com.buruna.infra.storage.StorageClient;
+import com.buruna.infra.storage.StorageUploadHelper;
 import com.buruna.user.domain.Role;
 import com.buruna.user.domain.User;
 import com.buruna.user.domain.UserStatus;
@@ -16,8 +18,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.Base64;
 import java.util.UUID;
 
 @Service
@@ -28,15 +32,17 @@ public class AuthService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final AppProperties appProperties;
+    private final StorageClient storageClient;
 
     public AuthService(UserRepository userRepository, TokenService tokenService,
                        EmailService emailService, PasswordEncoder passwordEncoder,
-                       AppProperties appProperties) {
+                       AppProperties appProperties, StorageClient storageClient) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.appProperties = appProperties;
+        this.storageClient = storageClient;
     }
 
     @Transactional
@@ -58,7 +64,8 @@ public class AuthService {
         user.setQuotaGb(new BigDecimal("2.00"));
 
         if (request.avatarBase64() != null && !request.avatarBase64().isBlank()) {
-            user.setAvatarUrl(request.avatarBase64());
+            String avatarObjectName = uploadAvatar(request.avatarBase64());
+            user.setAvatarUrl(avatarObjectName);
         }
 
         userRepository.save(user);
@@ -119,5 +126,9 @@ public class AuthService {
                 .orElseThrow(() -> new UserNotFoundException(userId));
         tokenService.deleteAllUserTokens(userId);
         userRepository.delete(user);
+    }
+
+    private String uploadAvatar(String avatarBase64) {
+        return StorageUploadHelper.uploadBase64Image(storageClient, avatarBase64, "avatars");
     }
 }
