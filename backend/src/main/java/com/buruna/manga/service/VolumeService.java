@@ -18,8 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -82,8 +82,7 @@ public class VolumeService {
             throw new DuplicateVolumeException(volumeNumber);
         }
 
-        byte[] fileBytes = readBytes(file);
-        String fileHash = computeSha256(fileBytes);
+        String fileHash = computeSha256(file);
 
         if (volumeRepository.existsByFileHash(fileHash)) {
             throw new DuplicateVolumeException();
@@ -92,19 +91,24 @@ public class VolumeService {
         String extension = extractExtension(file.getOriginalFilename());
         String objectName = "volumes/" + UUID.randomUUID() + extension;
 
-        storageClient.upload(
-                new ByteArrayInputStream(fileBytes),
-                objectName,
-                file.getContentType(),
-                fileBytes.length
-        );
+        try {
+            storageClient.upload(
+                    file.getInputStream(),
+                    objectName,
+                    file.getContentType(),
+                    file.getSize()
+            );
+        } catch (IOException e) {
+            throw new DomainException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Falha ao ler o arquivo enviado");
+        }
 
         Volume volume = new Volume();
         volume.setManga(manga);
         volume.setVolumeNumber(volumeNumber);
         volume.setFileUrl(objectName);
         volume.setFileHash(fileHash);
-        volume.setFileSizeBytes((long) fileBytes.length);
+        volume.setFileSizeBytes(file.getSize());
         volume.setUploadedBy(uploader);
 
         Volume saved = volumeRepository.save(volume);
@@ -139,22 +143,22 @@ public class VolumeService {
         }
     }
 
-    private byte[] readBytes(MultipartFile file) {
+    private String computeSha256(MultipartFile file) {
         try {
-            return file.getBytes();
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            try (InputStream is = file.getInputStream()) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = is.read(buffer)) != -1) {
+                    digest.update(buffer, 0, read);
+                }
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 não disponível", e);
         } catch (IOException e) {
             throw new DomainException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Falha ao ler o arquivo enviado");
-        }
-    }
-
-    private String computeSha256(byte[] bytes) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(bytes));
-        } catch (NoSuchAlgorithmException e) {
-            // SHA-256 é garantido pela JVM, nunca ocorre na prática
-            throw new IllegalStateException("SHA-256 não disponível", e);
         }
     }
 

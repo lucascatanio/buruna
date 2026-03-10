@@ -191,7 +191,7 @@ public class MangaService {
         }
     }
 
-    MangaResponse toResponse(Manga manga, boolean includeVolumes) {
+    private MangaResponse toResponse(Manga manga, boolean includeVolumes) {
         List<VolumeResponse> volumes = includeVolumes
                 ? manga.getVolumes().stream()
                 .map(v -> new VolumeResponse(

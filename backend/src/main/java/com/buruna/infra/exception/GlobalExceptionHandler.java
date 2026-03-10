@@ -1,6 +1,7 @@
 package com.buruna.infra.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -43,6 +44,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDomain(
             DomainException ex, HttpServletRequest request) {
         return buildResponse(ex.getStatus(), ex.getStatus().getReasonPhrase(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.CONFLICT, "Conflict",
+                "Operação viola uma restrição de unicidade", request);
     }
 
     @ExceptionHandler(Exception.class)
