@@ -318,31 +318,31 @@
 
 ## Backlog (Features Futuras)
 
-- Login social com Google (OAuth)
-- Notificações de novos volumes (e-mail + sino no site)
-- Suporte a formato CBZ/CBR
-- Suporte a tablet
-- Swagger/OpenAPI
-- Versionamento de API - Fora de necessidade total no momento
-- Integração com APIs externas (MyAnimeList ID, Anilist ID) - Em Análise
-- Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
-- Notificar todos os usuários com role ADMIN ao invés de um e-mail fixo (`ADMIN_EMAIL`)
-- Email profissional para notificações
+1. [ ] Login social com Google (OAuth)
+2. [ ] Notificações de novos volumes (e-mail + sino no site)
+3. [ ] Suporte a formato CBZ/CBR
+4. [ ] Suporte a tablet
+5. [ ] Swagger/OpenAPI
+6. [ ] Versionamento de API - Fora de necessidade total no momento
+7. [ ] Integração com APIs externas (MyAnimeList ID, Anilist ID) - Em Análise
+8. [ ] Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
+9. [ ] Notificar todos os usuários com role ADMIN ao invés de um e-mail fixo (`ADMIN_EMAIL`)
+10. [ ] Email profissional para notificações
 
 ## Qualidade/Corretude
-- N+1 em findPublic — @EntityGraph no repository resolve
-- DataIntegrityViolationException → 500 — mapear no GlobalExceptionHandler para 409
-- RateLimitFilter sem limpeza — leak de memória gradual
-- VolumeService.upload carrega arquivo inteiro em heap — SHA-256 via stream
-- toResponse package-private — mudar para private
+1. [x] N+1 em findPublic — @EntityGraph no repository resolve
+2. [x] DataIntegrityViolationException → 500 — mapear no GlobalExceptionHandler para 409
+3. [x] RateLimitFilter sem limpeza — leak de memória gradual
+4. [x] VolumeService.upload carrega arquivo inteiro em heap — SHA-256 via stream
+5. [x] toResponse package-private — mudar para private
 
 ## Baixa prioridade
-- Filtro de tags OR vs AND — nova ADR
-- file_hash sem UNIQUE constraint — adicionar migration
-- Signed URL no GCS com ADC — verificar quando for fazer **DEPLOY - Phase 9**
-- filterByTitle não busca alternativeTitles — limitação conhecida
-- Inconsistência de idioma nas mensagens — normalizar antes do **DEPLOY - Phase 9**
-- JwtFilter com query por request — irrelevante no volume atual
+1. [x] Filtro de tags OR vs AND — nova ADR
+2. [x] file_hash sem UNIQUE constraint — adicionar migration
+3. [ ] Signed URL no GCS com ADC — verificar quando for fazer **DEPLOY - Phase 9**
+4. [ ] filterByTitle não busca alternativeTitles — limitação conhecida
+5. [ ] Inconsistência de idioma nas mensagens — normalizar antes do **DEPLOY - Phase 9**
+6. [ ] JwtFilter com query por request — irrelevante no volume atual
 
 ---
 

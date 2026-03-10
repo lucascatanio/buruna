@@ -98,7 +98,7 @@ backend/
 ### 3.1 Auth
 
 | Método | Rota             | Auth       | Descrição                              |
-| ------ | ---------------- | ---------- | -------------------------------------- |
+|--------|------------------|------------|----------------------------------------|
 | POST   | `/auth/register` | ❌ público  | Solicitar cadastro                     |
 | POST   | `/auth/login`    | ❌ público  | Login, retorna access + refresh token  |
 | POST   | `/auth/refresh`  | ❌ público  | Renovar access token via refresh token |
@@ -132,7 +132,7 @@ backend/
 ### 3.2 Usuários (Admin)
 
 | Método | Rota                        | Auth  | Descrição                           |
-| ------ | --------------------------- | ----- | ----------------------------------- |
+|--------|-----------------------------|-------|-------------------------------------|
 | GET    | `/admin/users`              | ADMIN | Listar todos os usuários (paginado) |
 | GET    | `/admin/users/pending`      | ADMIN | Listar cadastros pendentes          |
 | GET    | `/admin/users/{id}`         | ADMIN | Detalhes de um usuário              |
@@ -155,7 +155,7 @@ backend/
 ### 3.3 Mangás Públicos
 
 | Método | Rota             | Auth          | Descrição                                |
-| ------ | ---------------- | ------------- | ---------------------------------------- |
+|--------|------------------|---------------|------------------------------------------|
 | GET    | `/mangas`        | ✅ qualquer    | Listar/buscar mangás públicos (paginado) |
 | GET    | `/mangas/{slug}` | ✅ qualquer    | Detalhes de um mangá                     |
 | POST   | `/mangas`        | COLLABORATOR+ | Criar novo mangá                         |
@@ -177,7 +177,9 @@ backend/
 ```json
 {
   "title": "string",
-  "alternativeTitles": ["string"],
+  "alternativeTitles": [
+    "string"
+  ],
   "synopsis": "string (opcional)",
   "coverBase64": "string (opcional)",
   "format": "MANGA | MANHWA | MANHUA | WEBTOON | ONESHOT",
@@ -185,8 +187,14 @@ backend/
   "statusOrigin": "ONGOING | COMPLETED | HIATUS | CANCELLED",
   "statusSite": "COMPLETE | INCOMPLETE",
   "year": 2025,
-  "contentWarnings": ["NSFW", "GORE"],
-  "tagIds": ["uuid1", "uuid2"]
+  "contentWarnings": [
+    "NSFW",
+    "GORE"
+  ],
+  "tagIds": [
+    "uuid1",
+    "uuid2"
+  ]
 }
 ```
 
@@ -195,7 +203,7 @@ backend/
 ### 3.4 Volumes
 
 | Método | Rota                                   | Auth          | Descrição                              |
-| ------ | -------------------------------------- | ------------- | -------------------------------------- |
+|--------|----------------------------------------|---------------|----------------------------------------|
 | GET    | `/mangas/{mangaId}/volumes`            | ✅ qualquer    | Listar volumes de um mangá             |
 | POST   | `/mangas/{mangaId}/volumes`            | COLLABORATOR+ | Upload de volume (multipart/form-data) |
 | DELETE | `/mangas/{mangaId}/volumes/{volumeId}` | COLLABORATOR+ | Deletar volume                         |
@@ -212,7 +220,7 @@ volumeNumber: integer
 ### 3.5 Coleção Privada
 
 | Método | Rota                      | Auth          | Descrição                           |
-| ------ | ------------------------- | ------------- | ----------------------------------- |
+|--------|---------------------------|---------------|-------------------------------------|
 | GET    | `/my/mangas`              | ✅ qualquer    | Listar próprios mangás privados     |
 | POST   | `/my/mangas`              | ✅ qualquer    | Upload de mangá privado (multipart) |
 | PUT    | `/my/mangas/{id}`         | ✅ qualquer    | Editar mangá privado                |
@@ -232,7 +240,7 @@ volumeNumber: integer
 ### 3.6 Leitor
 
 | Método | Rota                          | Auth       | Descrição                                  |
-| ------ | ----------------------------- | ---------- | ------------------------------------------ |
+|--------|-------------------------------|------------|--------------------------------------------|
 | GET    | `/reader/{volumeId}/url`      | ✅ qualquer | Obter URL assinada temporária do arquivo   |
 | POST   | `/reader/{volumeId}/progress` | ✅ qualquer | Salvar progresso de leitura                |
 | GET    | `/reader/progress/{mangaId}`  | ✅ qualquer | Obter progresso atual de um mangá          |
@@ -251,7 +259,7 @@ volumeNumber: integer
 ### 3.7 Lista de Leitura
 
 | Método | Rota                      | Auth       | Descrição                      |
-| ------ | ------------------------- | ---------- | ------------------------------ |
+|--------|---------------------------|------------|--------------------------------|
 | GET    | `/reading-list`           | ✅ qualquer | Listar todos os itens da lista |
 | PUT    | `/reading-list/{mangaId}` | ✅ qualquer | Adicionar ou atualizar status  |
 | DELETE | `/reading-list/{mangaId}` | ✅ qualquer | Remover da lista               |
@@ -269,7 +277,7 @@ volumeNumber: integer
 ### 3.8 Avaliação
 
 | Método | Rota                  | Auth       | Descrição              |
-| ------ | --------------------- | ---------- | ---------------------- |
+|--------|-----------------------|------------|------------------------|
 | POST   | `/mangas/{id}/rating` | ✅ qualquer | Avaliar (1–5 estrelas) |
 | PUT    | `/mangas/{id}/rating` | ✅ qualquer | Atualizar avaliação    |
 | DELETE | `/mangas/{id}/rating` | ✅ qualquer | Remover avaliação      |
@@ -287,7 +295,7 @@ volumeNumber: integer
 ### 3.9 Tags
 
 | Método | Rota              | Auth       | Descrição                                 |
-| ------ | ----------------- | ---------- | ----------------------------------------- |
+|--------|-------------------|------------|-------------------------------------------|
 | GET    | `/tags`           | ✅ qualquer | Listar todas as tags ativas por categoria |
 | POST   | `/tags`           | ADMIN      | Criar nova tag                            |
 | PUT    | `/tags/{id}`      | ADMIN      | Editar tag                                |
@@ -300,7 +308,7 @@ volumeNumber: integer
 ### 3.10 Dashboard
 
 | Método | Rota               | Auth  | Descrição                           |
-| ------ | ------------------ | ----- | ----------------------------------- |
+|--------|--------------------|-------|-------------------------------------|
 | GET    | `/admin/dashboard` | ADMIN | Usuários ativos + storage utilizado |
 
 **GET /admin/dashboard — response:**
@@ -310,7 +318,11 @@ volumeNumber: integer
   "activeUsers": 8,
   "totalStorageUsedGb": 12.4,
   "storageByUser": [
-    { "userId": "uuid", "username": "string", "usedGb": 1.2 }
+    {
+      "userId": "uuid",
+      "username": "string",
+      "usedGb": 1.2
+    }
   ]
 }
 ```
@@ -495,7 +507,7 @@ services:
 
   backend:
     build: ./backend
-    depends_on: [postgres]
+    depends_on: [ postgres ]
     environment:
       DB_URL, DB_USER, DB_PASSWORD
       JWT_SECRET, JWT_EXPIRATION
@@ -506,13 +518,13 @@ services:
 
   frontend:
     build: ./frontend
-    depends_on: [backend]
+    depends_on: [ backend ]
 
   nginx:
     image: nginx:alpine
-    ports: ["80:80"]
-    depends_on: [frontend, backend]
-    volumes: [./nginx/nginx.conf:/etc/nginx/nginx.conf]
+    ports: [ "80:80" ]
+    depends_on: [ frontend, backend ]
+    volumes: [ ./nginx/nginx.conf:/etc/nginx/nginx.conf ]
 ```
 
 ### 6.2 nginx — Roteamento
@@ -584,16 +596,17 @@ RATE_LIMIT_REGISTER_PER_HOUR=5
 
 ## 7. Decisões Técnicas Registradas (ADRs)
 
-| #   | Decisão                                                                     | Alternativa descartada              | Motivo                                                                                                                                                                                                                                      |
-| --- | --------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Monolito modular                                                            | Microsserviços                      | Complexidade desnecessária para projeto solo/pequeno                                                                                                                                                                                        |
-| 2   | Upload via backend                                                          | Upload direto GCS                   | Validações centralizadas (hash, tamanho, cota, formato)                                                                                                                                                                                     |
-| 3   | @Async/@Scheduled                                                           | Kafka                               | Over-engineering para volume de 10–100 usuários                                                                                                                                                                                             |
-| 4   | nginx reverse proxy                                                         | API Gateway externo                 | Gratuito, já dominado, suficiente para o escopo                                                                                                                                                                                             |
-| 5   | Offset/page                                                                 | Cursor-based                        | Volume de dados pequeno, simplicidade de implementação                                                                                                                                                                                      |
-| 6   | BCrypt                                                                      | SHA-256 puro                        | BCrypt é o padrão para senhas — adaptativo e seguro                                                                                                                                                                                         |
-| 7   | GCS URLs assinadas                                                          | URLs públicas                       | Impede acesso a arquivos sem autenticação                                                                                                                                                                                                   |
-| 8   | UptimeRobot                                                                 | Implementação custom                | Gratuito, zero manutenção, resolve o requisito                                                                                                                                                                                              |
-| 9   | 7 índices explícitos (FKs críticas + file_hash + tag_id + ratings manga_id) | Índice em toda FK e coluna filtrada | Tabelas com <1000 linhas e colunas de baixa cardinalidade (ENUM, BOOLEAN) têm Seq Scan mais eficiente que manutenção de B-tree. Índices adicionados apenas onde há query específica de alta frequência ou tabela com crescimento ilimitado. |
-| 10  | Rate limit no /auth/register sem captcha                                    | Rate limit + hCaptcha               | Projeto solo com aprovação manual pelo admin. Captcha adiciona complexidade de integração externa sem ganho proporcional para 10–100 usuários. Rate limit de 5 req/hora por IP é suficiente para o MVP.                                     |
-| 11  | Listas (`alternative_titles`, `content_warnings`) como `TEXT` serializado em JSON | `TEXT[]` nativo do PostgreSQL | `TEXT[]` exige type mapping customizado no Hibernate/JPA e não é portável. `TEXT` com `@Converter` via Jackson mantém a serialização no lado Java, é transparente para o ORM, e listas desses campos têm cardinalidade baixa (< 20 itens), sem necessidade de indexação individual dos elementos. |
+| #  | Decisão                                                                           | Alternativa descartada                | Motivo                                                                                                                                                                                                                                                                                              |
+|----|-----------------------------------------------------------------------------------|---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1  | Monolito modular                                                                  | Microsserviços                        | Complexidade desnecessária para projeto solo/pequeno                                                                                                                                                                                                                                                |
+| 2  | Upload via backend                                                                | Upload direto GCS                     | Validações centralizadas (hash, tamanho, cota, formato)                                                                                                                                                                                                                                             |
+| 3  | @Async/@Scheduled                                                                 | Kafka                                 | Over-engineering para volume de 10–100 usuários                                                                                                                                                                                                                                                     |
+| 4  | nginx reverse proxy                                                               | API Gateway externo                   | Gratuito, já dominado, suficiente para o escopo                                                                                                                                                                                                                                                     |
+| 5  | Offset/page                                                                       | Cursor-based                          | Volume de dados pequeno, simplicidade de implementação                                                                                                                                                                                                                                              |
+| 6  | BCrypt                                                                            | SHA-256 puro                          | BCrypt é o padrão para senhas — adaptativo e seguro                                                                                                                                                                                                                                                 |
+| 7  | GCS URLs assinadas                                                                | URLs públicas                         | Impede acesso a arquivos sem autenticação                                                                                                                                                                                                                                                           |
+| 8  | UptimeRobot                                                                       | Implementação custom                  | Gratuito, zero manutenção, resolve o requisito                                                                                                                                                                                                                                                      |
+| 9  | 7 índices explícitos (FKs críticas + file_hash + tag_id + ratings manga_id)       | Índice em toda FK e coluna filtrada   | Tabelas com <1000 linhas e colunas de baixa cardinalidade (ENUM, BOOLEAN) têm Seq Scan mais eficiente que manutenção de B-tree. Índices adicionados apenas onde há query específica de alta frequência ou tabela com crescimento ilimitado.                                                         |
+| 10 | Rate limit no /auth/register sem captcha                                          | Rate limit + hCaptcha                 | Projeto solo com aprovação manual pelo admin. Captcha adiciona complexidade de integração externa sem ganho proporcional para 10–100 usuários. Rate limit de 5 req/hora por IP é suficiente para o MVP.                                                                                             |
+| 11 | Listas (`alternative_titles`, `content_warnings`) como `TEXT` serializado em JSON | `TEXT[]` nativo do PostgreSQL         | `TEXT[]` exige type mapping customizado no Hibernate/JPA e não é portável. `TEXT` com `@Converter` via Jackson mantém a serialização no lado Java, é transparente para o ORM, e listas desses campos têm cardinalidade baixa (< 20 itens), sem necessidade de indexação individual dos elementos.   |
+| 12 | Filtro de tags com semântica AND                                                  | Semântica OR (comportamento anterior) | OR retorna resultados demais e pouco relevantes. Selecionar "Ação" + "Completo" deve retornar obras que atendam ambos os critérios simultaneamente, não obras que tenham qualquer um deles. Implementado via subquery EXISTS por tagId para garantir que o mangá possua todas as tags selecionadas. |

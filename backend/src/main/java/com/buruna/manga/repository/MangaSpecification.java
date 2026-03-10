@@ -40,9 +40,23 @@ public class MangaSpecification {
     public static Specification<Manga> hasTagIds(Set<UUID> tagIds) {
         return (root, query, cb) -> {
             if (tagIds == null || tagIds.isEmpty()) return null;
-            query.distinct(true);
-            Join<Manga, Tag> tags = root.join("tags", JoinType.LEFT);
-            return tags.get("id").in(tagIds);
+
+            // AND: mangá precisa ter TODAS as tags selecionadas
+            var predicates = tagIds.stream()
+                    .map(tagId -> {
+                        var subquery = query.subquery(Long.class);
+                        var mangaTag = subquery.from(Manga.class);
+                        Join<Manga, Tag> tagJoin = mangaTag.join("tags", JoinType.INNER);
+                        subquery.select(cb.literal(1L))
+                                .where(
+                                        cb.equal(mangaTag.get("id"), root.get("id")),
+                                        cb.equal(tagJoin.get("id"), tagId)
+                                );
+                        return cb.exists(subquery);
+                    })
+                    .toArray(jakarta.persistence.criteria.Predicate[]::new);
+
+            return cb.and(predicates);
         };
     }
 }
