@@ -12,6 +12,9 @@ import {MangaEditPage} from "@/pages/MangaEditPage";
 import {PendingUsersPage} from "@/pages/admin/PendingUsersPage";
 import {UsersPage} from "@/pages/admin/UsersPage";
 import {TagsPage} from "@/pages/admin/TagsPage";
+import {MyCollectionPage} from "@/pages/MyCollectionPage.tsx";
+import {PrivateMangaUploadPage} from "@/pages/PrivateMangaUploadPage.tsx";
+import {PrivateMangaDetailPage} from "@/pages/PrivateMangaDetailPage.tsx";
 
 export default function App() {
     return (
@@ -25,6 +28,9 @@ export default function App() {
                         <Route path="/" element={<Navigate to="/biblioteca" replace/>}/>
                         <Route path="/biblioteca" element={<LibraryPage/>}/>
                         <Route path="/biblioteca/:slug" element={<MangaDetailPage/>}/>
+                        <Route path="/colecao" element={<MyCollectionPage/>}/>
+                        <Route path="/colecao/novo" element={<PrivateMangaUploadPage/>}/>
+                        <Route path="/colecao/:id" element={<PrivateMangaDetailPage/>}/>
                     </Route>
                 </Route>
 

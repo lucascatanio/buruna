@@ -38,11 +38,9 @@ export function AppLayout() {
                             Biblioteca
                         </Button>
                         <Button
-                            variant="ghost"
+                            variant={isActive("/colecao") ? "secondary" : "ghost"}
                             size="sm"
-                            disabled
-                            className="opacity-40 cursor-not-allowed"
-                            title="Em breve"
+                            onClick={() => navigate("/colecao")}
                         >
                             <Library className="w-4 h-4 mr-1.5"/>
                             Minha Coleção
@@ -96,8 +94,8 @@ export function AppLayout() {
                 <MobileNavItem
                     icon={<Library className="w-5 h-5"/>}
                     label="Coleção"
-                    active={false}
-                    disabled
+                    active={isActive("/colecao")}
+                    onClick={() => navigate("/colecao")}
                 />
                 {isCollab && (
                     <MobileNavItem
