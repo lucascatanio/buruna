@@ -7,7 +7,7 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {toast} from "sonner";
-import {ArrowLeft, Upload, Trash2, Pencil, Check, X, Globe} from "lucide-react";
+import {ArrowLeft, Upload, Trash2, Pencil, Check, X, Globe, BookOpen} from "lucide-react";
 
 interface Volume {
     id: string;
@@ -264,6 +264,22 @@ export function PrivateMangaDetailPage() {
                                                 {formatBytes(v.fileSizeBytes)}
                                             </span>
                                         </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs gap-1"
+                                            onClick={() => navigate(`/leitor/${v.id}`, {
+                                                state: {
+                                                    mangaId: manga.id,
+                                                    mangaTitle: manga.title,
+                                                    volumeNumber: v.volumeNumber,
+                                                    backUrl: `/colecao/${manga.id}`,
+                                                }
+                                            })}
+                                        >
+                                            <BookOpen className="w-3.5 h-3.5"/>
+                                            Ler
+                                        </Button>
                                         <Button
                                             variant="ghost"
                                             size="icon"

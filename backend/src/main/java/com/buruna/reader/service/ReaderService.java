@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -134,5 +135,15 @@ public class ReaderService {
         }
 
         return volume;
+    }
+
+    public Optional<ProgressResponse> findProgressByVolume(UUID volumeId, User user) {
+        return progressRepository
+                .findByUserIdAndVolumeId(user.getId(), volumeId)
+                .map(p -> new ProgressResponse(
+                        p.getVolume().getId(),
+                        p.getCurrentPage(),
+                        p.getUpdatedAt()
+                ));
     }
 }

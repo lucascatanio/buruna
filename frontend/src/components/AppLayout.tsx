@@ -1,7 +1,7 @@
 import {Outlet, useNavigate, useLocation} from "react-router-dom";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
-import {BookOpen, Library, Plus, Settings, LogOut} from "lucide-react";
+import {BookOpen, Library, Plus, Settings, LogOut, History} from "lucide-react";
 
 export function AppLayout() {
     const navigate = useNavigate();
@@ -44,6 +44,14 @@ export function AppLayout() {
                         >
                             <Library className="w-4 h-4 mr-1.5"/>
                             Minha Coleção
+                        </Button>
+                        <Button
+                            variant={isActive("/historico") ? "secondary" : "ghost"}
+                            size="sm"
+                            onClick={() => navigate("/historico")}
+                        >
+                            <History className="w-4 h-4 mr-1.5"/>
+                            Histórico
                         </Button>
                         {isCollab && (
                             <Button
@@ -96,6 +104,12 @@ export function AppLayout() {
                     label="Coleção"
                     active={isActive("/colecao")}
                     onClick={() => navigate("/colecao")}
+                />
+                <MobileNavItem
+                    icon={<History className="w-5 h-5"/>}
+                    label="Histórico"
+                    active={isActive("/historico")}
+                    onClick={() => navigate("/historico")}
                 />
                 {isCollab && (
                     <MobileNavItem

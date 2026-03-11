@@ -361,7 +361,17 @@ export function MangaDetailPage() {
                                     <p className="text-sm font-medium">Volume {vol.volumeNumber}</p>
                                     <p className="text-xs text-muted-foreground">{formatBytes(vol.fileSizeBytes)}</p>
                                 </div>
-                                <Button size="sm" disabled title="Leitor disponível em breve">
+                                <Button
+                                    size="sm"
+                                    onClick={() => navigate(`/leitor/${vol.id}`, {
+                                        state: {
+                                            mangaId: manga.id,
+                                            mangaTitle: manga.title,
+                                            volumeNumber: vol.volumeNumber,
+                                            backUrl: `/biblioteca/${manga.slug}`,
+                                        }
+                                    })}
+                                >
                                     Ler
                                 </Button>
                             </CardContent>

@@ -15,6 +15,8 @@ import {TagsPage} from "@/pages/admin/TagsPage";
 import {MyCollectionPage} from "@/pages/MyCollectionPage.tsx";
 import {PrivateMangaUploadPage} from "@/pages/PrivateMangaUploadPage.tsx";
 import {PrivateMangaDetailPage} from "@/pages/PrivateMangaDetailPage.tsx";
+import {ReadingHistoryPage} from "@/pages/ReadingHistoryPage.tsx";
+import {ReaderPage} from "@/pages/ReaderPage.tsx";
 
 export default function App() {
     return (
@@ -31,6 +33,10 @@ export default function App() {
                         <Route path="/colecao" element={<MyCollectionPage/>}/>
                         <Route path="/colecao/novo" element={<PrivateMangaUploadPage/>}/>
                         <Route path="/colecao/:id" element={<PrivateMangaDetailPage/>}/>
+                        <Route path="/historico" element={<ReadingHistoryPage/>}/>
+                    </Route>
+                    <Route element={<ProtectedRoute/>}>
+                        <Route path="/leitor/:volumeId" element={<ReaderPage/>}/>
                     </Route>
                 </Route>
 

@@ -31,9 +31,7 @@ import java.util.UUID;
 public class VolumeService {
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "application/pdf",
-            "application/epub+zip",
-            "application/x-mobipocket-ebook"
+            "application/pdf"
     );
 
     private final MangaRepository mangaRepository;
@@ -135,7 +133,7 @@ public class VolumeService {
         }
         if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
             throw new DomainException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
-                    "Formato não suportado. Use PDF, EPUB ou MOBI");
+                    "Formato não suportado. Use PDF.");
         }
         if (file.getSize() > maxFileSizeBytes) {
             throw new DomainException(HttpStatus.PAYLOAD_TOO_LARGE,

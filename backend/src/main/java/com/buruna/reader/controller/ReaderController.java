@@ -58,4 +58,13 @@ public class ReaderController {
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(readerService.getHistory(user, pageable));
     }
+
+    @GetMapping("/{volumeId}/progress")
+    public ResponseEntity<ProgressResponse> getVolumeProgress(
+            @PathVariable UUID volumeId,
+            @AuthenticationPrincipal User user) {
+        return readerService.findProgressByVolume(volumeId, user)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
+    }
 }
