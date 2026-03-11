@@ -25,13 +25,16 @@ interface Page<T> {
 function formatDate(iso: string): string {
     const d = new Date(iso);
     const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const isToday = d.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const isYesterday = d.toDateString() === yesterday.toDateString();
 
-    if (diffDays === 0) return "Hoje";
-    if (diffDays === 1) return "Ontem";
-    if (diffDays < 7) return `${diffDays} dias atrás`;
-    return d.toLocaleDateString("pt-BR", {day: "2-digit", month: "short", year: "numeric"});
+    const time = d.toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
+
+    if (isToday) return `Hoje, ${time}`;
+    if (isYesterday) return `Ontem, ${time}`;
+    return d.toLocaleDateString("pt-BR", {day: "2-digit", month: "short", year: "numeric"}) + `, ${time}`;
 }
 
 export function ReadingHistoryPage() {

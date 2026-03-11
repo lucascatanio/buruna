@@ -149,23 +149,23 @@
 
 **Backend:**
 
-- [ ] `GET /reader/{volumeId}/url` — gerar URL assinada GCS (expira em 30 min) + incrementar view_count
-- [ ] `POST /reader/{volumeId}/progress` — salvar progresso (upsert)
-- [ ] `GET /reader/progress/{mangaId}` — recuperar progresso atual
-- [ ] `GET /reader/history` — histórico de leitura (paginado)
+- [x] `GET /reader/{volumeId}/url` — gerar URL assinada GCS (expira em 30 min) + incrementar view_count
+- [x] `POST /reader/{volumeId}/progress` — salvar progresso (upsert)
+- [x] `GET /reader/progress/{mangaId}` — recuperar progresso atual
+- [x] `GET /reader/history` — histórico de leitura (paginado)
 
 **Frontend:**
 
-- [ ] Leitor inline com modo **página a página**
-- [ ] Leitor inline com modo **scroll vertical contínuo**
-- [ ] Alternância entre modos de leitura
-- [ ] Controles que aparecem/desaparecem ao toque/clique
-- [ ] Dark mode + ajuste de brilho/contraste
-- [ ] Salvar progresso automaticamente a cada virada de página
-- [ ] Retomar leitura do ponto salvo
-- [ ] Lazy loading de páginas
-- [ ] Swipe esquerda/direita no mobile
-- [ ] Tela de histórico de leitura do usuário
+- [x] Leitor inline com modo **página a página**
+- [x] Leitor inline com modo **scroll vertical contínuo**
+- [x] Alternância entre modos de leitura
+- [x] Controles que aparecem/desaparecem ao toque/clique
+- [x] Dark mode + ajuste de brilho/contraste
+- [x] Salvar progresso automaticamente a cada virada de página
+- [x] Retomar leitura do ponto salvo
+- [x] Lazy loading de páginas
+- [x] Swipe esquerda/direita no mobile
+- [x] Tela de histórico de leitura do usuário
 
 ---
 
