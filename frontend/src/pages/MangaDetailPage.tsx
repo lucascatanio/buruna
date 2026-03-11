@@ -1,0 +1,374 @@
+import {useEffect, useRef, useState} from "react";
+import {useParams, useNavigate} from "react-router-dom";
+import api from "@/lib/axios";
+import {useAuthStore} from "@/store/authStore";
+import {Button} from "@/components/ui/button";
+import {Badge} from "@/components/ui/badge";
+import {Card, CardContent} from "@/components/ui/card";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {toast} from "sonner";
+import {ArrowLeft, BookOpen, Pencil, Trash2, Upload, X} from "lucide-react";
+
+interface Tag {
+    id: string;
+    name: string;
+    slug: string;
+    category: { id: string; name: string };
+}
+
+interface Volume {
+    id: string;
+    volumeNumber: number;
+    fileSizeBytes: number;
+    createdAt: string;
+}
+
+interface MangaDetail {
+    id: string;
+    slug: string;
+    title: string;
+    alternativeTitles: string[];
+    synopsis: string | null;
+    coverUrl: string | null;
+    format: string;
+    originCountry: string | null;
+    statusOrigin: string;
+    statusSite: string;
+    year: number | null;
+    contentWarnings: string[];
+    avgRating: number;
+    ratingCount: number;
+    viewCount: number;
+    isPublic: boolean;
+    ownerId: string;
+    tags: Tag[];
+    volumes: Volume[];
+    createdAt: string;
+}
+
+const FORMAT_LABELS: Record<string, string> = {
+    MANGA: "Mangá", MANHWA: "Manhwa", MANHUA: "Manhua",
+    WEBTOON: "Webtoon", ONE_SHOT: "One-shot",
+};
+
+const STATUS_ORIGIN_LABELS: Record<string, string> = {
+    ONGOING: "Em andamento", COMPLETED: "Completo",
+    HIATUS: "Hiato", CANCELLED: "Cancelado",
+};
+
+const CONTENT_WARNING_LABELS: Record<string, string> = {
+    NSFW: "NSFW", GORE: "Gore",
+    GATILHO_SUICIDIO: "Gatilho: Suicídio",
+    GATILHO_ABUSO: "Gatilho: Abuso",
+    GATILHO_TRAUMA: "Gatilho: Trauma",
+};
+
+function formatBytes(bytes: number): string {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function nextVolumeNumber(volumes: Volume[]): number {
+    if (volumes.length === 0) return 1;
+    return Math.max(...volumes.map((v) => v.volumeNumber)) + 1;
+}
+
+export function MangaDetailPage() {
+    const {slug} = useParams<{ slug: string }>();
+    const navigate = useNavigate();
+    const user = useAuthStore((s) => s.user);
+
+    const [manga, setManga] = useState<MangaDetail | null>(null);
+    const [volumes, setVolumes] = useState<Volume[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [deleting, setDeleting] = useState(false);
+
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [volumeNumber, setVolumeNumber] = useState("1");
+    const [volumeFile, setVolumeFile] = useState<File | null>(null);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (!slug) return;
+        api.get<MangaDetail>(`/mangas/${slug}`)
+            .then(({data}) => {
+                setManga(data);
+                setVolumes([...data.volumes].sort((a, b) => a.volumeNumber - b.volumeNumber));
+            })
+            .catch(() => navigate("/biblioteca", {replace: true}))
+            .finally(() => setLoading(false));
+    }, [slug, navigate]);
+
+    const canModify = user && manga && (
+        user.role === "ADMIN" || user.id === manga.ownerId
+    );
+
+    function openUploadModal() {
+        setVolumeNumber(String(nextVolumeNumber(volumes)));
+        setVolumeFile(null);
+        setShowUploadModal(true);
+    }
+
+    function closeUploadModal() {
+        setShowUploadModal(false);
+        setVolumeFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+
+    async function handleUploadVolume() {
+        if (!manga || !volumeFile) return;
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append("file", volumeFile);
+            formData.append("volumeNumber", volumeNumber);
+            const {data} = await api.post(`/mangas/${manga.id}/volumes`, formData);
+            toast.success(`Volume ${volumeNumber} adicionado!`);
+            setVolumes((prev) =>
+                [...prev, data].sort((a, b) => a.volumeNumber - b.volumeNumber)
+            );
+            closeUploadModal();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message ?? "Erro ao enviar volume");
+        } finally {
+            setUploading(false);
+        }
+    }
+
+    async function handleDelete() {
+        if (!manga) return;
+        if (!window.confirm(`Deletar "${manga.title}"? Esta ação não pode ser desfeita.`)) return;
+        setDeleting(true);
+        try {
+            await api.delete(`/mangas/${manga.id}`);
+            toast.success("Mangá removido");
+            navigate("/biblioteca");
+        } catch (err: any) {
+            toast.error(err.response?.data?.message ?? "Erro ao deletar");
+            setDeleting(false);
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 space-y-6 animate-pulse">
+                <div className="h-6 bg-muted rounded w-32"/>
+                <div className="flex gap-6">
+                    <div className="w-40 aspect-[2/3] bg-muted rounded-md shrink-0"/>
+                    <div className="flex-1 space-y-3">
+                        <div className="h-8 bg-muted rounded w-3/4"/>
+                        <div className="h-4 bg-muted rounded w-1/2"/>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!manga) return null;
+
+    const tagsByCategory = manga.tags.reduce<Record<string, Tag[]>>((acc, tag) => {
+        const cat = tag.category.name;
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(tag);
+        return acc;
+    }, {});
+
+    return (
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6">
+
+            {showUploadModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+                    <div className="bg-background border rounded-xl w-full max-w-md p-6 space-y-4 shadow-xl">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-base font-semibold">Adicionar volume</h2>
+                            <button onClick={closeUploadModal}>
+                                <X className="w-4 h-4 text-muted-foreground"/>
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="modal-vol-number">Número do volume</Label>
+                                <Input
+                                    id="modal-vol-number"
+                                    type="number"
+                                    min="1"
+                                    value={volumeNumber}
+                                    onChange={(e) => setVolumeNumber(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="modal-vol-file">Arquivo (PDF, EPUB, MOBI)</Label>
+                                <Input
+                                    id="modal-vol-file"
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept=".pdf,.epub,.mobi"
+                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
+                                />
+                            </div>
+                        </div>
+
+                        {volumeFile && (
+                            <p className="text-xs text-muted-foreground">
+                                {volumeFile.name} — {formatBytes(volumeFile.size)}
+                            </p>
+                        )}
+
+                        <div className="flex gap-2 pt-1">
+                            <Button variant="outline" className="flex-1" onClick={closeUploadModal}>
+                                Cancelar
+                            </Button>
+                            <Button
+                                className="flex-1"
+                                onClick={handleUploadVolume}
+                                disabled={!volumeFile || uploading}
+                            >
+                                <Upload className="w-4 h-4 mr-1.5"/>
+                                {uploading ? "Enviando…" : "Enviar"}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2">
+                <Button variant="ghost" size="sm" onClick={() => navigate("/biblioteca")}>
+                    <ArrowLeft className="w-4 h-4 mr-1.5"/>
+                    Biblioteca
+                </Button>
+                {canModify && (
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/mangas/${manga.id}/editar`)}
+                        >
+                            <Pencil className="w-4 h-4 mr-1.5"/>
+                            Editar
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={handleDelete}
+                            disabled={deleting}
+                        >
+                            <Trash2 className="w-4 h-4 mr-1.5"/>
+                            {deleting ? "Deletando…" : "Deletar"}
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-6">
+                <div className="w-full sm:w-44 shrink-0">
+                    <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted border">
+                        {manga.coverUrl ? (
+                            <img src={manga.coverUrl} alt={manga.title} className="w-full h-full object-cover"/>
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <BookOpen className="w-10 h-10 text-muted-foreground/30"/>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex-1 space-y-3">
+                    <div>
+                        <h1 className="text-2xl font-bold leading-snug">{manga.title}</h1>
+                        {manga.alternativeTitles.length > 0 && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                                {manga.alternativeTitles.join(" · ")}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 text-sm">
+                        <Badge variant="secondary">{FORMAT_LABELS[manga.format] ?? manga.format}</Badge>
+                        <Badge
+                            variant="outline">{STATUS_ORIGIN_LABELS[manga.statusOrigin] ?? manga.statusOrigin}</Badge>
+                        {manga.year && <Badge variant="outline">{manga.year}</Badge>}
+                        {manga.originCountry && <Badge variant="outline">{manga.originCountry}</Badge>}
+                    </div>
+
+                    {manga.contentWarnings.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                            {manga.contentWarnings.map((w) => (
+                                <Badge key={w} variant="destructive" className="text-xs">
+                                    {CONTENT_WARNING_LABELS[w] ?? w}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
+
+                    {manga.synopsis && (
+                        <p className="text-sm text-foreground/80 leading-relaxed">{manga.synopsis}</p>
+                    )}
+
+                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-1">
+                        {manga.ratingCount > 0 && (
+                            <span>⭐ {manga.avgRating.toFixed(1)} ({manga.ratingCount} avaliações)</span>
+                        )}
+                        <span>👁 {manga.viewCount} visualizações</span>
+                    </div>
+
+                    {Object.entries(tagsByCategory).map(([cat, tags]) => (
+                        <div key={cat}>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{cat}</p>
+                            <div className="flex flex-wrap gap-1">
+                                {tags.map((t) => (
+                                    <Badge key={t.id} variant="outline" className="text-xs">
+                                        {t.name}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold">
+                        Volumes{" "}
+                        <span className="text-muted-foreground font-normal text-base">
+                            ({volumes.length})
+                        </span>
+                    </h2>
+                    {canModify && (
+                        <Button variant="outline" size="sm" onClick={openUploadModal}>
+                            <Upload className="w-4 h-4 mr-1.5"/>
+                            Adicionar volume
+                        </Button>
+                    )}
+                </div>
+
+                {volumes.length === 0 && (
+                    <Card>
+                        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                            Nenhum volume disponível
+                        </CardContent>
+                    </Card>
+                )}
+
+                <div className="space-y-2">
+                    {volumes.map((vol) => (
+                        <Card key={vol.id}>
+                            <CardContent className="py-3 px-4 flex items-center justify-between">
+                                <div>
+                                    <p className="text-sm font-medium">Volume {vol.volumeNumber}</p>
+                                    <p className="text-xs text-muted-foreground">{formatBytes(vol.fileSizeBytes)}</p>
+                                </div>
+                                <Button size="sm" disabled title="Leitor disponível em breve">
+                                    Ler
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}

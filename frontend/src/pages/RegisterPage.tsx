@@ -24,21 +24,17 @@ export function RegisterPage() {
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-
         if (form.password.length < 8) {
-            toast.error("Password must be at least 8 characters");
+            toast.error("A senha deve ter no mínimo 8 caracteres");
             return;
         }
-
         setLoading(true);
-
         try {
             await api.post("/auth/register", form);
-            toast.success("Registration submitted! Waiting for admin approval.");
+            toast.success("Solicitação enviada! Aguarde a aprovação do admin.");
             navigate("/login");
         } catch (err: any) {
-            const message = err.response?.data?.message ?? "Registration failed";
-            toast.error(message);
+            toast.error(err.response?.data?.message ?? "Erro ao enviar solicitação");
         } finally {
             setLoading(false);
         }
@@ -48,18 +44,18 @@ export function RegisterPage() {
         <div className="min-h-screen flex items-center justify-center bg-background px-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Create account</CardTitle>
-                    <CardDescription>Your request will be reviewed by an admin</CardDescription>
+                    <CardTitle className="text-2xl">Criar conta</CardTitle>
+                    <CardDescription>Sua solicitação será revisada pelo admin</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">E-mail</Label>
                             <Input
                                 id="email"
                                 name="email"
                                 type="email"
-                                placeholder="you@example.com"
+                                placeholder="voce@exemplo.com"
                                 value={form.email}
                                 onChange={handleChange}
                                 required
@@ -67,11 +63,11 @@ export function RegisterPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="username">Username</Label>
+                            <Label htmlFor="username">Nome de usuário</Label>
                             <Input
                                 id="username"
                                 name="username"
-                                placeholder="yourname"
+                                placeholder="seunome"
                                 minLength={3}
                                 maxLength={50}
                                 value={form.username}
@@ -80,36 +76,36 @@ export function RegisterPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">Senha</Label>
                             <Input
                                 id="password"
                                 name="password"
                                 type="password"
-                                placeholder="Min. 8 characters"
+                                placeholder="Mín. 8 caracteres"
                                 value={form.password}
                                 onChange={handleChange}
                                 required
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="presentationMessage">Why do you want to join?</Label>
+                            <Label htmlFor="presentationMessage">Por que quer entrar?</Label>
                             <Input
                                 id="presentationMessage"
                                 name="presentationMessage"
-                                placeholder="Tell us a bit about yourself"
+                                placeholder="Conte um pouco sobre você"
                                 value={form.presentationMessage}
                                 onChange={handleChange}
                                 required
                             />
                         </div>
                         <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? "Submitting…" : "Request access"}
+                            {loading ? "Enviando…" : "Solicitar acesso"}
                         </Button>
                     </form>
                     <p className="text-center text-sm text-muted-foreground mt-4">
-                        Already have an account?{" "}
+                        Já tem uma conta?{" "}
                         <Link to="/login" className="underline underline-offset-4 hover:text-primary">
-                            Sign in
+                            Entrar
                         </Link>
                     </p>
                 </CardContent>

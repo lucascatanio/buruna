@@ -41,9 +41,9 @@ public class MangaController {
                 mangaService.findPublic(title, format, statusOrigin, tagIds, pageable));
     }
 
-    @GetMapping("/{slug}")
-    public ResponseEntity<MangaResponse> getBySlug(@PathVariable String slug) {
-        return ResponseEntity.ok(mangaService.findBySlug(slug));
+    @GetMapping("/{slugOrId}")
+    public ResponseEntity<MangaResponse> getBySlugOrId(@PathVariable String slugOrId) {
+        return ResponseEntity.ok(mangaService.findBySlugOrId(slugOrId));
     }
 
     @PostMapping

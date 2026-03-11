@@ -18,9 +18,10 @@ interface Tag {
 interface TagSelectorProps {
     selectedIds: string[];
     onChange: (ids: string[]) => void;
+    excludeCategories?: string[];
 }
 
-export function TagSelector({selectedIds, onChange}: TagSelectorProps) {
+export function TagSelector({selectedIds, onChange, excludeCategories = []}: TagSelectorProps) {
     const [categories, setCategories] = useState<TagCategory[]>([]);
     const [tags, setTags] = useState<Tag[]>([]);
 
@@ -33,6 +34,12 @@ export function TagSelector({selectedIds, onChange}: TagSelectorProps) {
             setTags(tagRes.data);
         });
     }, []);
+
+    const excluded = excludeCategories.map((c) => c.toLowerCase());
+
+    const visibleCategories = categories.filter(
+        (cat) => !excluded.includes(cat.name.toLowerCase())
+    );
 
     const toggle = (id: string) => {
         onChange(
@@ -49,8 +56,12 @@ export function TagSelector({selectedIds, onChange}: TagSelectorProps) {
             {selectedTags.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                     {selectedTags.map((t) => (
-                        <Badge key={t.id} variant="default" className="cursor-pointer gap-1"
-                               onClick={() => toggle(t.id)}>
+                        <Badge
+                            key={t.id}
+                            variant="default"
+                            className="cursor-pointer gap-1"
+                            onClick={() => toggle(t.id)}
+                        >
                             {t.name}
                             <X className="w-3 h-3"/>
                         </Badge>
@@ -59,7 +70,7 @@ export function TagSelector({selectedIds, onChange}: TagSelectorProps) {
             )}
 
             <div className="border rounded-md p-3 space-y-3 max-h-64 overflow-y-auto">
-                {categories.map((cat) => {
+                {visibleCategories.map((cat) => {
                     const catTags = tags.filter((t) => t.category.id === cat.id);
                     if (catTags.length === 0) return null;
                     return (

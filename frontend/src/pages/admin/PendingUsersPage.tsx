@@ -23,7 +23,7 @@ export function PendingUsersPage() {
             const {data} = await api.get("/admin/users/pending?size=50&sort=createdAt,asc");
             setUsers(data.content);
         } catch {
-            toast.error("Failed to load pending users");
+            toast.error("Falha ao carregar solicitações pendentes");
         } finally {
             setLoading(false);
         }
@@ -37,44 +37,44 @@ export function PendingUsersPage() {
         setActionLoading(id + "-approve");
         try {
             await api.post(`/admin/users/${id}/approve`, {});
-            toast.success("User approved");
+            toast.success("Usuário aprovado");
             setUsers((prev) => prev.filter((u) => u.id !== id));
         } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Failed to approve");
+            toast.error(err.response?.data?.message ?? "Falha ao aprovar");
         } finally {
             setActionLoading(null);
         }
     }
 
     async function handleReject(id: string) {
-        const reason = window.prompt("Rejection reason (optional):");
+        const reason = window.prompt("Motivo da rejeição (opcional):");
         if (reason === null) return;
 
         setActionLoading(id + "-reject");
         try {
             await api.post(`/admin/users/${id}/reject`, {reason});
-            toast.success("User rejected");
+            toast.success("Usuário rejeitado");
             setUsers((prev) => prev.filter((u) => u.id !== id));
         } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Failed to reject");
+            toast.error(err.response?.data?.message ?? "Falha ao rejeitar");
         } finally {
             setActionLoading(null);
         }
     }
 
     return (
-        <div className="max-w-4xl mx-auto px-6 py-8">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
             <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-2xl font-bold">Pending approvals</h2>
+                <h2 className="text-2xl font-bold">Aprovações pendentes</h2>
                 <Badge variant="secondary">{users.length}</Badge>
             </div>
 
-            {loading && <p className="text-muted-foreground">Loading…</p>}
+            {loading && <p className="text-muted-foreground">Carregando…</p>}
 
             {!loading && users.length === 0 && (
                 <Card>
                     <CardContent className="py-12 text-center text-muted-foreground">
-                        No pending registrations
+                        Nenhuma solicitação pendente
                     </CardContent>
                 </Card>
             )}
@@ -83,12 +83,12 @@ export function PendingUsersPage() {
                 {users.map((user) => (
                     <Card key={user.id}>
                         <CardHeader className="pb-2">
-                            <div className="flex items-start justify-between">
+                            <div className="flex items-start justify-between gap-2">
                                 <div>
                                     <CardTitle className="text-base">{user.username}</CardTitle>
                                     <p className="text-sm text-muted-foreground">{user.email}</p>
                                 </div>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-muted-foreground shrink-0">
                                     {new Date(user.createdAt).toLocaleDateString("pt-BR")}
                                 </span>
                             </div>
@@ -103,7 +103,7 @@ export function PendingUsersPage() {
                                     onClick={() => handleApprove(user.id)}
                                     disabled={actionLoading !== null}
                                 >
-                                    {actionLoading === user.id + "-approve" ? "Approving…" : "Approve"}
+                                    {actionLoading === user.id + "-approve" ? "Aprovando…" : "Aprovar"}
                                 </Button>
                                 <Button
                                     size="sm"
@@ -111,7 +111,7 @@ export function PendingUsersPage() {
                                     onClick={() => handleReject(user.id)}
                                     disabled={actionLoading !== null}
                                 >
-                                    {actionLoading === user.id + "-reject" ? "Rejecting…" : "Reject"}
+                                    {actionLoading === user.id + "-reject" ? "Rejeitando…" : "Rejeitar"}
                                 </Button>
                             </div>
                         </CardContent>

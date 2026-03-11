@@ -19,14 +19,12 @@ export function LoginPage() {
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         setLoading(true);
-
         try {
             const {data} = await api.post("/auth/login", {email, password});
             setTokens(data.accessToken, data.refreshToken);
             navigate("/");
         } catch (err: any) {
-            const message = err.response?.data?.message ?? "Invalid credentials";
-            toast.error(message);
+            toast.error(err.response?.data?.message ?? "Credenciais inválidas");
         } finally {
             setLoading(false);
         }
@@ -37,16 +35,16 @@ export function LoginPage() {
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Burūna</CardTitle>
-                    <CardDescription>Sign in to your account</CardDescription>
+                    <CardDescription>Entre na sua conta</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">E-mail</Label>
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="you@example.com"
+                                placeholder="voce@exemplo.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
@@ -54,7 +52,7 @@ export function LoginPage() {
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password">Senha</Label>
                             <Input
                                 id="password"
                                 type="password"
@@ -65,13 +63,13 @@ export function LoginPage() {
                             />
                         </div>
                         <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? "Signing in…" : "Sign in"}
+                            {loading ? "Entrando…" : "Entrar"}
                         </Button>
                     </form>
                     <p className="text-center text-sm text-muted-foreground mt-4">
-                        Don't have an account?{" "}
+                        Não tem uma conta?{" "}
                         <Link to="/register" className="underline underline-offset-4 hover:text-primary">
-                            Register
+                            Solicitar acesso
                         </Link>
                     </p>
                 </CardContent>

@@ -114,10 +114,10 @@
 
 **Frontend:**
 
-- [ ] Tela de biblioteca (grade de capas, busca + filtros por tags)
-- [ ] Tela de detalhes de um mangá (volumes, metadados)
-- [ ] Formulário de upload de mangá + volumes
-- [ ] Formulário de edição de mangá
+- [x] Tela de biblioteca (grade de capas, busca + filtros por tags)
+- [x] Tela de detalhes de um mangá (volumes, metadados)
+- [x] Formulário de upload de mangá + volumes
+- [x] Formulário de edição de mangá
 
 ---
 

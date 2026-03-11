@@ -26,6 +26,18 @@ interface Page<T> {
 const ROLE_OPTIONS = ["READER", "COLLABORATOR", "ADMIN"];
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "PENDING"];
 
+const ROLE_LABELS: Record<string, string> = {
+    READER: "Leitor",
+    COLLABORATOR: "Colaborador",
+    ADMIN: "Admin",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+    ACTIVE: "Ativo",
+    INACTIVE: "Inativo",
+    PENDING: "Pendente",
+};
+
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     ACTIVE: "default",
     PENDING: "secondary",
@@ -44,7 +56,7 @@ export function UsersPage() {
             const {data} = await api.get(`/admin/users?page=${pageNumber}&size=20&sort=createdAt,desc`);
             setPage(data);
         } catch {
-            toast.error("Failed to load users");
+            toast.error("Falha ao carregar usuários");
         } finally {
             setLoading(false);
         }
@@ -71,39 +83,43 @@ export function UsersPage() {
                 requests.push(api.patch(`/admin/users/${editingUser.id}/quota`, {quotaGb: Number(editForm.quotaGb)}));
 
             await Promise.all(requests);
-            toast.success("User updated");
+            toast.success("Usuário atualizado");
             setEditingUser(null);
             fetchUsers(page.number);
         } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Failed to update user");
+            toast.error(err.response?.data?.message ?? "Falha ao atualizar usuário");
         }
     }
 
     return (
-        <div className="max-w-5xl mx-auto px-6 py-8">
-            <h2 className="text-2xl font-bold mb-6">All users</h2>
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
+            <h2 className="text-2xl font-bold mb-6">Todos os usuários</h2>
 
-            {loading && <p className="text-muted-foreground">Loading…</p>}
+            {loading && <p className="text-muted-foreground">Carregando…</p>}
 
             {!loading && (
                 <>
                     <div className="space-y-2">
                         {page.content.map((user) => (
                             <Card key={user.id}>
-                                <CardContent className="py-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div>
-                                            <p className="font-medium text-sm">{user.username}</p>
-                                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                                <CardContent className="py-3 px-4 flex items-center justify-between gap-2">
+                                    <div className="flex flex-wrap items-center gap-2 md:gap-4 min-w-0">
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-sm truncate">{user.username}</p>
+                                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                                         </div>
                                         <Badge variant={STATUS_VARIANT[user.status] ?? "outline"}>
-                                            {user.status}
+                                            {STATUS_LABELS[user.status] ?? user.status}
                                         </Badge>
-                                        <Badge variant="outline">{user.role}</Badge>
-                                        <span className="text-xs text-muted-foreground">{user.quotaGb} GB</span>
+                                        <Badge variant="outline">
+                                            {ROLE_LABELS[user.role] ?? user.role}
+                                        </Badge>
+                                        <span className="text-xs text-muted-foreground hidden sm:inline">
+                                            {user.quotaGb} GB
+                                        </span>
                                     </div>
-                                    <Button size="sm" variant="outline" onClick={() => openEdit(user)}>
-                                        Edit
+                                    <Button size="sm" variant="outline" onClick={() => openEdit(user)} className="shrink-0">
+                                        Editar
                                     </Button>
                                 </CardContent>
                             </Card>
@@ -115,7 +131,7 @@ export function UsersPage() {
                             <Button variant="outline" size="sm"
                                     disabled={page.number === 0}
                                     onClick={() => fetchUsers(page.number - 1)}>
-                                Previous
+                                Anterior
                             </Button>
                             <span className="text-sm self-center text-muted-foreground">
                                 {page.number + 1} / {page.totalPages}
@@ -123,7 +139,7 @@ export function UsersPage() {
                             <Button variant="outline" size="sm"
                                     disabled={page.number + 1 >= page.totalPages}
                                     onClick={() => fetchUsers(page.number + 1)}>
-                                Next
+                                Próxima
                             </Button>
                         </div>
                     )}
@@ -134,14 +150,16 @@ export function UsersPage() {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
                     <Card className="w-full max-w-sm">
                         <CardContent className="pt-6 space-y-4">
-                            <h3 className="font-semibold text-lg">Edit {editingUser.username}</h3>
+                            <h3 className="font-semibold text-lg">Editar {editingUser.username}</h3>
                             <div className="space-y-2">
-                                <Label>Role</Label>
+                                <Label>Permissão</Label>
                                 <select
                                     className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                                     value={editForm.role}
                                     onChange={(e) => setEditForm((p) => ({...p, role: e.target.value}))}>
-                                    {ROLE_OPTIONS.map((r) => <option key={r}>{r}</option>)}
+                                    {ROLE_OPTIONS.map((r) => (
+                                        <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="space-y-2">
@@ -150,19 +168,21 @@ export function UsersPage() {
                                     className="w-full border rounded-md px-3 py-2 text-sm bg-background"
                                     value={editForm.status}
                                     onChange={(e) => setEditForm((p) => ({...p, status: e.target.value}))}>
-                                    {STATUS_OPTIONS.map((s) => <option key={s}>{s}</option>)}
+                                    {STATUS_OPTIONS.map((s) => (
+                                        <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Quota (GB)</Label>
+                                <Label>Cota (GB)</Label>
                                 <Input type="number" min="0.1" step="0.5"
                                        value={editForm.quotaGb}
                                        onChange={(e) => setEditForm((p) => ({...p, quotaGb: e.target.value}))}/>
                             </div>
                             <div className="flex gap-2 pt-2">
-                                <Button className="flex-1" onClick={handleSave}>Save</Button>
+                                <Button className="flex-1" onClick={handleSave}>Salvar</Button>
                                 <Button className="flex-1" variant="outline"
-                                        onClick={() => setEditingUser(null)}>Cancel</Button>
+                                        onClick={() => setEditingUser(null)}>Cancelar</Button>
                             </div>
                         </CardContent>
                     </Card>

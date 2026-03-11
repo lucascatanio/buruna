@@ -26,7 +26,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayInputStream;
 import java.text.Normalizer;
 import java.time.Duration;
 import java.util.*;
@@ -82,11 +81,21 @@ public class MangaService {
     }
 
     @Transactional(readOnly = true)
-    public MangaResponse findBySlug(String slug) {
-        Manga manga = mangaRepository.findBySlug(slug)
+    public MangaResponse findBySlugOrId(String slugOrId) {
+        Manga manga = parseUuid(slugOrId)
+                .flatMap(mangaRepository::findById)
+                .or(() -> mangaRepository.findBySlug(slugOrId))
                 .filter(Manga::isPublic)
-                .orElseThrow(() -> new MangaNotFoundException(slug));
+                .orElseThrow(() -> new MangaNotFoundException(slugOrId));
         return toResponse(manga, true);
+    }
+
+    private Optional<UUID> parseUuid(String value) {
+        try {
+            return Optional.of(UUID.fromString(value));
+        } catch (IllegalArgumentException e) {
+            return Optional.empty();
+        }
     }
 
     @Transactional
