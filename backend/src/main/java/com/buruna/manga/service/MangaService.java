@@ -76,8 +76,14 @@ public class MangaService {
                 .and(MangaSpecification.hasFormat(format))
                 .and(MangaSpecification.hasStatusOrigin(statusOrigin))
                 .and(MangaSpecification.hasTagIds(tagIds));
+        Page<Manga> page = mangaRepository.findAll(spec, pageable);
 
-        return mangaRepository.findAll(spec, pageable).map(m -> toResponse(m, false));
+        List<UUID> ids = page.map(Manga::getId).toList();
+        Map<UUID, Manga> withTags = mangaRepository.findAllWithTagsByIdIn(ids)
+                .stream()
+                .collect(Collectors.toMap(Manga::getId, m -> m));
+
+        return page.map(m -> toResponse(withTags.getOrDefault(m.getId(), m), false));
     }
 
     @Transactional(readOnly = true)

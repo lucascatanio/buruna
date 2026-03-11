@@ -47,6 +47,8 @@ app:
   admin-email: ${ADMIN_EMAIL}
   rate-limit:
     register-per-hour: ${RATE_LIMIT_REGISTER_PER_HOUR:5}
+  upload:
+    max-file-size-mb: ${MAX_FILE_SIZE_MB:500}
 
 server:
   port: 8080

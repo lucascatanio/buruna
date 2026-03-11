@@ -127,12 +127,12 @@
 
 **Backend:**
 
-- [ ] `POST /my/mangas` — upload privado com validação de cota em GB
-- [ ] `GET /my/mangas` — listar própria coleção privada
-- [ ] `PUT /my/mangas/{id}` — editar mangá privado
-- [ ] `DELETE /my/mangas/{id}` — deletar mangá privado + arquivo GCS
-- [ ] `POST /my/mangas/{id}/promote` — promover privado → público (colaborador/admin)
-- [ ] Validação de cota de GB por usuário
+- [x] `POST /my/mangas` — upload privado com validação de cota em GB
+- [x] `GET /my/mangas` — listar própria coleção privada
+- [x] `PUT /my/mangas/{id}` — editar mangá privado
+- [x] `DELETE /my/mangas/{id}` — deletar mangá privado + arquivo GCS
+- [x] `POST /my/mangas/{id}/promote` — promover privado → público (colaborador/admin)
+- [x] Validação de cota de GB por usuário
 
 **Frontend:**
 
