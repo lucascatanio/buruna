@@ -136,10 +136,10 @@
 
 **Frontend:**
 
-- [ ] Tela "Minha coleção" (mangás privados)
-- [ ] Formulário de upload privado
-- [ ] Indicador de cota utilizada/disponível
-- [ ] Botão de promover para público (se permitido)
+- [x] Tela "Minha coleção" (mangás privados)
+- [x] Formulário de upload privado
+- [x] Indicador de cota utilizada/disponível
+- [x] Botão de promover para público (se permitido)
 
 ---
 

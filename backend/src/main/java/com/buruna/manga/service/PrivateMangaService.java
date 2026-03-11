@@ -59,6 +59,13 @@ public class PrivateMangaService {
         this.maxFileSizeBytes = maxFileSizeMb * 1024L * 1024L;
     }
 
+    @Transactional(readOnly = true)
+    public PrivateMangaResponse findById(UUID id, User owner) {
+        Manga manga = findPrivateByIdAndOwner(id, owner);
+        List<Volume> volumes = volumeRepository.findByMangaId(id);
+        return toResponse(manga, volumes);
+    }
+
     @Transactional
     public PrivateMangaResponse upload(String title,
                                        String synopsis,
@@ -70,10 +77,6 @@ public class PrivateMangaService {
         quotaService.assertHasQuota(owner, file.getSize());
 
         String fileHash = computeSha256(file);
-
-        if (volumeRepository.existsByFileHash(fileHash)) {
-            throw new DuplicateVolumeException();
-        }
 
         Manga manga = new Manga();
         manga.setTitle(title);
@@ -165,9 +168,6 @@ public class PrivateMangaService {
         }
 
         String fileHash = computeSha256(file);
-        if (volumeRepository.existsByFileHash(fileHash)) {
-            throw new DuplicateVolumeException();
-        }
 
         String extension = extractExtension(file.getOriginalFilename());
         String objectName = "volumes/" + UUID.randomUUID() + extension;
@@ -210,8 +210,29 @@ public class PrivateMangaService {
         }
 
         Manga manga = findPrivateByIdAndOwner(id, owner);
+
+        // 1. título duplicado na biblioteca pública
+        if (mangaRepository.existsByTitleIgnoreCaseAndIsPublicTrue(manga.getTitle())) {
+            throw new DomainException(HttpStatus.CONFLICT,
+                    "Já existe um mangá com este título na biblioteca pública");
+        }
+
+        // 2. hash de volume duplicado em mangá público
+        List<Volume> volumes = volumeRepository.findByMangaId(id);
+        boolean hasPublicHash = volumes.stream()
+                .anyMatch(v -> volumeRepository.existsByFileHashAndMangaIsPublicTrue(v.getFileHash()));
+        if (hasPublicHash) {
+            throw new DomainException(HttpStatus.CONFLICT,
+                    "Um ou mais volumes já existem na biblioteca pública");
+        }
+
+        // 3. slug em conflito: regenera se necessário
+        if (mangaRepository.existsBySlug(manga.getSlug())) {
+            manga.setSlug(generateUniqueSlug(manga.getTitle()));
+        }
+
         manga.setPublic(true);
-        return toResponse(mangaRepository.save(manga), manga.getVolumes().stream().toList());
+        return toResponse(mangaRepository.save(manga), volumes);
     }
 
     // helpers internos

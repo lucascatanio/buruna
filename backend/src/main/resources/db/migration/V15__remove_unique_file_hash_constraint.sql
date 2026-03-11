@@ -1,0 +1,1 @@
+ALTER TABLE volumes DROP CONSTRAINT IF EXISTS uq_volumes_file_hash;

@@ -23,4 +23,6 @@ public interface VolumeRepository extends JpaRepository<Volume, UUID> {
     @Query("SELECT COALESCE(SUM(v.fileSizeBytes), 0) FROM Volume v " +
             "WHERE v.manga.owner.id = :ownerId AND v.manga.isPublic = false")
     long sumPrivateFileSizeByOwnerId(@Param("ownerId") UUID ownerId);
+
+    boolean existsByFileHashAndMangaIsPublicTrue(String fileHash);
 }

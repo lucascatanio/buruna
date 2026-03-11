@@ -28,6 +28,8 @@ public interface MangaRepository extends JpaRepository<Manga, UUID>, JpaSpecific
 
     boolean existsByTitleIgnoreCase(String title);
 
+    boolean existsByTitleIgnoreCaseAndIsPublicTrue(String title);
+
     @EntityGraph(attributePaths = {"tags", "tags.category"})
     List<Manga> findAllWithTagsByIdIn(List<UUID> ids);
 }

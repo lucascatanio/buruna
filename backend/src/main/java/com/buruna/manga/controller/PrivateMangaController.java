@@ -30,6 +30,12 @@ public class PrivateMangaController {
         this.privateMangaService = privateMangaService;
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<PrivateMangaResponse> findById(@PathVariable UUID id,
+                                                         @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(privateMangaService.findById(id, user));
+    }
+
     @GetMapping
     public ResponseEntity<Page<PrivateMangaResponse>> listMine(
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable,
