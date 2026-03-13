@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class DashboardService {
+    // TODO: phase 8 .sh teste
 
     private static final BigDecimal BYTES_PER_GB = BigDecimal.valueOf(1_073_741_824L);
 

@@ -341,6 +341,11 @@
 4. [x] VolumeService.upload carrega arquivo inteiro em heap — SHA-256 via stream
 5. [x] toResponse package-private — mudar para private
 6. [ ] com GitHub Actions adicionar @SpringBootTest nos fluxos críticos
+7. [ ] phase 8 .sh teste
+8. [ ] LibraryPage.tsx: catálogo de mangás desalinhando com o mangá tem ano
+9. [ ] não consegui upar mangá tokyo ghoul publico pq alguem tinha ele privado
+10. [ ] preciso mostrar para o usuário quais volumes ele já leu, o progresso dele em cada volume sem precisar abrir volume por volume
+11. [ ] só consigo ver as views de um mangá após avaliar
 
 ## Baixa prioridade
 1. [x] Filtro de tags OR vs AND — nova ADR
