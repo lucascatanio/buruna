@@ -341,18 +341,18 @@
 4. [x] VolumeService.upload carrega arquivo inteiro em heap — SHA-256 via stream
 5. [x] toResponse package-private — mudar para private
 6. [ ] com GitHub Actions adicionar @SpringBootTest nos fluxos críticos
-7. [ ] phase 8 .sh teste
+7. [x] phase 8 .sh teste
 8. [ ] LibraryPage.tsx: catálogo de mangás desalinhando com o mangá tem ano
-9. [ ] não consegui upar mangá tokyo ghoul publico pq alguem tinha ele privado
-10. [ ] preciso mostrar para o usuário quais volumes ele já leu, o progresso dele em cada volume sem precisar abrir volume por volume
-11. [ ] só consigo ver as views de um mangá após avaliar
+9. [x] não consegui upar mangá tokyo ghoul publico pq alguem tinha ele privado
+10. [x] preciso mostrar para o usuário quais volumes ele já leu, o progresso dele em cada volume sem precisar abrir volume por volume
+11. [x] só consigo ver as views de um mangá após avaliar
 
 ## Baixa prioridade
 1. [x] Filtro de tags OR vs AND — nova ADR
 2. [x] file_hash sem UNIQUE constraint — adicionar migration
 3. [ ] Signed URL no GCS com ADC — verificar quando for fazer **DEPLOY - Phase 9**
 4. [ ] filterByTitle não busca alternativeTitles — limitação conhecida
-5. [ ] Inconsistência de idioma nas mensagens — normalizar antes do **DEPLOY - Phase 9**
+5. [x] Inconsistência de idioma nas mensagens — normalizar antes do **DEPLOY - Phase 9**
 6. [ ] JwtFilter com query por request — irrelevante no volume atual
 
 ---

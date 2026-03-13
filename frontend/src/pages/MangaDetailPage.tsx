@@ -93,6 +93,7 @@ export function MangaDetailPage() {
 
     const [manga, setManga] = useState<MangaDetail | null>(null);
     const [volumes, setVolumes] = useState<Volume[]>([]);
+    const [volumeProgress, setVolumeProgress] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
 
@@ -116,7 +117,14 @@ export function MangaDetailPage() {
         api.get<MangaDetail>(`/mangas/${slug}`)
             .then(({data}) => {
                 setManga(data);
-                setVolumes([...data.volumes].sort((a, b) => a.volumeNumber - b.volumeNumber));
+                const sorted = [...data.volumes].sort((a, b) => a.volumeNumber - b.volumeNumber);
+                setVolumes(sorted);
+                if (sorted.length > 0) {
+                    const ids = sorted.map((v) => v.id).join(",");
+                    api.get<Record<string, number>>(`/reader/progress/batch?volumeIds=${ids}`)
+                        .then(({data: prog}) => setVolumeProgress(prog))
+                        .catch(() => {});
+                }
             })
             .catch(() => navigate("/biblioteca", {replace: true}))
             .finally(() => setLoading(false));
@@ -541,6 +549,11 @@ export function MangaDetailPage() {
                                 <div>
                                     <p className="text-sm font-medium">Volume {vol.volumeNumber}</p>
                                     <p className="text-xs text-muted-foreground">{formatBytes(vol.fileSizeBytes)}</p>
+                                    {volumeProgress[vol.id] !== undefined && (
+                                        <p className="text-xs text-primary mt-0.5">
+                                            Pág. {volumeProgress[vol.id]}
+                                        </p>
+                                    )}
                                 </div>
                                 <Button
                                     size="sm"
@@ -553,7 +566,7 @@ export function MangaDetailPage() {
                                         }
                                     })}
                                 >
-                                    Ler
+                                    {volumeProgress[vol.id] !== undefined ? "Continuar" : "Ler"}
                                 </Button>
                             </CardContent>
                         </Card>

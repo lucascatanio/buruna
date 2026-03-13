@@ -22,8 +22,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ReaderService {
@@ -120,6 +123,17 @@ public class ReaderService {
                             coverUrl,
                             h.getReadAt());
                 });
+    }
+
+    @Transactional(readOnly = true)
+    public Map<UUID, Integer> getBatchProgress(List<UUID> volumeIds, User user) {
+        return progressRepository
+                .findByUserIdAndVolumeIdIn(user.getId(), volumeIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        p -> p.getVolume().getId(),
+                        ReadingProgress::getCurrentPage
+                ));
     }
 
     // verifica acesso: volume público (qualquer auth) ou volume privado (só owner)

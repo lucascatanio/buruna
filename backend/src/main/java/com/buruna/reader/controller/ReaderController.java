@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -57,6 +59,13 @@ public class ReaderController {
             @AuthenticationPrincipal User user,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(readerService.getHistory(user, pageable));
+    }
+
+    @GetMapping("/progress/batch")
+    public ResponseEntity<Map<UUID, Integer>> getBatchProgress(
+            @RequestParam List<UUID> volumeIds,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(readerService.getBatchProgress(volumeIds, user));
     }
 
     @GetMapping("/{volumeId}/progress")

@@ -26,19 +26,21 @@ public class GlobalExceptionHandler {
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining(", "));
 
-        return buildResponse(HttpStatus.BAD_REQUEST, "Validation failed", message, request);
+        return buildResponse(HttpStatus.BAD_REQUEST, "Requisição inválida", message, request);
     }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleBadCredentials(
             BadCredentialsException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", ex.getMessage(), request);
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Não autorizado",
+                "Credenciais inválidas", request);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(
             AccessDeniedException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage(), request);
+        return buildResponse(HttpStatus.FORBIDDEN, "Acesso negado",
+                "Você não tem permissão para acessar este recurso", request);
     }
 
     @ExceptionHandler(DomainException.class)
@@ -50,15 +52,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(
             DataIntegrityViolationException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.CONFLICT, "Conflict",
+        return buildResponse(HttpStatus.CONFLICT, "Conflito",
                 "Operação viola uma restrição de unicidade", request);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleNotReadable(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Requisição inválida",
+                "Corpo da requisição inválido ou mal formatado", request);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(
             Exception ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
-                "An unexpected error occurred", request);
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno",
+                "Ocorreu um erro inesperado", request);
     }
 
     private ResponseEntity<ErrorResponse> buildResponse(
@@ -69,12 +78,5 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(), Instant.now().toString()
         );
         return ResponseEntity.status(status).body(body);
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleNotReadable(
-            HttpMessageNotReadableException ex, HttpServletRequest request) {
-        return buildResponse(HttpStatus.BAD_REQUEST, "Bad Request",
-                "Corpo da requisição inválido ou mal formatado", request);
     }
 }

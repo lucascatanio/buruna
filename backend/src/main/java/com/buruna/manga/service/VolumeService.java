@@ -82,7 +82,7 @@ public class VolumeService {
 
         String fileHash = computeSha256(file);
 
-        if (volumeRepository.existsByFileHash(fileHash)) {
+        if (volumeRepository.existsByFileHashAndMangaIsPublicTrue(fileHash)) {
             throw new DuplicateVolumeException();
         }
 

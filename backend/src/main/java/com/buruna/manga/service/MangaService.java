@@ -49,7 +49,7 @@ public class MangaService {
 
     @Transactional
     public MangaResponse create(MangaRequest request, User owner) {
-        if (mangaRepository.existsByTitleIgnoreCase(request.title())) {
+        if (mangaRepository.existsByTitleIgnoreCaseAndIsPublicTrue(request.title())) {
             throw new MangaAlreadyExistsException(request.title());
         }
 
