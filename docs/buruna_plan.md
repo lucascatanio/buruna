@@ -328,6 +328,11 @@
 8. [ ] Captcha no cadastro (hCaptcha ou Google reCAPTCHA v3)
 9. [ ] Notificar todos os usuários com role ADMIN ao invés de um e-mail fixo (`ADMIN_EMAIL`)
 10. [ ] Email profissional para notificações
+11. [ ] Mahoraga Design
+
+## Desempenho
+1. [ ] Compressão com Ghostscript no upload
+2. [ ] Cache da URL assinada no frontend
 
 ## Qualidade/Corretude
 1. [x] N+1 em findPublic — @EntityGraph no repository resolve
@@ -335,6 +340,7 @@
 3. [x] RateLimitFilter sem limpeza — leak de memória gradual
 4. [x] VolumeService.upload carrega arquivo inteiro em heap — SHA-256 via stream
 5. [x] toResponse package-private — mudar para private
+6. [ ] com GitHub Actions adicionar @SpringBootTest nos fluxos críticos
 
 ## Baixa prioridade
 1. [x] Filtro de tags OR vs AND — nova ADR
