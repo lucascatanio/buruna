@@ -1,7 +1,7 @@
 import {Outlet, useNavigate, useLocation} from "react-router-dom";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
-import {BookOpen, Library, Plus, Settings, LogOut, History} from "lucide-react";
+import {BookOpen, Library, Settings, LogOut, History, BookMarked} from "lucide-react";
 
 export function AppLayout() {
     const navigate = useNavigate();
@@ -46,6 +46,14 @@ export function AppLayout() {
                             Minha Coleção
                         </Button>
                         <Button
+                            variant={isActive("/lista") ? "secondary" : "ghost"}
+                            size="sm"
+                            onClick={() => navigate("/lista")}
+                        >
+                            <BookMarked className="w-4 h-4 mr-1.5"/>
+                            Lista
+                        </Button>
+                        <Button
                             variant={isActive("/historico") ? "secondary" : "ghost"}
                             size="sm"
                             onClick={() => navigate("/historico")}
@@ -53,17 +61,7 @@ export function AppLayout() {
                             <History className="w-4 h-4 mr-1.5"/>
                             Histórico
                         </Button>
-                        {isCollab && (
-                            <Button
-                                variant={isActive("/mangas/novo") ? "secondary" : "ghost"}
-                                size="sm"
-                                onClick={() => navigate("/mangas/novo")}
-                            >
-                                <Plus className="w-4 h-4 mr-1.5"/>
-                                Publicar
-                            </Button>
-                        )}
-                        {isAdmin && (
+                        {isCollab && isAdmin && (
                             <Button
                                 variant={isActive("/admin") ? "secondary" : "ghost"}
                                 size="sm"
@@ -106,19 +104,17 @@ export function AppLayout() {
                     onClick={() => navigate("/colecao")}
                 />
                 <MobileNavItem
+                    icon={<BookMarked className="w-5 h-5"/>}
+                    label="Lista"
+                    active={isActive("/lista")}
+                    onClick={() => navigate("/lista")}
+                />
+                <MobileNavItem
                     icon={<History className="w-5 h-5"/>}
                     label="Histórico"
                     active={isActive("/historico")}
                     onClick={() => navigate("/historico")}
                 />
-                {isCollab && (
-                    <MobileNavItem
-                        icon={<Plus className="w-5 h-5"/>}
-                        label="Publicar"
-                        active={isActive("/mangas/novo")}
-                        onClick={() => navigate("/mangas/novo")}
-                    />
-                )}
                 {isAdmin && (
                     <MobileNavItem
                         icon={<Settings className="w-5 h-5"/>}

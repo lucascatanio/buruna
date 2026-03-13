@@ -8,7 +8,7 @@ import {Card, CardContent} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {toast} from "sonner";
-import {ArrowLeft, BookOpen, Pencil, Trash2, Upload, X} from "lucide-react";
+import {ArrowLeft, BookOpen, Pencil, Trash2, Upload, X, Star, BookMarked, ChevronDown} from "lucide-react";
 
 interface Tag {
     id: string;
@@ -64,6 +64,18 @@ const CONTENT_WARNING_LABELS: Record<string, string> = {
     GATILHO_TRAUMA: "Gatilho: Trauma",
 };
 
+
+type ReadingStatus = "WANT_TO_READ" | "READING" | "COMPLETED" | "DROPPED";
+
+const READING_STATUS_LABELS: Record<ReadingStatus, string> = {
+    WANT_TO_READ: "Quero ler",
+    READING: "Lendo",
+    COMPLETED: "Concluído",
+    DROPPED: "Dropei",
+};
+
+const READING_STATUS_OPTIONS: ReadingStatus[] = ["WANT_TO_READ", "READING", "COMPLETED", "DROPPED"];
+
 function formatBytes(bytes: number): string {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -84,6 +96,15 @@ export function MangaDetailPage() {
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
 
+    const [readingStatus, setReadingStatus] = useState<ReadingStatus | null>(null);
+    const [showStatusMenu, setShowStatusMenu] = useState(false);
+    const [userRating, setUserRating] = useState<number | null>(null);
+    const [hoverRating, setHoverRating] = useState<number | null>(null);
+    const [ratingCount, setRatingCount] = useState(0);
+    const [avgRating, setAvgRating] = useState(0);
+    const [savingStatus, setSavingStatus] = useState(false);
+    const [savingRating, setSavingRating] = useState(false);
+
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [volumeNumber, setVolumeNumber] = useState("1");
     const [volumeFile, setVolumeFile] = useState<File | null>(null);
@@ -100,6 +121,93 @@ export function MangaDetailPage() {
             .catch(() => navigate("/biblioteca", {replace: true}))
             .finally(() => setLoading(false));
     }, [slug, navigate]);
+
+    useEffect(() => {
+        if (!manga) return;
+
+        api.get<{mangaId: string; status: ReadingStatus}[]>("/reading-list")
+            .then(({data}) => {
+                const entry = data.find(e => e.mangaId === manga.id);
+                if (entry) setReadingStatus(entry.status);
+            })
+            .catch(() => {});
+
+        api.get(`/mangas/${manga.id}/rating`)
+            .then(({data}) => {
+                if (data?.score) setUserRating(data.score);
+            })
+            .catch(() => {}); // 204 = nunca avaliou, ignora
+
+        setRatingCount(manga.ratingCount);
+        setAvgRating(Number(manga.avgRating));
+    }, [manga]);
+
+    async function handleStatusChange(status: ReadingStatus) {
+        if (!manga) return;
+        setSavingStatus(true);
+        try {
+            await api.put(`/reading-list/${manga.id}`, {status});
+            setReadingStatus(status);
+            setShowStatusMenu(false);
+        } catch {
+            toast.error("Erro ao atualizar lista de leitura");
+        } finally {
+            setSavingStatus(false);
+        }
+    }
+
+    async function handleRemoveFromList() {
+        if (!manga || !readingStatus) return;
+        setSavingStatus(true);
+        try {
+            await api.delete(`/reading-list/${manga.id}`);
+            setReadingStatus(null);
+            setShowStatusMenu(false);
+        } catch {
+            toast.error("Erro ao remover da lista");
+        } finally {
+            setSavingStatus(false);
+        }
+    }
+
+    async function handleRate(score: number) {
+        if (!manga || savingRating) return;
+        setSavingRating(true);
+        try {
+            if (userRating !== null) {
+                const {data} = await api.put(`/mangas/${manga.id}/rating`, {score});
+                setUserRating(score);
+                setAvgRating(Number(data.avgRating));
+                setRatingCount(data.ratingCount);
+            } else {
+                const {data} = await api.post(`/mangas/${manga.id}/rating`, {score});
+                setUserRating(score);
+                setAvgRating(Number(data.avgRating));
+                setRatingCount(data.ratingCount);
+            }
+        } catch {
+            toast.error("Erro ao salvar avaliação");
+        } finally {
+            setSavingRating(false);
+        }
+    }
+
+    async function handleRemoveRating() {
+        if (!manga || userRating === null || savingRating) return;
+        setSavingRating(true);
+        try {
+            await api.delete(`/mangas/${manga.id}/rating`);
+            setUserRating(null);
+            // busca avg/count atualizado
+            const {data} = await api.get(`/mangas/${manga.slug}`);
+            setAvgRating(Number(data.avgRating));
+            setRatingCount(data.ratingCount);
+        } catch {
+            toast.error("Erro ao remover avaliação");
+        } finally {
+            setSavingRating(false);
+        }
+    }
 
     const canModify = user && manga && (
         user.role === "ADMIN" || user.id === manga.ownerId
@@ -205,7 +313,7 @@ export function MangaDetailPage() {
                                     id="modal-vol-file"
                                     ref={fileInputRef}
                                     type="file"
-                                    accept=".pdf,.epub,.mobi"
+                                    accept=".pdf,application/pdf"
                                     onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
                                 />
                             </div>
@@ -307,9 +415,82 @@ export function MangaDetailPage() {
                         <p className="text-sm text-foreground/80 leading-relaxed">{manga.synopsis}</p>
                     )}
 
-                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-1">
-                        {manga.ratingCount > 0 && (
-                            <span>⭐ {manga.avgRating.toFixed(1)} ({manga.ratingCount} avaliações)</span>
+                    <div className="flex flex-wrap items-center gap-3 pt-1">
+
+                        <div className="relative">
+                            <button
+                                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border transition-colors
+                                    ${readingStatus
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                                }
+                                    ${savingStatus ? "opacity-60 cursor-not-allowed" : ""}
+                                `}
+                                onClick={() => setShowStatusMenu(s => !s)}
+                                disabled={savingStatus}
+                            >
+                                <BookMarked className="w-3.5 h-3.5"/>
+                                {readingStatus ? READING_STATUS_LABELS[readingStatus] : "Adicionar à lista"}
+                                <ChevronDown className="w-3 h-3"/>
+                            </button>
+
+                            {showStatusMenu && (
+                                <div className="absolute top-full left-0 mt-1 z-20 bg-popover border rounded-md shadow-md py-1 min-w-[160px]">
+                                    {READING_STATUS_OPTIONS.map(s => (
+                                        <button
+                                            key={s}
+                                            className={`w-full text-left text-xs px-3 py-2 hover:bg-muted transition-colors
+                                                ${readingStatus === s ? "text-primary font-medium" : "text-foreground"}
+                                            `}
+                                            onClick={() => handleStatusChange(s)}
+                                        >
+                                            {READING_STATUS_LABELS[s]}
+                                        </button>
+                                    ))}
+                                    {readingStatus && (
+                                        <>
+                                            <div className="border-t my-1"/>
+                                            <button
+                                                className="w-full text-left text-xs px-3 py-2 text-destructive hover:bg-muted transition-colors"
+                                                onClick={handleRemoveFromList}
+                                            >
+                                                Remover da lista
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map(star => (
+                                <button
+                                    key={star}
+                                    className={`transition-colors ${savingRating ? "cursor-not-allowed" : "cursor-pointer"}`}
+                                    onMouseEnter={() => setHoverRating(star)}
+                                    onMouseLeave={() => setHoverRating(null)}
+                                    onClick={() => userRating === star ? handleRemoveRating() : handleRate(star)}
+                                    disabled={savingRating}
+                                >
+                                    <Star
+                                        className={`w-5 h-5 transition-colors
+                                            ${(hoverRating ?? userRating ?? 0) >= star
+                                            ? "fill-yellow-400 text-yellow-400"
+                                            : "text-muted-foreground/40"
+                                        }
+                                        `}
+                                    />
+                                </button>
+                            ))}
+                            {userRating && (
+                                <span className="text-xs text-muted-foreground ml-1">sua nota</span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                        {ratingCount > 0 && (
+                            <span>⭐ {avgRating.toFixed(1)} ({ratingCount} avaliações)</span>
                         )}
                         <span>👁 {manga.viewCount} visualizações</span>
                     </div>

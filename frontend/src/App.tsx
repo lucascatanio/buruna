@@ -16,6 +16,7 @@ import {MyCollectionPage} from "@/pages/MyCollectionPage.tsx";
 import {PrivateMangaUploadPage} from "@/pages/PrivateMangaUploadPage.tsx";
 import {PrivateMangaDetailPage} from "@/pages/PrivateMangaDetailPage.tsx";
 import {ReadingHistoryPage} from "@/pages/ReadingHistoryPage.tsx";
+import {ReadingListPage} from "@/pages/ReadingListPage.tsx";
 import {ReaderPage} from "@/pages/ReaderPage.tsx";
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
                         <Route path="/colecao/novo" element={<PrivateMangaUploadPage/>}/>
                         <Route path="/colecao/:id" element={<PrivateMangaDetailPage/>}/>
                         <Route path="/historico" element={<ReadingHistoryPage/>}/>
+                        <Route path="/lista" element={<ReadingListPage/>}/>
                     </Route>
                     <Route element={<ProtectedRoute/>}>
                         <Route path="/leitor/:volumeId" element={<ReaderPage/>}/>

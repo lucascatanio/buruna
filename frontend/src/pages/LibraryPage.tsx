@@ -6,7 +6,8 @@ import {Input} from "@/components/ui/input";
 import {Badge} from "@/components/ui/badge";
 import {Card, CardContent} from "@/components/ui/card";
 import {TagSelector} from "@/components/TagSelector";
-import {Search, SlidersHorizontal, X, BookOpen} from "lucide-react";
+import {Search, SlidersHorizontal, X, BookOpen, Plus} from "lucide-react";
+import {useAuthStore} from "@/store/authStore";
 
 interface MangaCard {
     id: string;
@@ -58,6 +59,8 @@ const FORMAT_LABELS: Record<string, string> = {
 
 export function LibraryPage() {
     const navigate = useNavigate();
+    const user = useAuthStore((s) => s.user);
+    const isCollab = user?.role === "COLLABORATOR" || user?.role === "ADMIN";
     const [data, setData] = useState<PageResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
@@ -244,6 +247,15 @@ export function LibraryPage() {
                         Próxima
                     </Button>
                 </div>
+            )}
+            {isCollab && (
+                <button
+                    onClick={() => navigate("/mangas/novo")}
+                    className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
+                    aria-label="Publicar mangá"
+                >
+                    <Plus className="w-6 h-6"/>
+                </button>
             )}
         </div>
     );
