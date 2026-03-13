@@ -22,6 +22,15 @@ public class RatingController {
         this.ratingService = ratingService;
     }
 
+    @GetMapping
+    public ResponseEntity<RatingResponse> getMyRating(
+            @PathVariable UUID mangaId,
+            @AuthenticationPrincipal User user) {
+        return ratingService.findByUser(mangaId, user)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
+    }
+
     @PostMapping
     public ResponseEntity<RatingResponse> rate(
             @PathVariable UUID mangaId,

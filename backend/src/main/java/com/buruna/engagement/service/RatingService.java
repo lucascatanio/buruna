@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -64,6 +65,20 @@ public class RatingService {
         }
         ratingRepository.deleteByUserIdAndMangaId(user.getId(), mangaId);
         recalculate(findPublicManga(mangaId));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<RatingResponse> findByUser(UUID mangaId, User user) {
+        return ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId)
+                .map(r -> {
+                    Manga manga = findPublicManga(mangaId);
+                    return new RatingResponse(
+                            mangaId,
+                            r.getScore(),
+                            manga.getAvgRating(),
+                            manga.getRatingCount()
+                    );
+                });
     }
 
     private RecalcResult recalculate(Manga manga) {
