@@ -15,7 +15,6 @@ export function AppLayout() {
     }
 
     const isActive = (path: string) => location.pathname.startsWith(path);
-    const isCollab = user?.role === "COLLABORATOR" || user?.role === "ADMIN";
     const isAdmin = user?.role === "ADMIN";
 
     return (
@@ -61,15 +60,17 @@ export function AppLayout() {
                             <History className="w-4 h-4 mr-1.5"/>
                             Histórico
                         </Button>
-                        {isCollab && isAdmin && (
-                            <Button
-                                variant={isActive("/admin") ? "secondary" : "ghost"}
-                                size="sm"
-                                onClick={() => navigate("/admin/users/pending")}
-                            >
-                                <Settings className="w-4 h-4 mr-1.5"/>
-                                Admin
-                            </Button>
+                        {isAdmin && (
+                            <>
+                                <Button
+                                    variant={isActive("/admin/users") ? "secondary" : "ghost"}
+                                    size="sm"
+                                    onClick={() => navigate("/admin/dashboard")}
+                                >
+                                    <Settings className="w-4 h-4 mr-1.5"/>
+                                    Admin
+                                </Button>
+                            </>
                         )}
                     </nav>
                 </div>
@@ -120,7 +121,7 @@ export function AppLayout() {
                         icon={<Settings className="w-5 h-5"/>}
                         label="Admin"
                         active={isActive("/admin")}
-                        onClick={() => navigate("/admin/users/pending")}
+                        onClick={() => navigate("/admin/dashboard")}
                     />
                 )}
             </nav>

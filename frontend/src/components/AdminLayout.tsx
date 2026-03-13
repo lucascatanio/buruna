@@ -5,6 +5,7 @@ import {useAuthStore} from "@/store/authStore";
 import {Menu, X, BookOpen} from "lucide-react";
 
 const NAV_ITEMS = [
+    {label: "Dashboard", path: "/admin/dashboard"},
     {label: "Pendentes", path: "/admin/users/pending"},
     {label: "Usuários", path: "/admin/users"},
     {label: "Tags", path: "/admin/tags"},

@@ -32,4 +32,6 @@ public interface MangaRepository extends JpaRepository<Manga, UUID>, JpaSpecific
 
     @EntityGraph(attributePaths = {"tags", "tags.category"})
     List<Manga> findAllWithTagsByIdIn(List<UUID> ids);
+
+    List<Manga> findByOwnerIdAndIsPublicFalse(UUID ownerId);
 }

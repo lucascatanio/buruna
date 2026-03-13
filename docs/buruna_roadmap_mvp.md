@@ -175,19 +175,19 @@
 
 **Backend:**
 
-- [ ] `PUT /reading-list/{mangaId}` — adicionar/atualizar status
-- [ ] `GET /reading-list` — listar lista de leitura do usuário
-- [ ] `DELETE /reading-list/{mangaId}` — remover da lista
-- [ ] `POST /mangas/{id}/rating` — avaliar (1–5 estrelas)
-- [ ] `PUT /mangas/{id}/rating` — atualizar avaliação
-- [ ] `DELETE /mangas/{id}/rating` — remover avaliação
-- [ ] Recalcular `avg_rating` e `rating_count` automaticamente
+- [x] `PUT /reading-list/{mangaId}` — adicionar/atualizar status
+- [x] `GET /reading-list` — listar lista de leitura do usuário
+- [x] `DELETE /reading-list/{mangaId}` — remover da lista
+- [x] `POST /mangas/{id}/rating` — avaliar (1–5 estrelas)
+- [x] `PUT /mangas/{id}/rating` — atualizar avaliação
+- [x] `DELETE /mangas/{id}/rating` — remover avaliação
+- [x] Recalcular `avg_rating` e `rating_count` automaticamente
 
 **Frontend:**
 
-- [ ] Componente de lista de leitura (Quero ler / Lendo / Concluído / Dropei)
-- [ ] Componente de avaliação por estrelas (1–5)
-- [ ] Exibir rating médio na tela de detalhes do mangá
+- [x] Componente de lista de leitura (Quero ler / Lendo / Concluído / Dropei)
+- [x] Componente de avaliação por estrelas (1–5)
+- [x] Exibir rating médio na tela de detalhes do mangá
 
 ---
 
@@ -197,13 +197,13 @@
 
 **Backend:**
 
-- [ ] `GET /admin/dashboard` — usuários ativos + storage utilizado (total e por usuário)
-- [ ] `@Scheduled` — job diário de verificação de inatividade (aviso 15 dias + desativação 90 dias)
-- [ ] Job: deleção automática de mangás privados de usuários desativados no GCS + banco
+- [x] `GET /admin/dashboard` — usuários ativos + storage utilizado (total e por usuário)
+- [x] `@Scheduled` — job diário de verificação de inatividade (aviso 15 dias + desativação 90 dias)
+- [x] Job: deleção automática de mangás privados de usuários desativados no GCS + banco
 
 **Frontend:**
 
-- [ ] Tela de dashboard admin (usuários ativos + storage)
+- [x] Tela de dashboard admin (usuários ativos + storage)
 
 ---
 

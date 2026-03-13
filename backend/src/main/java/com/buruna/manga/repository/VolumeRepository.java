@@ -25,4 +25,12 @@ public interface VolumeRepository extends JpaRepository<Volume, UUID> {
     long sumPrivateFileSizeByOwnerId(@Param("ownerId") UUID ownerId);
 
     boolean existsByFileHashAndMangaIsPublicTrue(String fileHash);
+
+    @Query("""
+    SELECT v.manga.owner.id AS ownerId, SUM(v.fileSizeBytes) AS totalBytes
+    FROM Volume v
+    WHERE v.manga.isPublic = false
+    GROUP BY v.manga.owner.id
+    """)
+    List<VolumeStorageProjection> findStorageByOwner();
 }

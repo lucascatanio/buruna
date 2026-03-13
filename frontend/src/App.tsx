@@ -18,6 +18,7 @@ import {PrivateMangaDetailPage} from "@/pages/PrivateMangaDetailPage.tsx";
 import {ReadingHistoryPage} from "@/pages/ReadingHistoryPage.tsx";
 import {ReadingListPage} from "@/pages/ReadingListPage.tsx";
 import {ReaderPage} from "@/pages/ReaderPage.tsx";
+import {AdminDashboardPage} from "@/pages/AdminDashboardPage.tsx";
 
 export default function App() {
     return (
@@ -54,6 +55,7 @@ export default function App() {
                         <Route path="/admin/users/pending" element={<PendingUsersPage/>}/>
                         <Route path="/admin/users" element={<UsersPage/>}/>
                         <Route path="/admin/tags" element={<TagsPage/>}/>
+                        <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                     </Route>
                 </Route>
 
