@@ -8,6 +8,8 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
 
+declare const __APP_VERSION__: string
+
 export function LoginPage() {
     const navigate = useNavigate();
     const setTokens = useAuthStore((s) => s.setTokens);
@@ -31,7 +33,7 @@ export function LoginPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 gap-3">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Burūna</CardTitle>
@@ -74,6 +76,9 @@ export function LoginPage() {
                     </p>
                 </CardContent>
             </Card>
+            <p className="text-xs text-muted-foreground/50 text-center">
+                v{__APP_VERSION__}
+            </p>
         </div>
     );
 }
