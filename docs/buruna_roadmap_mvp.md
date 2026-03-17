@@ -266,10 +266,25 @@ Itens identificados durante o desenvolvimento para melhorias futuras:
 
 - [ ] Upload direto GCS: lifecycle rule de 24h para excluir arquivos órfãos (upload sem finalize)
 - [ ] Migração de e-mail para Resend + `@buruna.com.br` (DKIM/SPF/DMARC)
-- [ ] CORS do backend: adicionar `https://buruna.com.br` quando domínio propagar completamente
+- [x] CORS do backend: adicionar `https://buruna.com.br` quando domínio propagar completamente
 - [ ] Compressão de PDF no upload
 - [ ] Cache de URL assinada no frontend (evitar re-geração antes do prazo de 30 min)
 - [ ] `filterByTitle` não busca em `alternativeTitles`
-- [ ] Testes de integração nos fluxos críticos (GitHub Actions)
+- [ ] Testes de integração nos fluxos críticos (GitHub Actions @SpringBootTest)
 - [ ] Paginação no `InactivityJob` (escala além de 100 usuários)
 - [ ] hCaptcha no cadastro (movido do MVP)
+- [ ] Notificações de novos volumes (e-mail + sino no site)
+- [ ] Login social com Google (OAuth)
+- [ ] Suporte a CBZ/CBR
+- [ ] Integração com MyAnimeList / Anilist - Em estudo
+- [ ] Swagger/OpenAPI
+- [ ] Notificar todos os admins ao invés de ADMIN_EMAIL fixo
+- [ ] Suporte a tablet
+- [ ] Refresh token rotation
+- [ ] Limite de tamanho de payload JSON - spring.mvc.max-in-memory-size
+- [ ] 2FA (TOTP ou e-mail)
+- [ ] Reset de senha (precisa de 2FA)
+- [ ] Signed URL não revogada imediatamente - limitação conhecida
+- [ ] Configurar UptimeRobot para monitoramento + alerta de downtime por e-mail
+- [ ] GitHub Actions para build e deploy automático no push para main
+- [ ] Mahoraga Design
