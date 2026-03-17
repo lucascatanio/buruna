@@ -37,6 +37,20 @@ const CONTENT_WARNING_OPTIONS = [
     {value: "GATILHO_TRAUMA", label: "Gatilho: Trauma"},
 ];
 
+interface MangaRequest {
+    title: string;
+    alternativeTitles: string[];
+    synopsis?: string | null;
+    coverBase64?: string;
+    format: string;
+    originCountry?: string | null;
+    statusOrigin: string;
+    statusSite: string;
+    year?: number | null;
+    contentWarnings: string[];
+    tagIds: string[];
+}
+
 interface Volume {
     id: string;
     volumeNumber: number;
@@ -155,7 +169,7 @@ export function MangaEditPage() {
         if (!manga) return;
         setSubmitting(true);
         try {
-            const payload: any = {
+            const payload: MangaRequest = {
                 title: form.title,
                 alternativeTitles,
                 synopsis: form.synopsis || null,
@@ -172,8 +186,9 @@ export function MangaEditPage() {
             const {data} = await api.put(`/mangas/${manga.id}`, payload);
             toast.success("Mangá atualizado");
             navigate(`/biblioteca/${data.slug}`);
-        } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Erro ao atualizar");
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Erro desconhecido";
+            toast.error(message);
             setSubmitting(false);
         }
     }
@@ -192,8 +207,9 @@ export function MangaEditPage() {
             setVolumeFile(null);
             const fileInput = document.getElementById("vol-file") as HTMLInputElement;
             if (fileInput) fileInput.value = "";
-        } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Erro ao enviar volume");
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Erro desconhecido";
+            toast.error(message);
         } finally {
             setUploadingVolume(false);
         }
@@ -207,8 +223,9 @@ export function MangaEditPage() {
             await api.delete(`/mangas/${manga.id}/volumes/${vol.id}`);
             toast.success(`Volume ${vol.volumeNumber} removido`);
             setVolumes((prev) => prev.filter((v) => v.id !== vol.id));
-        } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Erro ao remover volume");
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Erro desconhecido";
+            toast.error(message);
         } finally {
             setDeletingVolumeId(null);
         }

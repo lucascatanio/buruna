@@ -9,9 +9,6 @@ import com.buruna.manga.domain.MangaStatusOrigin;
 import com.buruna.manga.domain.Tag;
 import com.buruna.manga.dto.MangaRequest;
 import com.buruna.manga.dto.MangaResponse;
-import com.buruna.manga.dto.TagCategoryResponse;
-import com.buruna.manga.dto.TagResponse;
-import com.buruna.manga.dto.VolumeResponse;
 import com.buruna.manga.exception.MangaAlreadyExistsException;
 import com.buruna.manga.exception.MangaNotFoundException;
 import com.buruna.manga.repository.MangaRepository;
@@ -27,24 +24,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
-import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class MangaService {
-    private static final Duration COVER_URL_EXPIRATION = Duration.ofHours(1);
 
     private final MangaRepository mangaRepository;
     private final TagRepository tagRepository;
     private final StorageClient storageClient;
+    private final MangaResponseMapper mangaResponseMapper;
 
     public MangaService(MangaRepository mangaRepository,
                         TagRepository tagRepository,
-                        StorageClient storageClient) {
+                        StorageClient storageClient,
+                        MangaResponseMapper mangaResponseMapper) {
         this.mangaRepository = mangaRepository;
         this.tagRepository = tagRepository;
         this.storageClient = storageClient;
+        this.mangaResponseMapper = mangaResponseMapper;
     }
 
     @Transactional
@@ -59,7 +57,7 @@ public class MangaService {
         manga.setPublic(true);
         applyRequest(manga, request);
 
-        return toResponse(mangaRepository.save(manga), true);
+        return mangaResponseMapper.toResponse(mangaRepository.save(manga), true);
     }
 
     @Transactional(readOnly = true)
@@ -83,7 +81,7 @@ public class MangaService {
                 .stream()
                 .collect(Collectors.toMap(Manga::getId, m -> m));
 
-        return page.map(m -> toResponse(withTags.getOrDefault(m.getId(), m), false));
+        return page.map(m -> mangaResponseMapper.toResponse(withTags.getOrDefault(m.getId(), m), false));
     }
 
     @Transactional(readOnly = true)
@@ -93,7 +91,7 @@ public class MangaService {
                 .or(() -> mangaRepository.findBySlug(slugOrId))
                 .filter(Manga::isPublic)
                 .orElseThrow(() -> new MangaNotFoundException(slugOrId));
-        return toResponse(manga, true);
+        return mangaResponseMapper.toResponse(manga, true);
     }
 
     private Optional<UUID> parseUuid(String value) {
@@ -110,7 +108,7 @@ public class MangaService {
                 .orElseThrow(() -> new MangaNotFoundException(id));
         assertCanModify(manga, currentUser);
         applyRequest(manga, request);
-        return toResponse(mangaRepository.save(manga), true);
+        return mangaResponseMapper.toResponse(mangaRepository.save(manga), true);
     }
 
     @Transactional
@@ -122,11 +120,7 @@ public class MangaService {
         manga.getVolumes().forEach(v -> storageClient.delete(v.getFileUrl()));
 
         if (manga.getCoverUrl() != null) {
-            try {
-                storageClient.delete(manga.getCoverUrl());
-            } catch (Exception ignored) {
-                // falha ao deletar capa é não-crítica
-            }
+            storageClient.delete(manga.getCoverUrl());
         }
 
         mangaRepository.delete(manga);
@@ -161,10 +155,7 @@ public class MangaService {
     // faz upload da capa como objeto privado no GCS. aceita data URI ou base64 puro.
     private String uploadCover(String coverBase64, String existingCoverObjectName) {
         if (existingCoverObjectName != null) {
-            try {
-                storageClient.delete(existingCoverObjectName);
-            } catch (Exception ignored) {
-            }
+            storageClient.delete(existingCoverObjectName);
         }
         return StorageUploadHelper.uploadBase64Image(storageClient, coverBase64, "covers");
     }
@@ -198,56 +189,4 @@ public class MangaService {
         }
     }
 
-    @SuppressWarnings("unused") // fase 5
-    private void assertIsOwner(Manga manga, User user) {
-        if (!manga.getOwner().getId().equals(user.getId())) {
-            throw new DomainException(HttpStatus.FORBIDDEN,
-                    "Você não tem permissão para modificar este mangá");
-        }
-    }
-
-    private MangaResponse toResponse(Manga manga, boolean includeVolumes) {
-        List<VolumeResponse> volumes = includeVolumes
-                ? manga.getVolumes().stream()
-                .map(v -> new VolumeResponse(
-                        v.getId(), v.getVolumeNumber(),
-                        v.getFileSizeBytes(), v.getCreatedAt()))
-                .toList()
-                : List.of();
-
-        Set<TagResponse> tags = manga.getTags().stream()
-                .map(t -> new TagResponse(
-                        t.getId(), t.getName(), t.getSlug(),
-                        new TagCategoryResponse(t.getCategory().getId(), t.getCategory().getName())))
-                .collect(Collectors.toSet());
-
-        // gera signed URL para a capa se existir — operação local (crypto), sem chamada de rede
-        String coverSignedUrl = manga.getCoverUrl() != null
-                ? storageClient.generateSignedUrl(manga.getCoverUrl(), COVER_URL_EXPIRATION).toString()
-                : null;
-
-        return new MangaResponse(
-                manga.getId(),
-                manga.getSlug(),
-                manga.getTitle(),
-                manga.getAlternativeTitles(),
-                manga.getSynopsis(),
-                coverSignedUrl,
-                manga.getFormat(),
-                manga.getOriginCountry(),
-                manga.getStatusOrigin(),
-                manga.getStatusSite(),
-                manga.getYear(),
-                manga.getContentWarnings(),
-                manga.getAvgRating(),
-                manga.getRatingCount(),
-                manga.getViewCount(),
-                manga.isPublic(),
-                manga.getOwner().getId(),
-                tags,
-                volumes,
-                manga.getCreatedAt(),
-                manga.getUpdatedAt()
-        );
-    }
 }

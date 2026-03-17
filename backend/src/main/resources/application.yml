@@ -12,7 +12,7 @@ spring:
     open-in-view: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
 
   flyway:
     enabled: true
@@ -45,12 +45,19 @@ app:
     bucket-name: ${GCS_BUCKET_NAME}
     credentials-path: ${GCS_CREDENTIALS_PATH}
   admin-email: ${ADMIN_EMAIL}
+  jobs:
+    secret: ${APP_JOBS_SECRET:dev-secret-change-me}
+  cors:
+    allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:http://localhost:5173}
   rate-limit:
     register-per-hour: ${RATE_LIMIT_REGISTER_PER_HOUR:5}
+    login-per-hour: ${RATE_LIMIT_LOGIN_PER_HOUR:10}
+  mail:
+    from: ${APP_MAIL_FROM:noreply@localhost}
   upload:
     max-file-size-mb: ${MAX_FILE_SIZE_MB:500}
 
 server:
-  port: 8080
+  port: ${PORT:8080}
   servlet:
     context-path: /api

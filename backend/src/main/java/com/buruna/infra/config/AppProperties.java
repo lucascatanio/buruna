@@ -23,7 +23,8 @@ public record AppProperties(
     }
 
     public record RateLimitProperties(
-            int registerPerHour
+            int registerPerHour,
+            int loginPerHour
     ) {
     }
 }

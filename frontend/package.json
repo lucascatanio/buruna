@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "postinstall": "mkdir -p public && cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/"
+    "postinstall": "mkdir -p public/cmaps && cp node_modules/pdfjs-dist/build/pdf.worker.min.mjs public/ && cp -r node_modules/pdfjs-dist/cmaps/. public/cmaps/"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",

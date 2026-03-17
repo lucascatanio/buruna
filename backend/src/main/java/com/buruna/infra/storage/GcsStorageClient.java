@@ -1,7 +1,12 @@
 package com.buruna.infra.storage;
 
 import com.buruna.infra.exception.StorageException;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.storage.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -14,13 +19,23 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class GcsStorageClient implements StorageClient {
 
+    private static final Logger log = LoggerFactory.getLogger(GcsStorageClient.class);
+
     private final Storage storage;
     private final String bucketName;
+    private final ServiceAccountCredentials serviceAccountCredentials;
 
     public GcsStorageClient(Storage storage,
-                            @Value("${app.gcs.bucket-name}") String bucketName) {
+                            @Value("${app.gcs.bucket-name}") String bucketName,
+                            @Qualifier("gcsCredentials") GoogleCredentials credentials) {
         this.storage = storage;
         this.bucketName = bucketName;
+        if (credentials instanceof ServiceAccountCredentials saCreds) {
+            this.serviceAccountCredentials = saCreds;
+        } else {
+            throw new IllegalStateException(
+                    "GCS credentials must be ServiceAccountCredentials for URL signing");
+        }
     }
 
     @Override
@@ -39,9 +54,13 @@ public class GcsStorageClient implements StorageClient {
 
     @Override
     public void delete(String fileName) {
-        boolean deleted = storage.delete(BlobId.of(bucketName, fileName));
-        if (!deleted) {
-            throw new StorageException("Arquivo não encontrado no GCS para deleção: " + fileName);
+        try {
+            boolean deleted = storage.delete(bucketName, fileName);
+            if (!deleted) {
+                log.warn("GCS object not found for deletion: {}", fileName);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to delete GCS object {}: {}", fileName, e.getMessage());
         }
     }
 
@@ -52,7 +71,8 @@ public class GcsStorageClient implements StorageClient {
                 blobInfo,
                 expiration.toMinutes(),
                 TimeUnit.MINUTES,
-                Storage.SignUrlOption.withV4Signature()
+                Storage.SignUrlOption.withV4Signature(),
+                Storage.SignUrlOption.signWith(serviceAccountCredentials)
         );
     }
 }

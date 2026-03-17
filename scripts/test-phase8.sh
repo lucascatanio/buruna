@@ -12,8 +12,8 @@ BASE_URL="${BASE_URL:-http://localhost/api}"
 DB_CONTAINER="${DB_CONTAINER:-buruna_postgres}"
 DB_USER="${DB_USER:-buruna_user}"
 DB_NAME="${DB_NAME:-buruna}"
-ADMIN_EMAIL="${ADMIN_EMAIL:-reghina5511@uorak.com}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-12345678}"
+ADMIN_EMAIL="${ADMIN_EMAIL:?Defina ADMIN_EMAIL antes de rodar o script}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD antes de rodar o script}"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'

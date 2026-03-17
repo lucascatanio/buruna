@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -44,14 +45,16 @@ public class InactivityJob {
 
     // roda todo dia às 02:00
     @Scheduled(cron = "0 0 2 * * *")
-    @Transactional
-    public void run() {
+    public void runJob() {
         log.info("InactivityJob started");
 
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime warningCutoff = now.minusDays(WARNING_THRESHOLD_DAYS);
         OffsetDateTime deactivationCutoff = now.minusDays(DEACTIVATION_THRESHOLD_DAYS);
 
+        // INFO: carrega todos os usuários ACTIVE em memória.
+        // Adequado para ≤100 usuários (escopo atual). Se a base crescer,
+        // substituir por processamento paginado com Pageable.
         List<User> activeUsers = userRepository.findByStatus(UserStatus.ACTIVE);
 
         int warned = 0;
@@ -62,7 +65,8 @@ public class InactivityJob {
             if (lastAccess == null) lastAccess = user.getCreatedAt();
 
             if (lastAccess.isBefore(deactivationCutoff)) {
-                deactivateUser(user);
+                List<String> fileUrls = deactivateUser(user);
+                deleteFromGcs(fileUrls);
                 deactivated++;
             } else if (lastAccess.isBefore(warningCutoff)) {
                 emailService.sendInactivityWarning(user.getEmail(), user.getUsername());
@@ -73,24 +77,17 @@ public class InactivityJob {
         log.info("InactivityJob finished: {} warned, {} deactivated", warned, deactivated);
     }
 
-    private void deactivateUser(User user) {
+    @Transactional
+    public List<String> deactivateUser(User user) {
         List<com.buruna.manga.domain.Manga> privateMangas =
                 mangaRepository.findByOwnerIdAndIsPublicFalse(user.getId());
 
+        List<String> fileUrls = new ArrayList<>();
         for (com.buruna.manga.domain.Manga manga : privateMangas) {
             manga.getVolumes().forEach(v -> {
-                try {
-                    storageClient.delete(v.getFileUrl());
-                } catch (Exception e) {
-                    log.warn("Failed to delete GCS file {} for user {}: {}",
-                            v.getFileUrl(), user.getUsername(), e.getMessage());
-                }
+                if (v.getFileUrl() != null) fileUrls.add(v.getFileUrl());
             });
-            if (manga.getCoverUrl() != null) {
-                try {
-                    storageClient.delete(manga.getCoverUrl());
-                } catch (Exception ignored) {}
-            }
+            if (manga.getCoverUrl() != null) fileUrls.add(manga.getCoverUrl());
         }
 
         if (!privateMangas.isEmpty()) {
@@ -102,5 +99,13 @@ public class InactivityJob {
         user.setStatus(UserStatus.INACTIVE);
         userRepository.save(user);
         log.info("User {} deactivated due to inactivity", user.getUsername());
+
+        return fileUrls;
+    }
+
+    private void deleteFromGcs(List<String> fileUrls) {
+        for (String url : fileUrls) {
+            storageClient.delete(url);
+        }
     }
 }

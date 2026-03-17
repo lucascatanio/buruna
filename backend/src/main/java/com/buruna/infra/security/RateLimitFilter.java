@@ -14,6 +14,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -21,13 +22,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final String REGISTER_SUFFIX = "/auth/register";
+    private static final String LOGIN_SUFFIX = "/auth/login";
     private static final long WINDOW_MS = 3_600_000L;
 
     private final ConcurrentHashMap<String, RateEntry> attempts = new ConcurrentHashMap<>();
-    private final int maxAttempts;
+    private final Map<String, Integer> limits;
 
     public RateLimitFilter(AppProperties appProperties) {
-        this.maxAttempts = appProperties.rateLimit().registerPerHour();
+        this.limits = Map.of(
+                REGISTER_SUFFIX, appProperties.rateLimit().registerPerHour(),
+                LOGIN_SUFFIX, appProperties.rateLimit().loginPerHour()
+        );
     }
 
     @Override
@@ -35,18 +40,32 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        boolean isRegister = request.getRequestURI().endsWith(REGISTER_SUFFIX)
-                && request.getMethod().equalsIgnoreCase("POST");
+        if (!request.getMethod().equalsIgnoreCase("POST")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-        if (!isRegister) {
+        String uri = request.getRequestURI();
+        String matchedSuffix = null;
+        Integer maxAttempts = null;
+        for (Map.Entry<String, Integer> limitEntry : limits.entrySet()) {
+            if (uri.endsWith(limitEntry.getKey())) {
+                matchedSuffix = limitEntry.getKey();
+                maxAttempts = limitEntry.getValue();
+                break;
+            }
+        }
+
+        if (maxAttempts == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String ip = resolveClientIp(request);
+        String key = matchedSuffix + ":" + ip;
         long now = Instant.now().toEpochMilli();
 
-        RateEntry entry = attempts.compute(ip, (key, existing) -> {
+        RateEntry entry = attempts.compute(key, (k, existing) -> {
             if (existing == null || now - existing.windowStart() > WINDOW_MS) {
                 return new RateEntry(now, new AtomicInteger(1));
             }
@@ -58,7 +77,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write("""
-                    {"status":429,"error":"Too Many Requests","message":"Too many registration attempts. Try again later."}
+                    {"status":429,"error":"Too Many Requests","message":"Too many attempts. Try again later."}
                     """);
             return;
         }

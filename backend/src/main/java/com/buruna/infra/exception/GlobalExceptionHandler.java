@@ -18,6 +18,8 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
@@ -66,6 +68,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(
             Exception ex, HttpServletRequest request) {
+        log.error("Unhandled exception on {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno",
                 "Ocorreu um erro inesperado", request);
     }

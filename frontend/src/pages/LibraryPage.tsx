@@ -50,13 +50,6 @@ const FORMAT_LABELS: Record<string, string> = {
     WEBTOON: "Webtoon", ONE_SHOT: "One-shot",
 };
 
-// const STATUS_COLORS: Record<string, string> = {
-//     ONGOING: "text-green-500",
-//     COMPLETED: "text-blue-500",
-//     HIATUS: "text-yellow-500",
-//     CANCELLED: "text-red-500",
-// };
-
 export function LibraryPage() {
     const navigate = useNavigate();
     const user = useAuthStore((s) => s.user);

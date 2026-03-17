@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState, useCallback} from "react";
 import {useParams, useNavigate, useLocation} from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
-import type {PDFDocumentProxy} from "pdfjs-dist";
+import type {PDFDocumentProxy, RenderTask} from "pdfjs-dist";
 import api from "@/lib/axios";
 import {
     ArrowLeft,
@@ -31,8 +31,8 @@ let progressTimer: ReturnType<typeof setTimeout> | null = null;
 function saveProgress(volumeId: string, page: number) {
     if (progressTimer) clearTimeout(progressTimer);
     progressTimer = setTimeout(() => {
-        api.post(`/reader/${volumeId}/progress`, {currentPage: page}).catch(() => {
-        });
+        api.post(`/reader/${volumeId}/progress`, {currentPage: page})
+            .catch((e) => console.warn("Failed to save progress:", e));
     }, 1500);
 }
 
@@ -49,7 +49,7 @@ interface PagedReaderProps {
 
 function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageChange}: PagedReaderProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const renderTaskRef = useRef<ReturnType<ReturnType<PDFDocumentProxy["getPage"]>["then"]> | null>(null);
+    const renderTaskRef = useRef<RenderTask | null>(null);
     const [currentPage, setCurrentPage] = useState(initialPage);
     const [rendering, setRendering] = useState(false);
     const touchStartX = useRef<number | null>(null);
@@ -59,9 +59,7 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
         setRendering(true);
         try {
             // cancela render anterior se ainda estiver em andamento
-            if (renderTaskRef.current) {
-                (renderTaskRef.current as any).cancel?.();
-            }
+            renderTaskRef.current?.cancel();
             const page = await pdf.getPage(pageNum);
             const container = canvasRef.current.parentElement!;
             const containerWidth = container.clientWidth;
@@ -75,7 +73,7 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
 
             const ctx = canvas.getContext("2d")!;
             const task = page.render({canvasContext: ctx, viewport: scaledViewport});
-            renderTaskRef.current = task.promise as any;
+            renderTaskRef.current = task;
             await task.promise;
         } catch (e: any) {
             if (e?.name !== "RenderingCancelledException") {
@@ -344,7 +342,7 @@ export function ReaderPage() {
                 const loadingTask = pdfjsLib.getDocument({
                     url: signedUrl,
                     withCredentials: false,
-                    cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
+                    cMapUrl: "/cmaps/",
                     cMapPacked: true,
                     rangeChunkSize: 65536,
                 });
@@ -379,8 +377,8 @@ export function ReaderPage() {
     function handleBack() {
         if (progressTimer) {
             clearTimeout(progressTimer);
-            api.post(`/reader/${volumeId}/progress`, {currentPage}).catch(() => {
-            });
+            api.post(`/reader/${volumeId}/progress`, {currentPage})
+                .catch((e) => console.warn("Failed to save progress:", e));
         }
         navigate(state.backUrl ?? -1 as any);
     }

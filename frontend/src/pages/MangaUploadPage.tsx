@@ -37,6 +37,20 @@ const CONTENT_WARNING_OPTIONS = [
     {value: "GATILHO_TRAUMA", label: "Gatilho: Trauma"},
 ];
 
+interface MangaRequest {
+    title: string;
+    alternativeTitles: string[];
+    synopsis?: string | null;
+    coverBase64?: string;
+    format: string;
+    originCountry?: string | null;
+    statusOrigin: string;
+    statusSite: string;
+    year?: number | null;
+    contentWarnings: string[];
+    tagIds: string[];
+}
+
 interface CreatedManga {
     id: string;
     slug: string;
@@ -102,7 +116,7 @@ export function MangaUploadPage() {
         e.preventDefault();
         setSubmitting(true);
         try {
-            const payload: any = {
+            const payload: MangaRequest = {
                 title: form.title,
                 alternativeTitles,
                 synopsis: form.synopsis || null,
@@ -119,8 +133,9 @@ export function MangaUploadPage() {
             const {data} = await api.post("/mangas", payload);
             setCreatedManga({id: data.id, slug: data.slug, title: data.title});
             toast.success("Mangá criado! Agora você pode adicionar volumes.");
-        } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Erro ao criar mangá");
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Erro desconhecido";
+            toast.error(message);
         } finally {
             setSubmitting(false);
         }
@@ -141,8 +156,9 @@ export function MangaUploadPage() {
             setVolumeFile(null);
             const fileInput = document.getElementById("volume-file") as HTMLInputElement;
             if (fileInput) fileInput.value = "";
-        } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Erro ao enviar volume");
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Erro desconhecido";
+            toast.error(message);
         } finally {
             setUploadingVolume(false);
         }

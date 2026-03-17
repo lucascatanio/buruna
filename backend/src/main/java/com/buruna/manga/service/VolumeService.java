@@ -18,8 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -80,7 +80,15 @@ public class VolumeService {
             throw new DuplicateVolumeException(volumeNumber);
         }
 
-        String fileHash = computeSha256(file);
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (IOException e) {
+            throw new DomainException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Falha ao ler o arquivo enviado");
+        }
+
+        String fileHash = computeSha256(fileBytes);
 
         if (volumeRepository.existsByFileHashAndMangaIsPublicTrue(fileHash)) {
             throw new DuplicateVolumeException();
@@ -89,17 +97,12 @@ public class VolumeService {
         String extension = extractExtension(file.getOriginalFilename());
         String objectName = "volumes/" + UUID.randomUUID() + extension;
 
-        try {
-            storageClient.upload(
-                    file.getInputStream(),
-                    objectName,
-                    file.getContentType(),
-                    file.getSize()
-            );
-        } catch (IOException e) {
-            throw new DomainException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Falha ao ler o arquivo enviado");
-        }
+        storageClient.upload(
+                new ByteArrayInputStream(fileBytes),
+                objectName,
+                file.getContentType(),
+                fileBytes.length
+        );
 
         Volume volume = new Volume();
         volume.setManga(manga);
@@ -141,22 +144,12 @@ public class VolumeService {
         }
     }
 
-    private String computeSha256(MultipartFile file) {
+    private String computeSha256(byte[] bytes) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            try (InputStream is = file.getInputStream()) {
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = is.read(buffer)) != -1) {
-                    digest.update(buffer, 0, read);
-                }
-            }
-            return HexFormat.of().formatHex(digest.digest());
+            return HexFormat.of().formatHex(digest.digest(bytes));
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 não disponível", e);
-        } catch (IOException e) {
-            throw new DomainException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Falha ao ler o arquivo enviado");
         }
     }
 
@@ -176,11 +169,4 @@ public class VolumeService {
         }
     }
 
-    @SuppressWarnings("unused") // fase 5
-    private void assertIsOwner(Manga manga, User user) {
-        if (!manga.getOwner().getId().equals(user.getId())) {
-            throw new DomainException(HttpStatus.FORBIDDEN,
-                    "Você não tem permissão para modificar os volumes deste mangá");
-        }
-    }
 }

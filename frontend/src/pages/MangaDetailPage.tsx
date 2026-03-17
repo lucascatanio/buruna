@@ -123,7 +123,7 @@ export function MangaDetailPage() {
                     const ids = sorted.map((v) => v.id).join(",");
                     api.get<Record<string, number>>(`/reader/progress/batch?volumeIds=${ids}`)
                         .then(({data: prog}) => setVolumeProgress(prog))
-                        .catch(() => {});
+                        .catch((e) => console.warn("[MangaDetailPage] falha ao carregar progresso de volumes:", e));
                 }
             })
             .catch(() => navigate("/biblioteca", {replace: true}))
@@ -138,13 +138,13 @@ export function MangaDetailPage() {
                 const entry = data.find(e => e.mangaId === manga.id);
                 if (entry) setReadingStatus(entry.status);
             })
-            .catch(() => {});
+            .catch((e) => console.warn("[MangaDetailPage] falha ao carregar lista de leitura:", e));
 
         api.get(`/mangas/${manga.id}/rating`)
             .then(({data}) => {
                 if (data?.score) setUserRating(data.score);
             })
-            .catch(() => {}); // 204 = nunca avaliou, ignora
+            .catch((e) => console.warn("[MangaDetailPage] falha ao carregar avaliação do usuário:", e)); // 204 = nunca avaliou, ignora
 
         setRatingCount(manga.ratingCount);
         setAvgRating(Number(manga.avgRating));
@@ -246,8 +246,9 @@ export function MangaDetailPage() {
                 [...prev, data].sort((a, b) => a.volumeNumber - b.volumeNumber)
             );
             closeUploadModal();
-        } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Erro ao enviar volume");
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Erro desconhecido";
+            toast.error(message);
         } finally {
             setUploading(false);
         }
@@ -261,8 +262,9 @@ export function MangaDetailPage() {
             await api.delete(`/mangas/${manga.id}`);
             toast.success("Mangá removido");
             navigate("/biblioteca");
-        } catch (err: any) {
-            toast.error(err.response?.data?.message ?? "Erro ao deletar");
+        } catch (e) {
+            const message = e instanceof Error ? e.message : "Erro desconhecido";
+            toast.error(message);
             setDeleting(false);
         }
     }
