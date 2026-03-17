@@ -14,7 +14,7 @@
 - [x] Configurar arquivo `.env` e `.env.example`
 - [x] Criar `GlobalExceptionHandler` com padrão de resposta de erro
 - [x] Configurar Flyway + primeira migration vazia (`V1__init.sql`)
-- [ ] Configurar GitHub Projects com kanban (Em desenvolvimento / Aprovadas / Sugestões)
+- [x] Configurar GitHub Projects com kanban (Em desenvolvimento / Aprovadas / Sugestões)
 - [x] README inicial do projeto
 
 ---
@@ -102,13 +102,15 @@
 - [x] Entidades `Manga` + `Volume` + `MangaTag`
 - [x] Integração com Google Cloud Storage (`GcsStorageClient`)
 - [x] Geração de nome ofuscado (UUID) para arquivos no GCS
-- [x] Cálculo de hash SHA-256 para detecção de duplicatas
+- [x] Detecção de duplicatas via MD5 dos metadados do GCS (ver ADR 24)
 - [x] `POST /mangas` — criar mangá (colaborador/admin)
 - [x] `GET /mangas` — listar/buscar com filtros e paginação
 - [x] `GET /mangas/{slug}` — detalhes de um mangá
 - [x] `PUT /mangas/{id}` — editar mangá
 - [x] `DELETE /mangas/{id}` — deletar mangá + arquivo no GCS
-- [x] `POST /mangas/{id}/volumes` — upload de volume (multipart)
+- [x] ~~`POST /mangas/{id}/volumes` — upload de volume (multipart/form-data)~~ — substituído por fluxo de duas fases via Signed URL (ver ADR 23)
+- [x] `POST /mangas/{id}/volumes/upload-url` — gerar URL assinada de PUT no GCS (COLLABORATOR+)
+- [x] `POST /mangas/{id}/volumes/finalize` — persistir volume após upload direto ao GCS (COLLABORATOR+)
 - [x] `DELETE /mangas/{id}/volumes/{volumeId}` — deletar volume
 - [x] Validação de permissões por role (admin vs. colaborador)
 
@@ -127,10 +129,15 @@
 
 **Backend:**
 
-- [x] `POST /my/mangas` — upload privado com validação de cota em GB
-- [x] `GET /my/mangas` — listar própria coleção privada
+- [x] `POST /my/mangas` — criar mangá privado (JSON, sem arquivo)
+- [x] `POST /my/mangas/{id}/volumes/upload-url` — gerar URL assinada de PUT para volume
+- [x] `POST /my/mangas/{id}/volumes/finalize` — persistir volume após upload direto ao GCS
+- [x] `GET /my/mangas` — listar própria coleção privada (paginado)
+- [x] `GET /my/mangas/{id}` — detalhes de mangá privado
+- [x] `GET /my/mangas/quota` — consultar cota utilizada/disponível
 - [x] `PUT /my/mangas/{id}` — editar mangá privado
 - [x] `DELETE /my/mangas/{id}` — deletar mangá privado + arquivo GCS
+- [x] `DELETE /my/mangas/{id}/volumes/{volumeId}` — deletar volume privado
 - [x] `POST /my/mangas/{id}/promote` — promover privado → público (colaborador/admin)
 - [x] Validação de cota de GB por usuário
 
@@ -151,7 +158,9 @@
 
 - [x] `GET /reader/{volumeId}/url` — gerar URL assinada GCS (expira em 30 min) + incrementar view_count
 - [x] `POST /reader/{volumeId}/progress` — salvar progresso (upsert)
-- [x] `GET /reader/progress/{mangaId}` — recuperar progresso atual
+- [x] `GET /reader/{volumeId}/progress` — recuperar progresso de volume específico
+- [x] `GET /reader/progress/{mangaId}` — recuperar progresso mais recente do mangá
+- [x] `GET /reader/progress/batch` — recuperar progresso de múltiplos volumes em lote
 - [x] `GET /reader/history` — histórico de leitura (paginado)
 
 **Frontend:**
@@ -198,8 +207,9 @@
 **Backend:**
 
 - [x] `GET /admin/dashboard` — usuários ativos + storage utilizado (total e por usuário)
-- [x] `@Scheduled` — job diário de verificação de inatividade (aviso 15 dias + desativação 90 dias)
+- [x] `@Scheduled` — job diário de verificação de inatividade (aviso aos 75 dias + desativação aos 90 dias)
 - [x] Job: deleção automática de mangás privados de usuários desativados no GCS + banco
+- [x] `POST /admin/jobs/inactivity` — trigger manual do InactivityJob (header `X-Job-Secret`)
 
 **Frontend:**
 
@@ -211,32 +221,55 @@
 
 **Objetivo:** aplicação no ar com segurança e monitoramento.
 
-- [ ] Dockerfiles multi-stage para backend e frontend
-- [ ] Docker Compose de produção com health checks
-- [ ] Configuração nginx completa (HTTPS, proxy, static files)
-- [ ] Deploy no GCP (Cloud Run ou GCE)
-- [ ] Configurar UptimeRobot para monitoramento + alerta de downtime por e-mail
-- [ ] Configurar Gmail App Password para envio de e-mails em produção
-- [ ] Variáveis de ambiente configuradas no GCP
-- [ ] Testes dos fluxos críticos em produção (cadastro, upload, leitura)
-- [ ] Responsividade mobile revisada em dispositivo real
-- [ ] README final com instruções de setup e deploy
+- [x] Dockerfiles multi-stage para backend e frontend
+- [x] ~~Docker Compose de produção com health checks~~ — substituído por Cloud Run (serviços stateless gerenciados pelo GCP)
+- [x] Configuração nginx no frontend (proxy `/api/*`, SPA fallback para client-side routing)
+- [x] Deploy no Cloud Run — backend e frontend como serviços independentes (us-east1)
+- [x] PostgreSQL no GCE e2-micro com Docker (free tier permanente, us-east1-b)
+- [x] VPC connector para comunicação interna Cloud Run → GCE
+- [x] Artifact Registry para armazenar imagens Docker (us-east1)
+- [x] Secret Manager para variáveis sensíveis de produção
+- [x] Cloud Scheduler para o InactivityJob (diário às 02:00)
+- [x] CORS configurado no GCS para leitura de PDFs pelo browser (`gcs-cors.json`)
+- [x] Domínio `buruna.com.br` mapeado com TLS automático
+- [x] Configurar UptimeRobot para monitoramento + alerta de downtime por e-mail
+- [x] Configurar Gmail App Password para envio de e-mails em produção
+- [x] Variáveis de ambiente configuradas via Secret Manager
+- [x] Testes dos fluxos críticos em produção (cadastro, upload, leitura)
+- [x] Responsividade mobile revisada em dispositivo real
+- [x] README final com instruções de setup e deploy
 
 ---
 
 ## Resumo por Fase
 
-| Fase | Descrição               | Progresso  |
-| ---- | ----------------------- | ---------- |
-| 0    | Setup e fundação        | 0% → 5%    |
-| 1    | Schema do banco         | 5% → 12%   |
-| 2    | Autenticação e usuários | 12% → 28%  |
-| 3    | Tags e taxonomia        | 28% → 33%  |
-| 4    | Biblioteca pública      | 33% → 52%  |
-| 5    | Coleção privada         | 52% → 62%  |
-| 6    | Leitor                  | 62% → 78%  |
-| 7    | Engajamento             | 78% → 87%  |
-| 8    | Dashboard e jobs        | 87% → 93%  |
-| 9    | Infra e deploy          | 93% → 100% |
+| Fase | Descrição               | Progresso  | Status   |
+| ---- | ----------------------- | ---------- | -------- |
+| 0    | Setup e fundação        | 0% → 5%    | Completo |
+| 1    | Schema do banco         | 5% → 12%   | Completo |
+| 2    | Autenticação e usuários | 12% → 28%  | Completo |
+| 3    | Tags e taxonomia        | 28% → 33%  | Completo |
+| 4    | Biblioteca pública      | 33% → 52%  | Completo |
+| 5    | Coleção privada         | 52% → 62%  | Completo |
+| 6    | Leitor                  | 62% → 78%  | Completo |
+| 7    | Engajamento             | 78% → 87%  | Completo |
+| 8    | Dashboard e jobs        | 87% → 93%  | Completo |
+| 9    | Infra e deploy          | 93% → 100% | Completo |
+
+**Projeto em produção: https://buruna.com.br**
 
 ---
+
+## Backlog
+
+Itens identificados durante o desenvolvimento para melhorias futuras:
+
+- [ ] Upload direto GCS: lifecycle rule de 24h para excluir arquivos órfãos (upload sem finalize)
+- [ ] Migração de e-mail para Resend + `@buruna.com.br` (DKIM/SPF/DMARC)
+- [ ] CORS do backend: adicionar `https://buruna.com.br` quando domínio propagar completamente
+- [ ] Compressão de PDF no upload
+- [ ] Cache de URL assinada no frontend (evitar re-geração antes do prazo de 30 min)
+- [ ] `filterByTitle` não busca em `alternativeTitles`
+- [ ] Testes de integração nos fluxos críticos (GitHub Actions)
+- [ ] Paginação no `InactivityJob` (escala além de 100 usuários)
+- [ ] hCaptcha no cadastro (movido do MVP)
