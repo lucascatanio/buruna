@@ -1,14 +1,17 @@
 package com.buruna.manga.controller;
 
+import com.buruna.manga.dto.VolumeFinalizeRequest;
 import com.buruna.manga.dto.VolumeResponse;
+import com.buruna.manga.dto.VolumeUploadUrlRequest;
+import com.buruna.manga.dto.VolumeUploadUrlResponse;
 import com.buruna.manga.service.VolumeService;
 import com.buruna.user.domain.User;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,16 +31,26 @@ public class VolumeController {
         return ResponseEntity.ok(volumeService.findByMangaId(mangaId));
     }
 
-    @PostMapping(consumes = "multipart/form-data")
+    @PostMapping("/upload-url")
     @PreAuthorize("hasAnyRole('COLLABORATOR', 'ADMIN')")
-    public ResponseEntity<VolumeResponse> upload(
+    public ResponseEntity<VolumeUploadUrlResponse> getUploadUrl(
             @PathVariable UUID mangaId,
-            @RequestParam Integer volumeNumber,
-            @RequestParam("file") MultipartFile file,
-            @AuthenticationPrincipal User currentUser
+            @Valid @RequestBody VolumeUploadUrlRequest request,
+            @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(
+                volumeService.generateUploadUrl(mangaId, request.volumeNumber(), user));
+    }
+
+    @PostMapping("/finalize")
+    @PreAuthorize("hasAnyRole('COLLABORATOR', 'ADMIN')")
+    public ResponseEntity<VolumeResponse> finalize(
+            @PathVariable UUID mangaId,
+            @Valid @RequestBody VolumeFinalizeRequest request,
+            @AuthenticationPrincipal User user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(volumeService.upload(mangaId, volumeNumber, file, currentUser));
+                .body(volumeService.finalize(mangaId, request, user));
     }
 
     @DeleteMapping("/{volumeId}")

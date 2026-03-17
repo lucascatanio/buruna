@@ -96,10 +96,26 @@ export function PrivateMangaDetailPage() {
         if (!manga || !volumeFile) return;
         setUploadingVolume(true);
         try {
-            const formData = new FormData();
-            formData.append("file", volumeFile);
-            formData.append("volumeNumber", volumeNumber);
-            const {data} = await api.post<PrivateManga>(`/my/mangas/${manga.id}/volumes`, formData);
+            const {data: {uploadUrl, objectName}} = await api.post(
+                `/my/mangas/${manga.id}/volumes/upload-url`,
+                {volumeNumber: parseInt(volumeNumber)}
+            );
+
+            const uploadRes = await fetch(uploadUrl, {
+                method: "PUT",
+                headers: {"Content-Type": "application/pdf"},
+                body: volumeFile,
+            });
+
+            if (!uploadRes.ok) {
+                throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
+            }
+
+            const {data} = await api.post<PrivateManga>(
+                `/my/mangas/${manga.id}/volumes/finalize`,
+                {objectName, volumeNumber: parseInt(volumeNumber)}
+            );
+
             setManga(data);
             const maxVol = data.volumes.reduce((max, v) => Math.max(max, v.volumeNumber), 0);
             setVolumeNumber(String(maxVol + 1));

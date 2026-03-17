@@ -1,23 +1,17 @@
 package com.buruna.manga.controller;
 
-import com.buruna.manga.dto.PrivateMangaRequest;
-import com.buruna.manga.dto.PrivateMangaResponse;
-import com.buruna.manga.dto.QuotaInfo;
+import com.buruna.manga.dto.*;
 import com.buruna.manga.service.PrivateMangaService;
 import com.buruna.user.domain.User;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -50,18 +44,34 @@ public class PrivateMangaController {
         return ResponseEntity.ok(privateMangaService.getQuotaInfo(currentUser));
     }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<PrivateMangaResponse> upload(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("title") @NotBlank String title,
-            @RequestParam("volumeNumber") @NotNull Integer volumeNumber,
-            @RequestParam(value = "synopsis", required = false) String synopsis,
-            @RequestParam(value = "coverBase64", required = false) String coverBase64,
+    @PostMapping
+    public ResponseEntity<PrivateMangaResponse> create(
+            @Valid @RequestBody PrivateMangaCreateRequest request,
             @AuthenticationPrincipal User currentUser
     ) {
-        PrivateMangaResponse response = privateMangaService.upload(
-                title, synopsis, coverBase64, volumeNumber, file, currentUser);
+        PrivateMangaResponse response = privateMangaService.createManga(
+                request.title(), request.synopsis(), request.coverBase64(), currentUser);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/{id}/volumes/upload-url")
+    public ResponseEntity<VolumeUploadUrlResponse> getUploadUrl(
+            @PathVariable UUID id,
+            @Valid @RequestBody VolumeUploadUrlRequest request,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.ok(
+                privateMangaService.generateUploadUrl(id, request.volumeNumber(), currentUser));
+    }
+
+    @PostMapping("/{id}/volumes/finalize")
+    public ResponseEntity<PrivateMangaResponse> finalizeVolume(
+            @PathVariable UUID id,
+            @Valid @RequestBody VolumeFinalizeRequest request,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(privateMangaService.finalizeVolume(id, request, currentUser));
     }
 
     @PutMapping("/{id}")
@@ -80,17 +90,6 @@ public class PrivateMangaController {
     ) {
         privateMangaService.delete(id, currentUser);
         return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping(value = "/{id}/volumes", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<PrivateMangaResponse> addVolume(
-            @PathVariable UUID id,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("volumeNumber") @NotNull Integer volumeNumber,
-            @AuthenticationPrincipal User currentUser
-    ) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(privateMangaService.addVolume(id, volumeNumber, file, currentUser));
     }
 
     @DeleteMapping("/{id}/volumes/{volumeId}")

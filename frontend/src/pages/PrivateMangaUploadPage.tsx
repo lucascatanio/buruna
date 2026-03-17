@@ -40,6 +40,28 @@ export function PrivateMangaUploadPage() {
         reader.readAsDataURL(file);
     }
 
+    async function uploadVolumeViaSignedUrl(mangaId: string, file: File, volNum: string) {
+        const {data: {uploadUrl, objectName}} = await api.post(
+            `/my/mangas/${mangaId}/volumes/upload-url`,
+            {volumeNumber: parseInt(volNum)}
+        );
+
+        const uploadRes = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: {"Content-Type": "application/pdf"},
+            body: file,
+        });
+
+        if (!uploadRes.ok) {
+            throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
+        }
+
+        await api.post(`/my/mangas/${mangaId}/volumes/finalize`, {
+            objectName,
+            volumeNumber: parseInt(volNum),
+        });
+    }
+
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!volumeFile) {
@@ -48,14 +70,15 @@ export function PrivateMangaUploadPage() {
         }
         setSubmitting(true);
         try {
-            const formData = new FormData();
-            formData.append("title", title.trim());
-            if (synopsis.trim()) formData.append("synopsis", synopsis.trim());
-            if (coverBase64) formData.append("coverBase64", coverBase64);
-            formData.append("volumeNumber", volumeNumber);
-            formData.append("file", volumeFile);
+            const {data} = await api.post("/my/mangas", {
+                title: title.trim(),
+                synopsis: synopsis.trim() || null,
+                coverBase64: coverBase64 || null,
+            });
 
-            const {data} = await api.post("/my/mangas", formData);
+            // Upload do primeiro volume via signed URL
+            await uploadVolumeViaSignedUrl(data.id, volumeFile, volumeNumber);
+
             setCreatedManga({id: data.id, title: data.title});
             setUploadedVolumes([Number(volumeNumber)]);
             setVolumeNumber(String(Number(volumeNumber) + 1));
@@ -72,10 +95,7 @@ export function PrivateMangaUploadPage() {
         if (!createdManga || !volumeFile) return;
         setUploadingVolume(true);
         try {
-            const formData = new FormData();
-            formData.append("file", volumeFile);
-            formData.append("volumeNumber", volumeNumber);
-            await api.post(`/my/mangas/${createdManga.id}/volumes`, formData);
+            await uploadVolumeViaSignedUrl(createdManga.id, volumeFile, volumeNumber);
             toast.success(`Volume ${volumeNumber} enviado!`);
             setUploadedVolumes((prev) => [...prev, Number(volumeNumber)]);
             setVolumeNumber(String(Number(volumeNumber) + 1));

@@ -4,28 +4,20 @@ import com.buruna.infra.exception.DomainException;
 import com.buruna.infra.storage.StorageClient;
 import com.buruna.infra.storage.StorageUploadHelper;
 import com.buruna.manga.domain.*;
-import com.buruna.manga.dto.PrivateMangaRequest;
-import com.buruna.manga.dto.PrivateMangaResponse;
-import com.buruna.manga.dto.QuotaInfo;
-import com.buruna.manga.dto.VolumeResponse;
+import com.buruna.manga.dto.*;
 import com.buruna.manga.exception.DuplicateVolumeException;
 import com.buruna.manga.exception.MangaNotFoundException;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.VolumeRepository;
 import com.buruna.user.domain.Role;
 import com.buruna.user.domain.User;
-import org.springframework.beans.factory.annotation.Value;
+import com.google.cloud.storage.Blob;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
 import java.time.Duration;
 import java.util.*;
@@ -34,29 +26,21 @@ import java.util.*;
 public class PrivateMangaService {
 
     private static final Duration COVER_URL_EXPIRATION = Duration.ofHours(1);
-
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "application/pdf",
-            "application/epub+zip",
-            "application/x-mobipocket-ebook"
-    );
+    private static final Duration UPLOAD_URL_EXPIRATION = Duration.ofMinutes(15);
 
     private final MangaRepository mangaRepository;
     private final VolumeRepository volumeRepository;
     private final StorageClient storageClient;
     private final StorageQuotaService quotaService;
-    private final long maxFileSizeBytes;
 
     public PrivateMangaService(MangaRepository mangaRepository,
                                VolumeRepository volumeRepository,
                                StorageClient storageClient,
-                               StorageQuotaService quotaService,
-                               @Value("${app.upload.max-file-size-mb:500}") long maxFileSizeMb) {
+                               StorageQuotaService quotaService) {
         this.mangaRepository = mangaRepository;
         this.volumeRepository = volumeRepository;
         this.storageClient = storageClient;
         this.quotaService = quotaService;
-        this.maxFileSizeBytes = maxFileSizeMb * 1024L * 1024L;
     }
 
     @Transactional(readOnly = true)
@@ -67,24 +51,10 @@ public class PrivateMangaService {
     }
 
     @Transactional
-    public PrivateMangaResponse upload(String title,
-                                       String synopsis,
-                                       String coverBase64,
-                                       Integer volumeNumber,
-                                       MultipartFile file,
-                                       User owner) {
-        validateFile(file);
-        quotaService.assertHasQuota(owner, file.getSize());
-
-        byte[] fileBytes;
-        try {
-            fileBytes = file.getBytes();
-        } catch (IOException e) {
-            throw new DomainException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao ler o arquivo enviado");
-        }
-
-        String fileHash = computeSha256(fileBytes);
-
+    public PrivateMangaResponse createManga(String title,
+                                            String synopsis,
+                                            String coverBase64,
+                                            User owner) {
         Manga manga = new Manga();
         manga.setTitle(title);
         manga.setSynopsis(synopsis);
@@ -105,22 +75,49 @@ public class PrivateMangaService {
         }
 
         Manga savedManga = mangaRepository.save(manga);
+        return toResponse(savedManga, List.of());
+    }
 
-        String extension = extractExtension(file.getOriginalFilename());
-        String objectName = "volumes/" + UUID.randomUUID() + extension;
+    public VolumeUploadUrlResponse generateUploadUrl(UUID mangaId, Integer volumeNumber, User owner) {
+        Manga manga = findPrivateByIdAndOwner(mangaId, owner);
 
-        storageClient.upload(new ByteArrayInputStream(fileBytes), objectName, file.getContentType(), fileBytes.length);
+        if (volumeRepository.existsByMangaIdAndVolumeNumber(mangaId, volumeNumber)) {
+            throw new DuplicateVolumeException(volumeNumber);
+        }
+
+        String objectName = "volumes/" + UUID.randomUUID() + ".pdf";
+        var uploadUrl = storageClient.generateUploadSignedUrl(objectName, UPLOAD_URL_EXPIRATION);
+
+        return new VolumeUploadUrlResponse(uploadUrl.toString(), objectName);
+    }
+
+    // RISCO: se finalize falhar após o upload GCS, o arquivo fica órfão no bucket.
+    // Mitigação futura: lifecycle rule de 24h no GCS para objetos sem registro no banco.
+    @Transactional
+    public PrivateMangaResponse finalizeVolume(UUID mangaId, VolumeFinalizeRequest request, User owner) {
+        Manga manga = findPrivateByIdAndOwner(mangaId, owner);
+
+        Blob blob = storageClient.getBlob(request.objectName());
+        String fileHash = blob.getMd5();
+        long fileSizeBytes = blob.getSize();
+
+        quotaService.assertHasQuota(owner, fileSizeBytes);
+
+        if (volumeRepository.existsByMangaIdAndVolumeNumber(mangaId, request.volumeNumber())) {
+            throw new DuplicateVolumeException(request.volumeNumber());
+        }
 
         Volume volume = new Volume();
-        volume.setManga(savedManga);
-        volume.setVolumeNumber(volumeNumber);
-        volume.setFileUrl(objectName);
+        volume.setManga(manga);
+        volume.setVolumeNumber(request.volumeNumber());
+        volume.setFileUrl(request.objectName());
         volume.setFileHash(fileHash);
-        volume.setFileSizeBytes(file.getSize());
+        volume.setFileSizeBytes(fileSizeBytes);
         volume.setUploadedBy(owner);
         volumeRepository.save(volume);
 
-        return toResponse(savedManga, List.of(volume));
+        List<Volume> allVolumes = volumeRepository.findByMangaId(mangaId);
+        return toResponse(manga, allVolumes);
     }
 
     @Transactional(readOnly = true)
@@ -155,43 +152,7 @@ public class PrivateMangaService {
         mangaRepository.delete(manga);
     }
 
-    @Transactional
-    public PrivateMangaResponse addVolume(UUID mangaId, Integer volumeNumber, MultipartFile file, User owner) {
-        Manga manga = findPrivateByIdAndOwner(mangaId, owner);
-
-        validateFile(file);
-        quotaService.assertHasQuota(owner, file.getSize());
-
-        if (volumeRepository.existsByMangaIdAndVolumeNumber(mangaId, volumeNumber)) {
-            throw new DuplicateVolumeException(volumeNumber);
-        }
-
-        byte[] fileBytes;
-        try {
-            fileBytes = file.getBytes();
-        } catch (IOException e) {
-            throw new DomainException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao ler o arquivo enviado");
-        }
-
-        String fileHash = computeSha256(fileBytes);
-
-        String extension = extractExtension(file.getOriginalFilename());
-        String objectName = "volumes/" + UUID.randomUUID() + extension;
-
-        storageClient.upload(new ByteArrayInputStream(fileBytes), objectName, file.getContentType(), fileBytes.length);
-
-        Volume volume = new Volume();
-        volume.setManga(manga);
-        volume.setVolumeNumber(volumeNumber);
-        volume.setFileUrl(objectName);
-        volume.setFileHash(fileHash);
-        volume.setFileSizeBytes(file.getSize());
-        volume.setUploadedBy(owner);
-        volumeRepository.save(volume);
-
-        List<Volume> allVolumes = volumeRepository.findByMangaId(mangaId);
-        return toResponse(manga, allVolumes);
-    }
+    // addVolume agora é feito via generateUploadUrl + finalizeVolume
 
     @Transactional
     public PrivateMangaResponse deleteVolume(UUID mangaId, UUID volumeId, User owner) {
@@ -250,34 +211,6 @@ public class PrivateMangaService {
                     "Você não tem permissão para modificar este mangá");
         }
         return manga;
-    }
-
-    private void validateFile(MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new DomainException(HttpStatus.BAD_REQUEST, "Arquivo não pode ser vazio");
-        }
-        if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
-            throw new DomainException(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
-                    "Formato não suportado. Use PDF, EPUB ou MOBI");
-        }
-        if (file.getSize() > maxFileSizeBytes) {
-            throw new DomainException(HttpStatus.PAYLOAD_TOO_LARGE,
-                    "Arquivo excede o tamanho máximo permitido");
-        }
-    }
-
-    private String computeSha256(byte[] bytes) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(bytes));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 não disponível", e);
-        }
-    }
-
-    private String extractExtension(String filename) {
-        if (filename == null || !filename.contains(".")) return "";
-        return filename.substring(filename.lastIndexOf('.'));
     }
 
     private String generateUniqueSlug(String title) {

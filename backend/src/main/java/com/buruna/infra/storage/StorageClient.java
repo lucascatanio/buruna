@@ -10,4 +10,8 @@ public interface StorageClient {
     void delete(String fileName);
 
     URL generateSignedUrl(String fileName, Duration expiration);
+
+    URL generateUploadSignedUrl(String objectName, Duration expiration);
+
+    com.google.cloud.storage.Blob getBlob(String objectName);
 }

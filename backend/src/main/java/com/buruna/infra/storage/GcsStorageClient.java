@@ -75,4 +75,29 @@ public class GcsStorageClient implements StorageClient {
                 Storage.SignUrlOption.signWith(serviceAccountCredentials)
         );
     }
+
+    @Override
+    public URL generateUploadSignedUrl(String objectName, Duration expiration) {
+        BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(bucketName, objectName))
+                .setContentType("application/pdf")
+                .build();
+        return storage.signUrl(
+                blobInfo,
+                expiration.toMinutes(),
+                TimeUnit.MINUTES,
+                Storage.SignUrlOption.httpMethod(HttpMethod.PUT),
+                Storage.SignUrlOption.withV4Signature(),
+                Storage.SignUrlOption.signWith(serviceAccountCredentials),
+                Storage.SignUrlOption.withContentType()
+        );
+    }
+
+    @Override
+    public Blob getBlob(String objectName) {
+        Blob blob = storage.get(bucketName, objectName);
+        if (blob == null) {
+            throw new StorageException("Objeto não encontrado no GCS: " + objectName, null);
+        }
+        return blob;
+    }
 }
