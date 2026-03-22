@@ -280,8 +280,8 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [ ] Swagger/OpenAPI
 - [ ] Notificar todos os admins ao invés de ADMIN_EMAIL fixo
 - [ ] Suporte a tablet
-- [ ] Refresh token rotation
-- [ ] Limite de tamanho de payload JSON - spring.mvc.max-in-memory-size
+- [x] Refresh token rotation
+- [x] Limite de tamanho de payload JSON - spring.codec.max-in-memory-size
 - [ ] 2FA (TOTP ou e-mail)
 - [ ] Reset de senha (precisa de 2FA)
 - [ ] Signed URL não revogada imediatamente - limitação conhecida

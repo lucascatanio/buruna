@@ -36,6 +36,9 @@ spring:
       max-file-size: ${MAX_FILE_SIZE_MB:500}MB
       max-request-size: ${MAX_FILE_SIZE_MB:500}MB
 
+  codec:
+    max-in-memory-size: 10MB
+
 app:
   jwt:
     secret: ${JWT_SECRET}

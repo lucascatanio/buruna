@@ -371,7 +371,8 @@ Refresh
   → backend busca token no banco
   → valida expires_at
   → deleta token antigo
-  → retorna novo accessToken (e opcionalmente novo refreshToken)
+  → gera novo refreshToken e persiste no banco
+  → retorna { accessToken, refreshToken, expiresIn } (refresh token rotacionado)
 
 Logout
   POST /auth/logout { refreshToken }
@@ -687,3 +688,11 @@ Implementado em `RateLimitFilter` (in-memory `ConcurrentHashMap`):
 **Decisão:** Multiplicar a escala de renderização pelo `devicePixelRatio` do dispositivo (limitado a 3) e forçar um piso de 1.5 na escala base. O truque é usar escalas diferentes para o canvas: `canvas.width/height` recebe a escala alta (mais pixels reais), enquanto `canvas.style.width/height` mantém a escala original (tamanho visual inalterado).
 **Justificativa:** Só aplicar o DPR não bastou — em telas estreitas, a escala base calculada era tão baixa que mesmo multiplicada por 3 o resultado ficava pobre. O piso de 1.5 resolve isso garantindo uma resolução mínima de renderização. A separação entre resolução e tamanho visual é o que permite renderizar em alta qualidade sem alterar o layout da página.
 **Tradeoff aceito:** O canvas usa mais memória no celular (entre 3x e 4.5x mais pixels). Na prática não causou problemas — se um dia causar em devices com pouca RAM, o cap de 3 no DPR já limita o pior caso.
+
+### ADR-28 — Refresh token rotation no /auth/refresh
+
+Já implementado desde o MVP
+**Contexto:** Sem rotation, um refresh token roubado dava acesso por 7 dias inteiros — o atacante e o usuário legítimo podiam usar o mesmo token em paralelo sem que nenhum dos dois percebesse.
+**Decisão:** Cada chamada a `POST /auth/refresh` deleta o token usado e gera um novo. O response devolve accessToken + refreshToken novos, e o frontend atualiza os dois no storage.
+**Justificativa:** Se alguém roubar o token e usá-lo, o original morre. Na próxima vez que o usuário legítimo tentar renovar, o token dele já não existe — recebe 401 e precisa relogar. Não é perfeito (o atacante ainda usou uma vez), mas a janela de exploração cai de 7 dias para um único ciclo.
+**Tradeoff aceito:** Se por algum motivo o mesmo refresh token for enviado duas vezes (ex: resposta de rede duplicada, retry automático), a segunda chamada dá 401 e força logout. O interceptor Axios do frontend evita isso com uma fila que serializa chamadas ao `/auth/refresh`, então na prática não acontece.
