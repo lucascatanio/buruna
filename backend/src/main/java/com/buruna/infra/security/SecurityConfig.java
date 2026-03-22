@@ -56,6 +56,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/mangas", "/mangas/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/mangas/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/mangas/**").authenticated()
+                        .requestMatchers("/health").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
