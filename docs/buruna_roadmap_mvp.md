@@ -2,9 +2,9 @@
 
 ---
 
-## Fase 0 — Setup e Fundação (0% → 5%)
+## Fase 0 — Setup e fundação (0% → 5%)
 
-**Objetivo:** repositório, estrutura de projeto e infra local funcionando.
+**Objetivo:** repositório, estrutura de projeto e infra local rodando.
 
 - [x] Criar monorepo no GitHub
 - [x] Criar estrutura de pastas: `/backend`, `/frontend`, `/nginx`, `/docs`
@@ -19,7 +19,7 @@
 
 ---
 
-## Fase 1 — Banco de Dados: Schema Base (5% → 12%)
+## Fase 1 — Banco de dados: schema base (5% → 12%)
 
 **Objetivo:** todas as tabelas do MVP criadas e versionadas.
 
@@ -39,9 +39,9 @@
 
 ---
 
-## Fase 2 — Autenticação e Usuários (12% → 28%)
+## Fase 2 — Autenticação e usuários (12% → 28%)
 
-**Objetivo:** sistema de auth completo com aprovação de cadastro.
+**Objetivo:** auth completo com aprovação de cadastro funcionando ponta a ponta.
 
 **Backend:**
 
@@ -58,7 +58,7 @@
 - [x] `PATCH /admin/users/{id}/role` — alterar role
 - [x] `PATCH /admin/users/{id}/status` — ativar/desativar
 - [x] `PATCH /admin/users/{id}/quota` — configurar cota de GB
-- [x] ~~Rate limit + Captcha no cadastro~~ — Captcha movido para backlog; rate limit implementado via `RateLimitFilter`
+- [x] ~~Rate limit + Captcha no cadastro~~ — Captcha movido pro backlog; rate limit implementado via `RateLimitFilter`
 - [x] `SecurityConfig` com rotas públicas e protegidas
 - [x] `JwtFilter` na filter chain
 
@@ -72,9 +72,9 @@
 
 ---
 
-## Fase 3 — Tags e Taxonomia (28% → 33%)
+## Fase 3 — Tags e taxonomia (28% → 33%)
 
-**Objetivo:** sistema de tags funcional para uso no cadastro de mangás.
+**Objetivo:** tags funcionando pra uso no cadastro de mangás.
 
 **Backend:**
 
@@ -89,19 +89,19 @@
 **Frontend:**
 
 - [x] Painel admin: gerenciar tags e categorias
-- [x] Componente de seleção de tags reutilizável (para uso no upload de mangás)
+- [x] Componente de seleção de tags reutilizável (pra uso no upload de mangás)
 
 ---
 
-## Fase 4 — Biblioteca Pública: Mangás e Volumes (33% → 52%)
+## Fase 4 — Biblioteca pública: mangás e volumes (33% → 52%)
 
-**Objetivo:** CRUD completo de mangás públicos com upload de arquivos.
+**Objetivo:** CRUD de mangás públicos com upload de arquivos.
 
 **Backend:**
 
 - [x] Entidades `Manga` + `Volume` + `MangaTag`
 - [x] Integração com Google Cloud Storage (`GcsStorageClient`)
-- [x] Geração de nome ofuscado (UUID) para arquivos no GCS
+- [x] Geração de nome ofuscado (UUID) pra arquivos no GCS
 - [x] Detecção de duplicatas via MD5 dos metadados do GCS (ver ADR 24)
 - [x] `POST /mangas` — criar mangá (colaborador/admin)
 - [x] `GET /mangas` — listar/buscar com filtros e paginação
@@ -123,14 +123,14 @@
 
 ---
 
-## Fase 5 — Coleção Privada (52% → 62%)
+## Fase 5 — Coleção privada (52% → 62%)
 
-**Objetivo:** upload e gestão de mangás privados com privacidade total.
+**Objetivo:** upload e gestão de mangás privados, isolados por usuário.
 
 **Backend:**
 
 - [x] `POST /my/mangas` — criar mangá privado (JSON, sem arquivo)
-- [x] `POST /my/mangas/{id}/volumes/upload-url` — gerar URL assinada de PUT para volume
+- [x] `POST /my/mangas/{id}/volumes/upload-url` — gerar URL assinada de PUT pra volume
 - [x] `POST /my/mangas/{id}/volumes/finalize` — persistir volume após upload direto ao GCS
 - [x] `GET /my/mangas` — listar própria coleção privada (paginado)
 - [x] `GET /my/mangas/{id}` — detalhes de mangá privado
@@ -146,13 +146,13 @@
 - [x] Tela "Minha coleção" (mangás privados)
 - [x] Formulário de upload privado
 - [x] Indicador de cota utilizada/disponível
-- [x] Botão de promover para público (se permitido)
+- [x] Botão de promover pra público (se permitido)
 
 ---
 
 ## Fase 6 — Leitor (62% → 78%)
 
-**Objetivo:** experiência de leitura completa e confortável.
+**Objetivo:** leitura funcional e confortável no browser.
 
 **Backend:**
 
@@ -165,8 +165,8 @@
 
 **Frontend:**
 
-- [x] Leitor inline com modo **página a página**
-- [x] Leitor inline com modo **scroll vertical contínuo**
+- [x] Leitor inline com modo página a página
+- [x] Leitor inline com modo scroll vertical contínuo
 - [x] Alternância entre modos de leitura
 - [x] Controles que aparecem/desaparecem ao toque/clique
 - [x] Dark mode + ajuste de brilho/contraste
@@ -200,7 +200,7 @@
 
 ---
 
-## Fase 8 — Dashboard Admin e Jobs (87% → 93%)
+## Fase 8 — Dashboard admin e jobs (87% → 93%)
 
 **Objetivo:** painel administrativo e automações de manutenção.
 
@@ -217,31 +217,31 @@
 
 ---
 
-## Fase 9 — Infra, Deploy e Polimento (93% → 100%)
+## Fase 9 — Infra, deploy e polimento (93% → 100%)
 
-**Objetivo:** aplicação no ar com segurança e monitoramento.
+**Objetivo:** aplicação no ar, segura e monitorada.
 
-- [x] Dockerfiles multi-stage para backend e frontend
+- [x] Dockerfiles multi-stage pra backend e frontend
 - [x] ~~Docker Compose de produção com health checks~~ — substituído por Cloud Run (serviços stateless gerenciados pelo GCP)
-- [x] Configuração nginx no frontend (proxy `/api/*`, SPA fallback para client-side routing)
+- [x] Configuração nginx no frontend (proxy `/api/*`, SPA fallback pra client-side routing)
 - [x] Deploy no Cloud Run — backend e frontend como serviços independentes (us-east1)
 - [x] PostgreSQL no GCE e2-micro com Docker (free tier permanente, us-east1-b)
-- [x] VPC connector para comunicação interna Cloud Run → GCE
-- [x] Artifact Registry para armazenar imagens Docker (us-east1)
-- [x] Secret Manager para variáveis sensíveis de produção
-- [x] Cloud Scheduler para o InactivityJob (diário às 02:00)
-- [x] CORS configurado no GCS para leitura de PDFs pelo browser (`gcs-cors.json`)
+- [x] VPC connector pra comunicação interna Cloud Run → GCE
+- [x] Artifact Registry pra armazenar imagens Docker (us-east1)
+- [x] Secret Manager pra variáveis sensíveis de produção
+- [x] Cloud Scheduler pro InactivityJob (diário às 02:00)
+- [x] CORS configurado no GCS pra leitura de PDFs pelo browser (`gcs-cors.json`)
 - [x] Domínio `buruna.com.br` mapeado com TLS automático
-- [x] Configurar UptimeRobot para monitoramento + alerta de downtime por e-mail
-- [x] Configurar Gmail App Password para envio de e-mails em produção
-- [x] Variáveis de ambiente configuradas via Secret Manager
+- [x] UptimeRobot configurado pra monitoramento + alerta de downtime por e-mail
+- [x] Gmail App Password configurado pra envio de e-mails em produção
+- [x] Variáveis de ambiente via Secret Manager
 - [x] Testes dos fluxos críticos em produção (cadastro, upload, leitura)
 - [x] Responsividade mobile revisada em dispositivo real
 - [x] README final com instruções de setup e deploy
 
 ---
 
-## Resumo por Fase
+## Resumo por fase
 
 | Fase | Descrição               | Progresso  | Status   |
 | ---- | ----------------------- | ---------- | -------- |
@@ -262,21 +262,21 @@
 
 ## Backlog
 
-Itens identificados durante o desenvolvimento para melhorias futuras:
+Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 
-- [ ] Upload direto GCS: lifecycle rule de 24h para excluir arquivos órfãos (upload sem finalize)
-- [ ] Migração de e-mail para Resend + `@buruna.com.br` (DKIM/SPF/DMARC)
-- [x] CORS do backend: adicionar `https://buruna.com.br` quando domínio propagar completamente
+- [ ] Upload direto GCS: lifecycle rule de 24h pra excluir arquivos órfãos (upload sem finalize)
+- [ ] Migração de e-mail pra Resend + `@buruna.com.br` (DKIM/SPF/DMARC)
+- [x] CORS do backend: adicionar `https://buruna.com.br` quando domínio propagar
 - [ ] Compressão de PDF no upload
-- [ ] Cache de URL assinada no frontend (evitar re-geração antes do prazo de 30 min)
+- [ ] Cache de URL assinada no frontend (evitar gerar de novo antes dos 30 min)
 - [ ] `filterByTitle` não busca em `alternativeTitles`
 - [ ] Testes de integração nos fluxos críticos (GitHub Actions @SpringBootTest)
-- [ ] Paginação no `InactivityJob` (escala além de 100 usuários)
+- [ ] Paginação no `InactivityJob` (escalar além de 100 usuários)
 - [ ] hCaptcha no cadastro (movido do MVP)
 - [ ] Notificações de novos volumes (e-mail + sino no site)
 - [ ] Login social com Google (OAuth)
 - [ ] Suporte a CBZ/CBR
-- [ ] Integração com MyAnimeList / Anilist - Em estudo
+- [ ] Integração com MyAnimeList / Anilist - em estudo
 - [ ] Swagger/OpenAPI
 - [ ] Notificar todos os admins ao invés de ADMIN_EMAIL fixo
 - [ ] Suporte a tablet
@@ -285,6 +285,14 @@ Itens identificados durante o desenvolvimento para melhorias futuras:
 - [ ] 2FA (TOTP ou e-mail)
 - [ ] Reset de senha (precisa de 2FA)
 - [ ] Signed URL não revogada imediatamente - limitação conhecida
-- [ ] Configurar UptimeRobot para monitoramento + alerta de downtime por e-mail
-- [ ] GitHub Actions para build e deploy automático no push para main
-- [ ] Mahoraga Design
+- [x] UptimeRobot configurado pra monitoramento + alerta de downtime por e-mail
+- [ ] GitHub Actions pra build e deploy automático no push pra main
+- [ ] Mahoraga Design - em estudo
+- [ ] Qualidade do pdf no leitor celular está bem inferior do que no pc (só em celular real, navegador no pc em modo celular fica com qualidade boa)
+- [ ] Botão de feedback na tela principal que abre formulário de sugestões e envia pro meu email
+- [x] Navbar do modo leitura não desaparece no desktop mas fica uma lacuna vazia na parte superior da tela
+- [ ] Ao terminar de ler um volume, marcar como concluido e resetar página pra 1 + adicionar forma de navegar entre páginas mais rápido
+- [ ] Trocar volumes por capitulo (vou analisar se criamos uma tabela de capitulo vinculada ao volume, ou se usamos a tabela de volumes como se fosse capitulo). Finalmente entendi porque sites de mangá usam capítulos ao invés de volumes.
+- [ ] Adicionar git/linkedin na tela de login
+- [ ] Exibir de alguma forma uma lista com as últimas atualizações na tela principal
+- [x] HealthController criado pro UptimeRobot conseguir monitorar a aplicação em produção
