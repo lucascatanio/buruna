@@ -45,6 +45,14 @@ public class EmailService {
     }
 
     @Async
+    public void sendFeedbackNotification(String adminEmail, String username, String userEmail,
+                                         String message, String timestamp) {
+        String body = "Feedback received from %s (%s) at %s:\n\n%s".formatted(
+                username, userEmail, timestamp, message);
+        send(adminEmail, "[Burūna] Feedback from " + username, body);
+    }
+
+    @Async
     public void sendInactivityWarning(String userEmail, String username) {
         send(userEmail,
                 "[Burūna] Inactivity warning",

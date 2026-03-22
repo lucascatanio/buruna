@@ -23,6 +23,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final String REGISTER_SUFFIX = "/auth/register";
     private static final String LOGIN_SUFFIX = "/auth/login";
+    private static final String FEEDBACK_SUFFIX = "/feedback";
     private static final long WINDOW_MS = 3_600_000L;
 
     private final ConcurrentHashMap<String, RateEntry> attempts = new ConcurrentHashMap<>();
@@ -31,7 +32,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public RateLimitFilter(AppProperties appProperties) {
         this.limits = Map.of(
                 REGISTER_SUFFIX, appProperties.rateLimit().registerPerHour(),
-                LOGIN_SUFFIX, appProperties.rateLimit().loginPerHour()
+                LOGIN_SUFFIX, appProperties.rateLimit().loginPerHour(),
+                FEEDBACK_SUFFIX, appProperties.rateLimit().feedbackPerHour()
         );
     }
 

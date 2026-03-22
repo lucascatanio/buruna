@@ -408,6 +408,7 @@ Implementado em `RateLimitFilter` (in-memory `ConcurrentHashMap`):
 | Painel admin (usuários, dashboard)       | ❌        | ❌     | ❌           | ✅    |
 | Gerenciar tags e categorias              | ❌        | ❌     | ❌           | ✅    |
 | Alterar role/status/cota de usuários     | ❌        | ❌     | ❌           | ✅    |
+| Enviar feedback (`POST /feedback`)       | ❌        | ✅     | ✅           | ✅    |
 
 > Usuários com status `PENDING` ou `INACTIVE` são bloqueados no login.
 

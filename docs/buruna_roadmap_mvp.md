@@ -289,7 +289,7 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [ ] GitHub Actions pra build e deploy automático no push pra main
 - [ ] Mahoraga Design - em estudo
 - [x] Qualidade do pdf no leitor celular está bem inferior do que no pc (só em celular real, navegador no pc em modo celular fica com qualidade boa)
-- [ ] Botão de feedback na tela principal que abre formulário de sugestões e envia pro meu email
+- [x] Botão de feedback na tela principal que abre um formulário de sugestões/feedback que envia no meu email
 - [x] Navbar do modo leitura não desaparece no desktop mas fica uma lacuna vazia na parte superior da tela
 - [x] Ao terminar de ler um volume, marcar como concluido e resetar página pra 1 + adicionar forma de navegar entre páginas mais rápido
 - [ ] Trocar volumes por capitulo (vou analisar se criamos uma tabela de capitulo vinculada ao volume, ou se usamos a tabela de volumes como se fosse capitulo). Finalmente entendi porque sites de mangá usam capítulos ao invés de volumes.

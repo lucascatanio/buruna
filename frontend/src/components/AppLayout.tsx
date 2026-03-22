@@ -1,6 +1,7 @@
 import {Outlet, useNavigate, useLocation} from "react-router-dom";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
+import {FeedbackButton} from "@/components/FeedbackDialog";
 import {BookOpen, Library, Settings, LogOut, History, BookMarked} from "lucide-react";
 
 export function AppLayout() {
@@ -90,6 +91,8 @@ export function AppLayout() {
             <main className="flex-1 pb-20 md:pb-0">
                 <Outlet/>
             </main>
+
+            <FeedbackButton/>
 
             <nav className="fixed bottom-0 left-0 right-0 border-t bg-background flex md:hidden z-40">
                 <MobileNavItem
