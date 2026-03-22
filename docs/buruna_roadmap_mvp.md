@@ -286,7 +286,7 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [ ] Reset de senha (precisa de 2FA)
 - [ ] Signed URL não revogada imediatamente - limitação conhecida
 - [x] UptimeRobot configurado pra monitoramento + alerta de downtime por e-mail
-- [ ] GitHub Actions pra build e deploy automático no push pra main
+- [x] GitHub Actions pra build e deploy automático no push pra main
 - [ ] Mahoraga Design - em estudo
 - [x] Qualidade do pdf no leitor celular está bem inferior do que no pc (só em celular real, navegador no pc em modo celular fica com qualidade boa)
 - [x] Botão de feedback na tela principal que abre um formulário de sugestões/feedback que envia no meu email

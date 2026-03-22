@@ -72,10 +72,17 @@
                     (verifica last_access_at de todos os usuários ACTIVE)
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
+│  GitHub Actions (push → main)                                                │
+│  jobs: deploy-backend / deploy-frontend                                      │
+│                                                                              │
+│  1. google-github-actions/auth (Workload Identity Federation)                │
+│  2. docker build → docker push                                               │
+│  3. gcloud run deploy                                                        │
+│                ↓                                                             │
 │  Artifact Registry (us-east1)                                                │
 │  buruna-backend:latest                                                       │
 │  buruna-frontend:latest                                                      │
-│                ↓ deploy via gcloud run deploy                                │
+│                ↓                                                             │
 │  Cloud Run services                                                          │
 └──────────────────────────────────────────────────────────────────────────────┘
 
@@ -98,6 +105,7 @@
 | Jobs agendados      | Cloud Scheduler                      | us-east1           | Trigger diário do InactivityJob     |
 | Imagens Docker      | Artifact Registry                    | us-east1           | Pipeline de CI/deploy               |
 | Secrets             | Secret Manager                       | us-east1           | Injetados no Cloud Run              |
+| CI/CD               | GitHub Actions                       | —                  | Deploy automático no push para main |
 | Monitoramento       | UptimeRobot                          | —                  | Alerta de downtime por e-mail       |
 | Domínio             | buruna.com.br (registro.br)          | —                  | TLS automático via Cloud Run        |
 | Documentação API    | SpringDoc OpenAPI 2.7                | —                  | Swagger UI em /api/swagger-ui.html  |
