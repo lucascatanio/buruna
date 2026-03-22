@@ -283,7 +283,7 @@ CLOUD SCHEDULER                  BACKEND                    POSTGRESQL         G
 ```
 
 > O job também roda via `@Scheduled` interno (Spring) como fallback.
-> Limitação atual: não usa paginação. Funciona bem para até ~100 usuários.
+> Usuários ACTIVE são processados em páginas de 50 via `Pageable`, sem carregar toda a base em memória.
 
 ---
 

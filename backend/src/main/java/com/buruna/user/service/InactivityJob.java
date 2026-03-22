@@ -9,6 +9,9 @@ import com.buruna.user.domain.UserStatus;
 import com.buruna.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,27 +55,33 @@ public class InactivityJob {
         OffsetDateTime warningCutoff = now.minusDays(WARNING_THRESHOLD_DAYS);
         OffsetDateTime deactivationCutoff = now.minusDays(DEACTIVATION_THRESHOLD_DAYS);
 
-        // INFO: carrega todos os usuários ACTIVE em memória.
-        // Adequado para ≤100 usuários (escopo atual). Se a base crescer,
-        // substituir por processamento paginado com Pageable.
-        List<User> activeUsers = userRepository.findByStatus(UserStatus.ACTIVE);
-
         int warned = 0;
         int deactivated = 0;
 
-        for (User user : activeUsers) {
-            OffsetDateTime lastAccess = user.getLastAccessAt();
-            if (lastAccess == null) lastAccess = user.getCreatedAt();
+        Pageable pageable = PageRequest.of(0, 50);
+        Page<User> page;
+        int pageNumber = 0;
+        do {
+            page = userRepository.findByStatus(UserStatus.ACTIVE, pageable);
+            log.info("InactivityJob processing page {} of {}", pageNumber, page.getTotalPages());
 
-            if (lastAccess.isBefore(deactivationCutoff)) {
-                List<String> fileUrls = deactivateUser(user);
-                deleteFromGcs(fileUrls);
-                deactivated++;
-            } else if (lastAccess.isBefore(warningCutoff)) {
-                emailService.sendInactivityWarning(user.getEmail(), user.getUsername());
-                warned++;
+            for (User user : page.getContent()) {
+                OffsetDateTime lastAccess = user.getLastAccessAt();
+                if (lastAccess == null) lastAccess = user.getCreatedAt();
+
+                if (lastAccess.isBefore(deactivationCutoff)) {
+                    List<String> fileUrls = deactivateUser(user);
+                    deleteFromGcs(fileUrls);
+                    deactivated++;
+                } else if (lastAccess.isBefore(warningCutoff)) {
+                    emailService.sendInactivityWarning(user.getEmail(), user.getUsername());
+                    warned++;
+                }
             }
-        }
+
+            pageable = page.nextPageable();
+            pageNumber++;
+        } while (page.hasNext());
 
         log.info("InactivityJob finished: {} warned, {} deactivated", warned, deactivated);
     }

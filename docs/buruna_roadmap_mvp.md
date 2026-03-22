@@ -271,14 +271,14 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [x] Cache de URL assinada no frontend (evitar gerar de novo antes dos 30 min)
 - [x] `filterByTitle` não busca em `alternativeTitles`
 - [ ] Testes de integração nos fluxos críticos (GitHub Actions @SpringBootTest)
-- [ ] Paginação no `InactivityJob` (escalar além de 100 usuários)
+- [x] Paginação no `InactivityJob` (escalar além de 100 usuários)
 - [ ] hCaptcha no cadastro (movido do MVP)
 - [ ] Notificações de novos volumes (e-mail + sino no site)
 - [ ] Login social com Google (OAuth)
 - [ ] Suporte a CBZ/CBR
 - [ ] Integração com MyAnimeList / Anilist - em estudo
 - [ ] Swagger/OpenAPI
-- [ ] Notificar todos os admins ao invés de ADMIN_EMAIL fixo
+- [x] Notificar todos os admins ao invés de ADMIN_EMAIL fixo
 - [ ] Suporte a tablet
 - [x] Refresh token rotation
 - [x] Limite de tamanho de payload JSON - spring.codec.max-in-memory-size
@@ -291,7 +291,7 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [x] Qualidade do pdf no leitor celular está bem inferior do que no pc (só em celular real, navegador no pc em modo celular fica com qualidade boa)
 - [ ] Botão de feedback na tela principal que abre formulário de sugestões e envia pro meu email
 - [x] Navbar do modo leitura não desaparece no desktop mas fica uma lacuna vazia na parte superior da tela
-- [ ] Ao terminar de ler um volume, marcar como concluido e resetar página pra 1 + adicionar forma de navegar entre páginas mais rápido
+- [x] Ao terminar de ler um volume, marcar como concluido e resetar página pra 1 + adicionar forma de navegar entre páginas mais rápido
 - [ ] Trocar volumes por capitulo (vou analisar se criamos uma tabela de capitulo vinculada ao volume, ou se usamos a tabela de volumes como se fosse capitulo). Finalmente entendi porque sites de mangá usam capítulos ao invés de volumes.
 - [ ] Adicionar git/linkedin na tela de login
 - [ ] Exibir de alguma forma uma lista com as últimas atualizações na tela principal

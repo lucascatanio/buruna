@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -69,9 +70,19 @@ public class AuthService {
         }
 
         userRepository.save(user);
-        emailService.sendNewRegistrationNotification(
-                appProperties.adminEmail(), user.getUsername(), user.getEmail()
-        );
+
+        List<User> admins = userRepository.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE);
+        if (admins.isEmpty()) {
+            emailService.sendNewRegistrationNotification(
+                    appProperties.adminEmail(), user.getUsername(), user.getEmail()
+            );
+        } else {
+            for (User admin : admins) {
+                emailService.sendNewRegistrationNotification(
+                        admin.getEmail(), user.getUsername(), user.getEmail()
+                );
+            }
+        }
     }
 
     @Transactional
