@@ -72,16 +72,20 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
             const page = await pdf.getPage(pageNum);
             const container = canvasRef.current.parentElement!;
             const containerWidth = container.clientWidth;
+            const dpr = Math.min(window.devicePixelRatio || 1, 3);
             const viewport = page.getViewport({scale: 1});
             const scale = containerWidth / viewport.width;
-            const scaledViewport = page.getViewport({scale});
+            const renderViewport = page.getViewport({scale: Math.max(scale, 1.5) * dpr});
+            const displayViewport = page.getViewport({scale: scale});
 
             const canvas = canvasRef.current;
-            canvas.width = scaledViewport.width;
-            canvas.height = scaledViewport.height;
+            canvas.width = renderViewport.width;
+            canvas.height = renderViewport.height;
+            canvas.style.width = `${displayViewport.width}px`;
+            canvas.style.height = `${displayViewport.height}px`;
 
             const ctx = canvas.getContext("2d")!;
-            const task = page.render({canvasContext: ctx, viewport: scaledViewport});
+            const task = page.render({canvasContext: ctx, viewport: renderViewport});
             renderTaskRef.current = task;
             await task.promise;
         } catch (e: any) {
@@ -219,14 +223,18 @@ function ScrollPage({pdf, pageNum, brightness, contrast, onVisible}: ScrollPageP
                     try {
                         const page = await pdf.getPage(pageNum);
                         const containerWidth = el.clientWidth || 700;
+                        const dpr = Math.min(window.devicePixelRatio || 1, 3);
                         const viewport = page.getViewport({scale: 1});
                         const scale = containerWidth / viewport.width;
-                        const scaledViewport = page.getViewport({scale});
+                        const renderViewport = page.getViewport({scale: Math.max(scale, 1.5) * dpr});
+                        const displayViewport = page.getViewport({scale: scale});
                         const canvas = canvasRef.current!;
-                        canvas.width = scaledViewport.width;
-                        canvas.height = scaledViewport.height;
+                        canvas.width = renderViewport.width;
+                        canvas.height = renderViewport.height;
+                        canvas.style.width = `${displayViewport.width}px`;
+                        canvas.style.height = `${displayViewport.height}px`;
                         const ctx2d = canvas.getContext("2d")!;
-                        await page.render({canvasContext: ctx2d, viewport: scaledViewport}).promise;
+                        await page.render({canvasContext: ctx2d, viewport: renderViewport}).promise;
                     } catch (e) {
                         console.error(`Erro ao renderizar página ${pageNum}:`, e);
                     }

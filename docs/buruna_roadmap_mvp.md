@@ -288,7 +288,7 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [x] UptimeRobot configurado pra monitoramento + alerta de downtime por e-mail
 - [ ] GitHub Actions pra build e deploy automático no push pra main
 - [ ] Mahoraga Design - em estudo
-- [ ] Qualidade do pdf no leitor celular está bem inferior do que no pc (só em celular real, navegador no pc em modo celular fica com qualidade boa)
+- [x] Qualidade do pdf no leitor celular está bem inferior do que no pc (só em celular real, navegador no pc em modo celular fica com qualidade boa)
 - [ ] Botão de feedback na tela principal que abre formulário de sugestões e envia pro meu email
 - [x] Navbar do modo leitura não desaparece no desktop mas fica uma lacuna vazia na parte superior da tela
 - [ ] Ao terminar de ler um volume, marcar como concluido e resetar página pra 1 + adicionar forma de navegar entre páginas mais rápido
