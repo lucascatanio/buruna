@@ -579,6 +579,7 @@ export function MangaDetailPage() {
                                         state: {
                                             mangaId: manga.id,
                                             mangaTitle: manga.title,
+                                            mangaSlug: manga.slug,
                                             volumeNumber: vol.volumeNumber,
                                             backUrl: `/biblioteca/${manga.slug}`,
                                         }

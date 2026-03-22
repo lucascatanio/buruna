@@ -518,6 +518,10 @@ export function ReaderPage() {
     }
 
     function handleVolumeComplete() {
+        if (progressTimer) {
+            clearTimeout(progressTimer);
+            progressTimer = null;
+        }
         setShowCompletion(true);
         api.post(`/reader/${volumeId}/progress`, {currentPage: 1})
             .catch((e) => console.warn("Failed to reset progress:", e));
