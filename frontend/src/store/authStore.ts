@@ -1,5 +1,6 @@
 import {create} from "zustand";
 import {persist} from "zustand/middleware";
+import {clearSignedUrlCache} from "@/lib/signedUrlCache";
 
 export interface AuthUser {
     id: string;
@@ -31,8 +32,10 @@ export const useAuthStore = create<AuthState>()(
             user: null,
             setTokens: (accessToken, refreshToken) =>
                 set({accessToken, refreshToken, user: decodeUser(accessToken)}),
-            clearAuth: () =>
-                set({accessToken: null, refreshToken: null, user: null}),
+            clearAuth: () => {
+                clearSignedUrlCache();
+                set({accessToken: null, refreshToken: null, user: null});
+            },
         }),
         {name: "buruna-auth"}
     )

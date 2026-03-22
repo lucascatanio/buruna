@@ -23,7 +23,10 @@ public class MangaSpecification {
         return (root, query, cb) -> {
             if (title == null || title.isBlank()) return null;
             String pattern = "%" + title.toLowerCase() + "%";
-            return cb.like(cb.lower(root.get("title")), pattern);
+            return cb.or(
+                    cb.like(cb.lower(root.get("title")), pattern),
+                    cb.like(cb.lower(root.get("alternativeTitles")), pattern)
+            );
         };
     }
 

@@ -3,6 +3,7 @@ import {useParams, useNavigate, useLocation} from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import type {PDFDocumentProxy, RenderTask} from "pdfjs-dist";
 import api from "@/lib/axios";
+import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
 import {
     ArrowLeft,
     ChevronLeft,
@@ -460,8 +461,9 @@ export function ReaderPage() {
 
         async function init() {
             try {
+                const cached = getSignedUrl(volumeId!);
                 const [urlRes, progressRes] = await Promise.allSettled([
-                    api.get(`/reader/${volumeId}/url`),
+                    cached ? Promise.resolve(cached) : api.get(`/reader/${volumeId}/url`).then(r => r.data.url),
                     api.get(`/reader/${volumeId}/progress`),
                 ]);
 
@@ -471,7 +473,8 @@ export function ReaderPage() {
                     return;
                 }
 
-                const signedUrl = urlRes.value.data.url;
+                const signedUrl = urlRes.value as string;
+                if (!cached) setSignedUrl(volumeId!, signedUrl);
 
                 let startPage = 1;
                 if (progressRes.status === "fulfilled" && progressRes.value?.status === 200) {

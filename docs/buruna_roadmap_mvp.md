@@ -268,8 +268,8 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [ ] Migração de e-mail pra Resend + `@buruna.com.br` (DKIM/SPF/DMARC)
 - [x] CORS do backend: adicionar `https://buruna.com.br` quando domínio propagar
 - [ ] Compressão de PDF no upload
-- [ ] Cache de URL assinada no frontend (evitar gerar de novo antes dos 30 min)
-- [ ] `filterByTitle` não busca em `alternativeTitles`
+- [x] Cache de URL assinada no frontend (evitar gerar de novo antes dos 30 min)
+- [x] `filterByTitle` não busca em `alternativeTitles`
 - [ ] Testes de integração nos fluxos críticos (GitHub Actions @SpringBootTest)
 - [ ] Paginação no `InactivityJob` (escalar além de 100 usuários)
 - [ ] hCaptcha no cadastro (movido do MVP)
