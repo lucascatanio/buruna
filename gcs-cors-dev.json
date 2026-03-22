@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "https://buruna.com.br",
+      "https://buruna-frontend-922749062176.us-east1.run.app",
+      "http://localhost"
+    ],
+    "method": ["GET", "PUT", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Content-Range", "Range"]
+  }
+]
