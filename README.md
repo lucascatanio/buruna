@@ -37,9 +37,9 @@ PostgreSQL 16      PDFs e capas com nomes ofuscados (UUID)
 (via VPC)          URLs assinadas: leitura 30min, upload PUT 15min
 ```
 
-PDFs são servidos diretamente do GCS ao browser via URL assinada, sem passar pelo backend.
+PDFs são servidos direto do GCS ao browser via URL assinada, sem passar pelo backend.
 
-Para mais detalhes: [`docs/buruna_architecture.md`](docs/buruna_architecture.md)
+Mais detalhes em [`docs/buruna_architecture.md`](docs/buruna_architecture.md)
 
 ---
 
@@ -92,17 +92,17 @@ Disponível em: **http://localhost**
 | `DB_URL` | JDBC URL do PostgreSQL |
 | `DB_USER` | Usuário do banco |
 | `DB_PASSWORD` | Senha do banco |
-| `JWT_SECRET` | Chave para assinar tokens JWT |
+| `JWT_SECRET` | Chave pra assinar tokens JWT |
 | `JWT_EXPIRATION` | Expiração do access token em segundos (padrão: 3600) |
 | `REFRESH_TOKEN_EXPIRATION` | Expiração do refresh token em segundos (padrão: 604800) |
 | `GCS_BUCKET_NAME` | Nome do bucket GCS |
-| `GCS_CREDENTIALS_PATH` | Caminho para o `gcs-credentials.json` |
-| `MAIL_USERNAME` | E-mail para envio (Gmail) |
+| `GCS_CREDENTIALS_PATH` | Caminho pro `gcs-credentials.json` |
+| `MAIL_USERNAME` | E-mail pra envio (Gmail) |
 | `MAIL_PASSWORD` | App Password do Gmail |
 | `ADMIN_EMAIL` | E-mail que recebe notificações de cadastro pendente |
 | `APP_CORS_ALLOWED_ORIGIN` | Origem permitida no CORS (ex: `https://buruna.com.br`) |
 | `APP_MAIL_FROM` | Remetente dos e-mails (ex: `noreply@buruna.com.br`) |
-| `APP_JOBS_SECRET` | Segredo para o endpoint de trigger do InactivityJob |
+| `APP_JOBS_SECRET` | Segredo pro endpoint de trigger do InactivityJob |
 | `MAX_FILE_SIZE_MB` | Tamanho máximo de arquivo em MB (padrão: 500) |
 | `RATE_LIMIT_REGISTER_PER_HOUR` | Limite de cadastros por IP por hora (padrão: 5) |
 | `RATE_LIMIT_LOGIN_PER_HOUR` | Limite de logins por IP por hora (padrão: 10) |
@@ -135,7 +135,7 @@ buruna/
 │   │   ├── store/         Zustand (auth)
 │   │   └── lib/           axios, utils
 │   ├── public/
-│   │   └── cmaps/         mapas de caracteres para pdfjs (japonês/coreano/chinês)
+│   │   └── cmaps/         mapas de caracteres pra pdfjs (japonês/coreano/chinês)
 │   ├── nginx.conf         proxy /api/* + SPA fallback
 │   └── Dockerfile         multi-stage (Node build + nginx runtime)
 ├── docs/
@@ -153,7 +153,7 @@ buruna/
 
 ## Deploy em produção (GCP)
 
-O deploy usa Cloud Run para backend e frontend separados. Resumo dos comandos:
+O deploy usa Cloud Run pro backend e frontend separados. Resumo dos comandos:
 
 ```bash
 PROJECT=buruna
@@ -177,9 +177,9 @@ gcloud run deploy buruna-frontend \
   --allow-unauthenticated
 ```
 
-Todas as variáveis sensíveis estão no Secret Manager — não precisam ser passadas no comando acima após o primeiro deploy.
+Variáveis sensíveis ficam no Secret Manager — não precisam ser passadas no comando acima depois do primeiro deploy.
 
-Para o passo a passo completo de setup da infra GCP (VPC, GCE, Scheduler, domínio): [`docs/buruna_architecture.md`](docs/buruna_architecture.md)
+Passo a passo de setup da infra GCP (VPC, GCE, Scheduler, domínio): [`docs/buruna_architecture.md`](docs/buruna_architecture.md)
 
 ---
 
