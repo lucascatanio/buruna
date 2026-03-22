@@ -100,6 +100,7 @@
 | Secrets             | Secret Manager                       | us-east1           | Injetados no Cloud Run              |
 | Monitoramento       | UptimeRobot                          | —                  | Alerta de downtime por e-mail       |
 | Domínio             | buruna.com.br (registro.br)          | —                  | TLS automático via Cloud Run        |
+| Documentação API    | SpringDoc OpenAPI 2.7                | —                  | Swagger UI em /api/swagger-ui.html  |
 
 ---
 

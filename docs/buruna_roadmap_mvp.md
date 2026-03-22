@@ -277,7 +277,7 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [ ] Login social com Google (OAuth)
 - [ ] Suporte a CBZ/CBR
 - [ ] Integração com MyAnimeList / Anilist - em estudo
-- [ ] Swagger/OpenAPI
+- [x] Swagger/OpenAPI
 - [x] Notificar todos os admins ao invés de ADMIN_EMAIL fixo
 - [ ] Suporte a tablet
 - [x] Refresh token rotation
