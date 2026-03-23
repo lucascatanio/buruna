@@ -18,6 +18,12 @@ import {PrivateMangaDetailPage} from "@/pages/PrivateMangaDetailPage.tsx";
 import {ReadingHistoryPage} from "@/pages/ReadingHistoryPage.tsx";
 import {ReadingListPage} from "@/pages/ReadingListPage.tsx";
 import {ReaderPage} from "@/pages/ReaderPage.tsx";
+import {useParams} from "react-router-dom";
+
+function ReaderPageWrapper() {
+    const {volumeId} = useParams();
+    return <ReaderPage key={volumeId}/>;
+}
 import {AdminDashboardPage} from "@/pages/AdminDashboardPage.tsx";
 
 export default function App() {
@@ -39,7 +45,7 @@ export default function App() {
                         <Route path="/lista" element={<ReadingListPage/>}/>
                     </Route>
                     <Route element={<ProtectedRoute/>}>
-                        <Route path="/leitor/:volumeId" element={<ReaderPage/>}/>
+                        <Route path="/leitor/:volumeId" element={<ReaderPageWrapper/>}/>
                     </Route>
                 </Route>
 
