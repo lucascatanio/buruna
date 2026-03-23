@@ -9,6 +9,7 @@ public record RegisterRequest(
         @NotBlank @Size(min = 3, max = 50) String username,
         @NotBlank @Size(min = 8, message = "Password must be at least 8 characters") String password,
         @NotBlank String presentationMessage,
-        String avatarBase64
+        String avatarBase64,
+        @NotBlank String captchaToken
 ) {
 }

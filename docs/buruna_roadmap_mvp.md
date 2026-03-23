@@ -233,7 +233,7 @@
 - [x] CORS configurado no GCS pra leitura de PDFs pelo browser (`gcs-cors.json`)
 - [x] Domínio `buruna.com.br` mapeado com TLS automático
 - [x] UptimeRobot configurado pra monitoramento + alerta de downtime por e-mail
-- [x] Gmail App Password configurado pra envio de e-mails em produção
+- [x] ~~Gmail App Password configurado pra envio de e-mails em produção~~ — substituído por Resend API com domínio `@buruna.com.br`
 - [x] Variáveis de ambiente via Secret Manager
 - [x] Testes dos fluxos críticos em produção (cadastro, upload, leitura)
 - [x] Responsividade mobile revisada em dispositivo real
@@ -265,14 +265,14 @@
 Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 
 - [ ] Upload direto GCS: lifecycle rule de 24h pra excluir arquivos órfãos (upload sem finalize)
-- [ ] Migração de e-mail pra Resend + `@buruna.com.br` (DKIM/SPF/DMARC)
+- [x] Migração de e-mail pra Resend + `@buruna.com.br` (DKIM/SPF/DMARC)
 - [x] CORS do backend: adicionar `https://buruna.com.br` quando domínio propagar
 - [ ] Compressão de PDF no upload
 - [x] Cache de URL assinada no frontend (evitar gerar de novo antes dos 30 min)
 - [x] `filterByTitle` não busca em `alternativeTitles`
 - [ ] Testes de integração nos fluxos críticos (GitHub Actions @SpringBootTest)
 - [x] Paginação no `InactivityJob` (escalar além de 100 usuários)
-- [ ] hCaptcha no cadastro (movido do MVP)
+- [x] hCaptcha no cadastro (movido do MVP)
 - [ ] Notificações de novos volumes (e-mail + sino no site)
 - [ ] Login social com Google (OAuth)
 - [ ] Suporte a CBZ/CBR

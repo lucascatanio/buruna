@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {useNavigate, Link} from "react-router-dom";
 import {toast} from "sonner";
 import api from "@/lib/axios";
@@ -7,8 +7,18 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
 
+declare global {
+    interface Window {
+        hcaptcha: {
+            render: (container: string, options: { sitekey: string; callback: (token: string) => void; "expired-callback": () => void }) => string;
+            reset: (widgetId?: string) => void;
+        };
+    }
+}
+
 export function RegisterPage() {
     const navigate = useNavigate();
+    const widgetId = useRef<string | undefined>(undefined);
 
     const [form, setForm] = useState({
         email: "",
@@ -16,7 +26,26 @@ export function RegisterPage() {
         password: "",
         presentationMessage: "",
     });
+    const [captchaToken, setCaptchaToken] = useState("");
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const script = document.createElement("script");
+        script.src = "https://js.hcaptcha.com/1/api.js";
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+            widgetId.current = window.hcaptcha.render("hcaptcha-container", {
+                sitekey: import.meta.env.VITE_HCAPTCHA_SITE_KEY,
+                callback: (token: string) => setCaptchaToken(token),
+                "expired-callback": () => setCaptchaToken(""),
+            });
+        };
+        document.body.appendChild(script);
+        return () => {
+            document.body.removeChild(script);
+        };
+    }, []);
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
         setForm((prev) => ({...prev, [e.target.name]: e.target.value}));
@@ -30,11 +59,13 @@ export function RegisterPage() {
         }
         setLoading(true);
         try {
-            await api.post("/auth/register", form);
+            await api.post("/auth/register", {...form, captchaToken});
             toast.success("Solicitação enviada! Aguarde a aprovação do admin.");
             navigate("/login");
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Erro ao enviar solicitação");
+            window.hcaptcha?.reset(widgetId.current);
+            setCaptchaToken("");
         } finally {
             setLoading(false);
         }
@@ -98,7 +129,8 @@ export function RegisterPage() {
                                 required
                             />
                         </div>
-                        <Button type="submit" className="w-full" disabled={loading}>
+                        <div id="hcaptcha-container" className="flex justify-center" />
+                        <Button type="submit" className="w-full" disabled={loading || !captchaToken}>
                             {loading ? "Enviando…" : "Solicitar acesso"}
                         </Button>
                     </form>

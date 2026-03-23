@@ -34,20 +34,25 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AppProperties appProperties;
     private final StorageClient storageClient;
+    private final CaptchaService captchaService;
 
     public AuthService(UserRepository userRepository, TokenService tokenService,
                        EmailService emailService, PasswordEncoder passwordEncoder,
-                       AppProperties appProperties, StorageClient storageClient) {
+                       AppProperties appProperties, StorageClient storageClient,
+                       CaptchaService captchaService) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.appProperties = appProperties;
         this.storageClient = storageClient;
+        this.captchaService = captchaService;
     }
 
     @Transactional
-    public void register(RegisterRequest request) {
+    public void register(RegisterRequest request, String clientIp) {
+        captchaService.verify(request.captchaToken(), clientIp);
+
         if (userRepository.existsByEmail(request.email())) {
             throw new UserAlreadyExistsException("email");
         }

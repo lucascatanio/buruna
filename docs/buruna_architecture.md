@@ -90,7 +90,7 @@
 │  Secret Manager (us-east1)                                                   │
 │  Injeta variáveis de ambiente no Cloud Run no momento do deploy:             │
 │  DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET, GCS_BUCKET_NAME,                 │
-│  MAIL_USERNAME, MAIL_PASSWORD, APP_JOBS_SECRET, APP_CORS_ALLOWED_ORIGIN, …  │
+│  RESEND_API_KEY, APP_JOBS_SECRET, APP_CORS_ALLOWED_ORIGIN, …                │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -106,6 +106,7 @@
 | Imagens Docker      | Artifact Registry                    | us-east1           | Pipeline de CI/deploy               |
 | Secrets             | Secret Manager                       | us-east1           | Injetados no Cloud Run              |
 | CI/CD               | GitHub Actions                       | —                  | Deploy automático no push para main |
+| E-mail              | Resend API                           | —                  | Domínio @buruna.com.br, DKIM/SPF/DMARC |
 | Monitoramento       | UptimeRobot                          | —                  | Alerta de downtime por e-mail       |
 | Domínio             | buruna.com.br (registro.br)          | —                  | TLS automático via Cloud Run        |
 | Documentação API    | SpringDoc OpenAPI 2.7                | —                  | Swagger UI em /api/swagger-ui.html  |
@@ -402,6 +403,8 @@ Implementado em `RateLimitFilter` (in-memory `ConcurrentHashMap`):
 - Retorna `429 Too Many Requests` quando limite excedido
 - Limpeza de entradas expiradas: `@Scheduled` a cada 1 hora
 
+**hCaptcha no registro:** o endpoint `POST /auth/register` possui uma camada adicional de proteção anti-bot via hCaptcha. O frontend renderiza o widget e envia o token resolvido no campo `captchaToken`; o backend valida o token na API `https://api.hcaptcha.com/siteverify` antes de criar o usuário. Em desenvolvimento (sem `HCAPTCHA_SECRET` configurado), a validação é ignorada automaticamente.
+
 ### 4.3 Controle de acesso por role
 
 | Ação                                     | Visitante | READER | COLLABORATOR | ADMIN |
@@ -542,12 +545,11 @@ Implementado em `RateLimitFilter` (in-memory `ConcurrentHashMap`):
 
 ---
 
-### ADR-10 — Rate limit sem captcha no registro
-(candidata a atualização, hCaptcha no backlog)  
-**Contexto:** O endpoint de registro é público e precisa de proteção contra bots e abuso.  
-**Decisão:** Rate limit de 5 requests/hora por IP via `RateLimitFilter` (in-memory `ConcurrentHashMap`). Sem captcha por enquanto.  
-**Por quê:** O cadastro exige aprovação manual do admin. Mesmo que um bot crie contas em massa, elas ficam em PENDING e não ganham acesso a nada. O rate limit barra abuso de volume (DDoS no endpoint, spam de e-mails ao admin). O captcha foi adiado pra reduzir escopo do MVP, mas tá no backlog porque é a defesa certa contra bots sofisticados que respeitam rate limits.  
-**Tradeoff:** Bots sofisticados podem criar uma conta a cada 12 minutos por IP, gerando spam no e-mail do admin. No volume atual, dá pra conviver.
+### ADR-10 — Rate limit + hCaptcha no registro
+**Contexto:** O endpoint de registro é público e precisa de proteção contra bots e abuso.
+**Decisão:** Rate limit de 5 requests/hora por IP via `RateLimitFilter` (in-memory `ConcurrentHashMap`) combinado com validação de hCaptcha em `CaptchaService`. O frontend renderiza o widget `@hcaptcha/react-hcaptcha` e envia o token resolvido no campo `captchaToken`; o backend valida via `POST https://api.hcaptcha.com/siteverify`. Em desenvolvimento (sem `HCAPTCHA_SECRET`), a chamada à API é ignorada.
+**Por quê:** O rate limit barra abuso de volume (DDoS no endpoint, spam de e-mails ao admin). O hCaptcha impede bots sofisticados que respeitam rate limits — a defesa certa contra automações que criariam uma conta a cada 12 minutos por IP.
+**Tradeoff:** Adiciona fricção pra usuários legítimos e dependência de serviço externo (hCaptcha). O captcha expira após alguns minutos, mas o widget exibe reset automático via `onExpire`.
 
 ---
 
@@ -706,3 +708,12 @@ Já implementado desde o MVP
 **Decisão:** Cada chamada a `POST /auth/refresh` deleta o token usado e gera um novo. O response devolve accessToken + refreshToken novos, e o frontend atualiza os dois no storage.
 **Justificativa:** Se alguém roubar o token e usá-lo, o original morre. Na próxima vez que o usuário legítimo tentar renovar, o token dele já não existe — recebe 401 e precisa relogar. Não é perfeito (o atacante ainda usou uma vez), mas a janela de exploração cai de 7 dias para um único ciclo.
 **Tradeoff aceito:** Se por algum motivo o mesmo refresh token for enviado duas vezes (ex: resposta de rede duplicada, retry automático), a segunda chamada dá 401 e força logout. O interceptor Axios do frontend evita isso com uma fila que serializa chamadas ao `/auth/refresh`, então na prática não acontece.
+
+---
+
+### ADR-29 — Resend API para envio de e-mail com domínio próprio
+
+**Contexto:** O envio de e-mails usava Gmail SMTP com App Password. Além de frágil (o Google pode revogar a qualquer momento), o remetente era um `@gmail.com` — o que prejudica deliverability e não passa credibilidade. Com o domínio `buruna.com.br` já registrado, fazia sentido ter e-mails saindo de `@buruna.com.br`.
+**Decisão:** Migrar para a API HTTP do Resend com domínio `buruna.com.br` configurado com DKIM, SPF e DMARC. Criamos uma interface `EmailSender` e a implementação `ResendEmailSender` que faz `POST https://api.resend.com/emails`. Se a API key estiver vazia, o envio é ignorado com log — permite rodar localmente sem configuração.
+**Justificativa:** O Resend tem free tier de 100 e-mails/dia (suficiente por anos no volume atual), API simples sem SDK pesado, e o setup de DNS garante que os e-mails não caiam em spam. A interface `EmailSender` existe porque agora há justificativa real para a abstração — se amanhã o Resend mudar pricing ou cair, trocar o provider é criar uma classe nova e trocar o `@Component`.
+**Tradeoff aceito:** Dependência de serviço externo para envio de e-mails. Se o Resend sair do ar, os e-mails ficam silenciosamente perdidos (o `@Async` não tem retry). Pro volume atual, isso é aceitável — nenhum e-mail do Burūna é crítico a ponto de exigir fila com dead letter.
