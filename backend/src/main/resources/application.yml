@@ -19,18 +19,6 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: false
 
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
   servlet:
     multipart:
       max-file-size: ${MAX_FILE_SIZE_MB:500}MB
@@ -38,6 +26,9 @@ spring:
 
   codec:
     max-in-memory-size: 10MB
+
+resend:
+  api-key: ${RESEND_API_KEY:}
 
 app:
   jwt:
@@ -59,7 +50,7 @@ app:
   hcaptcha:
     secret: ${HCAPTCHA_SECRET:}
   mail:
-    from: ${APP_MAIL_FROM:noreply@localhost}
+    from: ${APP_MAIL_FROM:Burūna <noreply@buruna.com.br>}
   upload:
     max-file-size-mb: ${MAX_FILE_SIZE_MB:500}
 

@@ -90,7 +90,7 @@
 │  Secret Manager (us-east1)                                                   │
 │  Injeta variáveis de ambiente no Cloud Run no momento do deploy:             │
 │  DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET, GCS_BUCKET_NAME,                 │
-│  MAIL_USERNAME, MAIL_PASSWORD, APP_JOBS_SECRET, APP_CORS_ALLOWED_ORIGIN, …  │
+│  RESEND_API_KEY, APP_JOBS_SECRET, APP_CORS_ALLOWED_ORIGIN, …                │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -106,6 +106,7 @@
 | Imagens Docker      | Artifact Registry                    | us-east1           | Pipeline de CI/deploy               |
 | Secrets             | Secret Manager                       | us-east1           | Injetados no Cloud Run              |
 | CI/CD               | GitHub Actions                       | —                  | Deploy automático no push para main |
+| E-mail              | Resend API                           | —                  | Domínio @buruna.com.br, DKIM/SPF/DMARC |
 | Monitoramento       | UptimeRobot                          | —                  | Alerta de downtime por e-mail       |
 | Domínio             | buruna.com.br (registro.br)          | —                  | TLS automático via Cloud Run        |
 | Documentação API    | SpringDoc OpenAPI 2.7                | —                  | Swagger UI em /api/swagger-ui.html  |
@@ -707,3 +708,12 @@ Já implementado desde o MVP
 **Decisão:** Cada chamada a `POST /auth/refresh` deleta o token usado e gera um novo. O response devolve accessToken + refreshToken novos, e o frontend atualiza os dois no storage.
 **Justificativa:** Se alguém roubar o token e usá-lo, o original morre. Na próxima vez que o usuário legítimo tentar renovar, o token dele já não existe — recebe 401 e precisa relogar. Não é perfeito (o atacante ainda usou uma vez), mas a janela de exploração cai de 7 dias para um único ciclo.
 **Tradeoff aceito:** Se por algum motivo o mesmo refresh token for enviado duas vezes (ex: resposta de rede duplicada, retry automático), a segunda chamada dá 401 e força logout. O interceptor Axios do frontend evita isso com uma fila que serializa chamadas ao `/auth/refresh`, então na prática não acontece.
+
+---
+
+### ADR-29 — Resend API para envio de e-mail com domínio próprio
+
+**Contexto:** O envio de e-mails usava Gmail SMTP com App Password. Além de frágil (o Google pode revogar a qualquer momento), o remetente era um `@gmail.com` — o que prejudica deliverability e não passa credibilidade. Com o domínio `buruna.com.br` já registrado, fazia sentido ter e-mails saindo de `@buruna.com.br`.
+**Decisão:** Migrar para a API HTTP do Resend com domínio `buruna.com.br` configurado com DKIM, SPF e DMARC. Criamos uma interface `EmailSender` e a implementação `ResendEmailSender` que faz `POST https://api.resend.com/emails`. Se a API key estiver vazia, o envio é ignorado com log — permite rodar localmente sem configuração.
+**Justificativa:** O Resend tem free tier de 100 e-mails/dia (suficiente por anos no volume atual), API simples sem SDK pesado, e o setup de DNS garante que os e-mails não caiam em spam. A interface `EmailSender` existe porque agora há justificativa real para a abstração — se amanhã o Resend mudar pricing ou cair, trocar o provider é criar uma classe nova e trocar o `@Component`.
+**Tradeoff aceito:** Dependência de serviço externo para envio de e-mails. Se o Resend sair do ar, os e-mails ficam silenciosamente perdidos (o `@Async` não tem retry). Pro volume atual, isso é aceitável — nenhum e-mail do Burūna é crítico a ponto de exigir fila com dead letter.

@@ -36,6 +36,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB}
       RATE_LIMIT_REGISTER_PER_HOUR: ${RATE_LIMIT_REGISTER_PER_HOUR}
+      RESEND_API_KEY: ${RESEND_API_KEY}
     ports:
       - "8080:8080"
     volumes:
