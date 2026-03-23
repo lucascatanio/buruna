@@ -56,6 +56,8 @@ app:
     register-per-hour: ${RATE_LIMIT_REGISTER_PER_HOUR:5}
     login-per-hour: ${RATE_LIMIT_LOGIN_PER_HOUR:10}
     feedback-per-hour: ${RATE_LIMIT_FEEDBACK_PER_HOUR:3}
+  hcaptcha:
+    secret: ${HCAPTCHA_SECRET:}
   mail:
     from: ${APP_MAIL_FROM:noreply@localhost}
   upload:

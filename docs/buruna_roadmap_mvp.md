@@ -272,7 +272,7 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [x] `filterByTitle` não busca em `alternativeTitles`
 - [ ] Testes de integração nos fluxos críticos (GitHub Actions @SpringBootTest)
 - [x] Paginação no `InactivityJob` (escalar além de 100 usuários)
-- [ ] hCaptcha no cadastro (movido do MVP)
+- [x] hCaptcha no cadastro (movido do MVP)
 - [ ] Notificações de novos volumes (e-mail + sino no site)
 - [ ] Login social com Google (OAuth)
 - [ ] Suporte a CBZ/CBR

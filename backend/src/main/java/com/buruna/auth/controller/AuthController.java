@@ -3,6 +3,7 @@ package com.buruna.auth.controller;
 import com.buruna.auth.dto.*;
 import com.buruna.auth.service.AuthService;
 import com.buruna.user.domain.User;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +21,16 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request) {
-        authService.register(request);
+    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request,
+                                         HttpServletRequest httpRequest) {
+        String clientIp = resolveClientIp(httpRequest);
+        authService.register(request, clientIp);
         return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        return (forwarded != null) ? forwarded.split(",")[0].trim() : request.getRemoteAddr();
     }
 
     @PostMapping("/login")
