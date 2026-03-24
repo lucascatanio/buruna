@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {useParams, useNavigate} from "react-router-dom";
 import api from "@/lib/axios";
+import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
@@ -149,6 +150,16 @@ export function MangaDetailPage() {
         setRatingCount(manga.ratingCount);
         setAvgRating(Number(manga.avgRating));
     }, [manga]);
+
+    // prefetch signed URL em background para o volume que o usuário provavelmente vai ler
+    useEffect(() => {
+        if (volumes.length === 0) return;
+        const target = volumes.find(v => volumeProgress[v.id] !== undefined) ?? volumes[0];
+        if (getSignedUrl(target.id)) return;
+        api.get(`/reader/${target.id}/url`)
+            .then(({data}) => setSignedUrl(target.id, data.url))
+            .catch(() => {});
+    }, [volumes, volumeProgress]);
 
     async function handleStatusChange(status: ReadingStatus) {
         if (!manga) return;

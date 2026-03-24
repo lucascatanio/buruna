@@ -489,7 +489,7 @@ export function ReaderPage() {
                     withCredentials: false,
                     cMapUrl: "/cmaps/",
                     cMapPacked: true,
-                    rangeChunkSize: 65536,
+                    rangeChunkSize: 131072,
                 });
                 const doc = await loadingTask.promise;
                 setPdf(doc);
