@@ -8,6 +8,6 @@
     ],
     "method": ["GET", "PUT", "HEAD"],
     "maxAgeSeconds": 3600,
-    "responseHeader": ["Content-Type", "Content-Range", "Range"]
+    "responseHeader": ["Content-Type", "Content-Range", "Range", "Accept-Ranges", "Content-Length"]
   }
 ]
