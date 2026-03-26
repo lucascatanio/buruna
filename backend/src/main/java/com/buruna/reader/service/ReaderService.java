@@ -65,11 +65,13 @@ public class ReaderService {
         history.setVolume(volume);
         historyRepository.save(history);
 
+        String fileUrl = volume.getFileUrl();
         String signedUrl = storageClient
-                .generateSignedUrl(volume.getFileUrl(), SIGNED_URL_DURATION)
+                .generateSignedUrl(fileUrl, SIGNED_URL_DURATION)
                 .toString();
+        long fileSize = storageClient.getBlob(fileUrl).getSize();
 
-        return new VolumeUrlResponse(volumeId, signedUrl, SIGNED_URL_EXPIRATION_SECONDS);
+        return new VolumeUrlResponse(volumeId, signedUrl, SIGNED_URL_EXPIRATION_SECONDS, fileSize);
     }
 
     @Transactional

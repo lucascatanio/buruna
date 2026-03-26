@@ -157,7 +157,7 @@ export function MangaDetailPage() {
         const target = volumes.find(v => volumeProgress[v.id] !== undefined) ?? volumes[0];
         if (getSignedUrl(target.id)) return;
         api.get(`/reader/${target.id}/url`)
-            .then(({data}) => setSignedUrl(target.id, data.url))
+            .then(({data}) => setSignedUrl(target.id, data.url, data.fileSize))
             .catch(() => {});
     }, [volumes, volumeProgress]);
 

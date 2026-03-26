@@ -5,6 +5,7 @@ import java.util.UUID;
 public record VolumeUrlResponse(
         UUID volumeId,
         String url,
-        int expiresInSeconds
+        int expiresInSeconds,
+        long fileSize
 ) {
 }
