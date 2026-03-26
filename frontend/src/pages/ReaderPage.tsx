@@ -463,7 +463,9 @@ export function ReaderPage() {
             try {
                 const cached = getSignedUrl(volumeId!);
                 const [urlRes, progressRes] = await Promise.allSettled([
-                    cached ? Promise.resolve(cached) : api.get(`/reader/${volumeId}/url`).then(r => r.data.url),
+                    cached
+                        ? Promise.resolve(cached)
+                        : api.get(`/reader/${volumeId}/url`).then(r => ({ url: r.data.url, fileSize: r.data.fileSize as number })),
                     api.get(`/reader/${volumeId}/progress`),
                 ]);
 
@@ -473,8 +475,8 @@ export function ReaderPage() {
                     return;
                 }
 
-                const signedUrl = urlRes.value as string;
-                if (!cached) setSignedUrl(volumeId!, signedUrl);
+                const { url: signedUrl, fileSize } = urlRes.value as { url: string; fileSize: number };
+                if (!cached) setSignedUrl(volumeId!, signedUrl, fileSize);
 
                 let startPage = 1;
                 if (progressRes.status === "fulfilled" && progressRes.value?.status === 200) {
@@ -490,6 +492,7 @@ export function ReaderPage() {
                     cMapUrl: "/cmaps/",
                     cMapPacked: true,
                     rangeChunkSize: 131072,
+                    disableAutoFetch: true,
                 });
                 const doc = await loadingTask.promise;
                 setPdf(doc);

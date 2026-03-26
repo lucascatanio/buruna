@@ -6,23 +6,24 @@ const MARGIN_MS = 5 * 60 * 1000;
 
 interface CacheEntry {
     url: string;
+    fileSize: number;
     expiresAt: number;
 }
 
 const cache = new Map<string, CacheEntry>();
 
-export function getSignedUrl(volumeId: string): string | null {
+export function getSignedUrl(volumeId: string): { url: string; fileSize: number } | null {
     const entry = cache.get(volumeId);
     if (!entry) return null;
     if (Date.now() + MARGIN_MS >= entry.expiresAt) {
         cache.delete(volumeId);
         return null;
     }
-    return entry.url;
+    return { url: entry.url, fileSize: entry.fileSize };
 }
 
-export function setSignedUrl(volumeId: string, url: string): void {
-    cache.set(volumeId, { url, expiresAt: Date.now() + TTL_MS });
+export function setSignedUrl(volumeId: string, url: string, fileSize: number): void {
+    cache.set(volumeId, { url, fileSize, expiresAt: Date.now() + TTL_MS });
 }
 
 export function clearSignedUrlCache(): void {
