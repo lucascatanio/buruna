@@ -15,6 +15,7 @@ const FORMAT_OPTIONS = [
     {value: "MANHUA", label: "Manhua"},
     {value: "WEBTOON", label: "Webtoon"},
     {value: "ONE_SHOT", label: "One-shot"},
+    {value: "LIVRO", label: "Livro"},
 ];
 
 const STATUS_ORIGIN_OPTIONS = [
@@ -145,11 +146,20 @@ export function MangaUploadPage() {
         if (!createdManga || !volumeFile) return;
         setUploadingVolume(true);
         try {
-            const formData = new FormData();
-            formData.append("file", volumeFile);
-            formData.append("volumeNumber", volumeNumber);
-            // sem Content-Type manual — o browser define com o boundary correto
-            await api.post(`/mangas/${createdManga.id}/volumes`, formData);
+            const {data: {uploadUrl, objectName}} = await api.post(
+                `/mangas/${createdManga.id}/volumes/upload-url`,
+                {volumeNumber: parseInt(volumeNumber)}
+            );
+            const uploadRes = await fetch(uploadUrl, {
+                method: "PUT",
+                headers: {"Content-Type": "application/pdf"},
+                body: volumeFile,
+            });
+            if (!uploadRes.ok) throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
+            await api.post(`/mangas/${createdManga.id}/volumes/finalize`, {
+                objectName,
+                volumeNumber: parseInt(volumeNumber),
+            });
             toast.success(`Volume ${volumeNumber} enviado!`);
             setUploadedVolumes((prev) => [...prev, Number(volumeNumber)]);
             setVolumeNumber(String(Number(volumeNumber) + 1));
