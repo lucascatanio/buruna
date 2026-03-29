@@ -5,5 +5,6 @@ public enum MangaFormat {
     MANHWA,
     MANHUA,
     WEBTOON,
-    ONESHOT
+    ONESHOT,
+    LIVRO
 }

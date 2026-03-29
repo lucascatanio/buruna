@@ -1,0 +1,1 @@
+ALTER TYPE manga_format ADD VALUE 'LIVRO';
