@@ -46,7 +46,7 @@
     │  PostgreSQL 16 em Docker │   │  (southamerica-east1)                     │
     │                          │   │                                            │
     │  Tabelas gerenciadas por │   │  /uuid-do-volume.pdf   (PDF ofuscado)     │
-    │  Flyway (V1..V16)        │   │  /uuid-da-capa.jpg     (capa ofuscada)    │
+    │  Flyway (V1..V18)        │   │  /uuid-da-capa.jpg     (capa ofuscada)    │
     └──────────────────────────┘   │                                            │
                                    │  URLs assinadas V4 (geradas pelo backend): │
                                    │    leitura de PDF:    30 min              │
@@ -147,16 +147,50 @@ VISITANTE                         BROWSER                    BACKEND            
 
 ### 2.2 Autenticação
 
-**Login:**
+**Login (sem 2FA):**
 ```
 1. Frontend: POST /auth/login { email, password }
 2. Backend: busca User por email, BCrypt.matches(password, hash)
 3. Backend: verifica User.status == ACTIVE (rejeita PENDING/INACTIVE)
-4. Backend: gera accessToken (JWT, expira em 1h por padrão)
-5. Backend: gera refreshToken (UUID, persiste em refresh_tokens com expires_at)
-6. Backend: atualiza User.last_access_at
-7. Backend: retorna { accessToken, refreshToken, expiresIn }
-8. Frontend: armazena tokens e usa Bearer no header de requisições
+4. Backend: verifica User.totpEnabled == false
+5. Backend: gera accessToken (JWT, expira em 1h por padrão)
+6. Backend: gera refreshToken (UUID, persiste em refresh_tokens com expires_at)
+7. Backend: atualiza User.last_access_at
+8. Backend: retorna { requires2FA: false, accessToken, refreshToken, expiresIn }
+9. Frontend: armazena tokens e usa Bearer no header de requisições
+```
+
+**Login (com 2FA habilitado):**
+```
+1. Frontend: POST /auth/login { email, password }
+2. Backend: busca User por email, BCrypt.matches(password, hash)
+3. Backend: verifica User.status == ACTIVE (rejeita PENDING/INACTIVE)
+4. Backend: verifica User.totpEnabled == true
+5. Backend: gera tempToken (JWT, expira em 5min, claim "purpose":"2fa")
+6. Backend: retorna { requires2FA: true, tempToken }
+7. Frontend: exibe campo de código TOTP
+8. Frontend: POST /auth/2fa/authenticate { tempToken, totpCode }
+9. Backend: valida tempToken + código TOTP
+10. Backend: gera accessToken + refreshToken normalmente
+11. Backend: retorna { requires2FA: false, accessToken, refreshToken, expiresIn }
+```
+
+**2FA Setup/Disable:**
+```
+1. POST /auth/2fa/setup — gera secret TOTP, retorna { secret, qrUri }
+2. POST /auth/2fa/verify { code } — valida código, ativa 2FA (totpEnabled = true)
+3. POST /auth/2fa/disable { code } — valida código, desativa 2FA
+4. GET /auth/2fa/status — retorna { totpEnabled }
+```
+
+**Password Reset:**
+```
+1. Frontend: POST /auth/password/forgot { email }
+2. Backend: gera token aleatório, salva em password_reset_tokens (expira em 1h)
+3. Backend: envia e-mail com link: {frontendUrl}/reset-password?token={token}
+4. Frontend: GET /auth/password/reset-info?token={token} → { totpRequired }
+5. Frontend: POST /auth/password/reset { token, newPassword, totpCode? }
+6. Backend: valida token + TOTP (se habilitado), atualiza senha, invalida refresh tokens
 ```
 
 **Refresh automático:**
@@ -318,6 +352,7 @@ User ──< ReadingHistory  >────── Volume
 User ──< ReadingList     >────── Manga
 User ──< Rating          >────── Manga
 User ──< RefreshToken
+User ──< PasswordResetToken
 ```
 
 ### 3.2 Constraints e índices relevantes
@@ -334,8 +369,10 @@ User ──< RefreshToken
 | ratings           | UNIQUE(user_id, manga_id)                 | Uma avaliação por usuário por mangá     |
 | refresh_tokens    | INDEX(user_id)                            | Lookup de tokens por usuário            |
 | reading_history   | INDEX(user_id), INDEX(volume_id)          | V16 adicionou index em volume_id        |
+| users             | totp_secret, totp_enabled                 | V17 — colunas para 2FA TOTP            |
+| password_reset_tokens | UNIQUE(token), INDEX(user_id), INDEX(token) | V18 — tokens de reset de senha     |
 
-### 3.3 Migrações Flyway (V1–V16)
+### 3.3 Migrações Flyway (V1–V18)
 
 | Versão | Descrição                                            |
 |--------|------------------------------------------------------|
@@ -355,6 +392,8 @@ User ──< RefreshToken
 | V14    | Adicionou UNIQUE(file_hash) em volumes               |
 | V15    | Removeu UNIQUE(file_hash) — mangás privados podem ter mesmo hash |
 | V16    | Adicionou INDEX(volume_id) em reading_history        |
+| V17    | Adicionou colunas totp_secret e totp_enabled em users |
+| V18    | Tabela password_reset_tokens (reset de senha)        |
 
 ---
 
@@ -363,11 +402,11 @@ User ──< RefreshToken
 ### 4.1 Ciclo de vida do JWT + Refresh Token
 
 ```
-Login
+Login (sem 2FA)
   │
   ├── accessToken  (JWT, assinado com JWT_SECRET)
   │   expira em:  JWT_EXPIRATION segundos (padrão: 3600 = 1h)
-  │   contém:     userId, username, role
+  │   contém:     userId, role
   │   usado em:   Authorization: Bearer <token>
   │
   └── refreshToken (UUID aleatório)
@@ -375,6 +414,15 @@ Login
       armazenado: tabela refresh_tokens (token + user_id + expires_at)
       usado em:   POST /auth/refresh para obter novo accessToken
       invalidado: no logout OU ao ser usado (rotação de token)
+
+Login (com 2FA)
+  POST /auth/login { email, password }
+  → se totpEnabled == true: retorna { requires2FA: true, tempToken }
+    tempToken: JWT com claim "purpose":"2fa", expira em 5 min
+  → frontend exibe campo de código TOTP
+  POST /auth/2fa/authenticate { tempToken, totpCode }
+  → valida tempToken + código TOTP
+  → retorna accessToken + refreshToken normalmente
 
 Refresh
   POST /auth/refresh { refreshToken }
@@ -394,10 +442,11 @@ Logout
 
 Implementado em `RateLimitFilter` (in-memory `ConcurrentHashMap`):
 
-| Endpoint              | Limite padrão   | Variável de env                  |
-|-----------------------|-----------------|----------------------------------|
-| POST /auth/register   | 5 req/hora      | RATE_LIMIT_REGISTER_PER_HOUR     |
-| POST /auth/login      | 10 req/hora     | RATE_LIMIT_LOGIN_PER_HOUR        |
+| Endpoint                  | Limite padrão   | Variável de env                      |
+|---------------------------|-----------------|--------------------------------------|
+| POST /auth/register       | 5 req/hora      | RATE_LIMIT_REGISTER_PER_HOUR         |
+| POST /auth/login          | 10 req/hora     | RATE_LIMIT_LOGIN_PER_HOUR            |
+| POST /auth/password/forgot| 3 req/hora      | RATE_LIMIT_FORGOT_PASSWORD_PER_HOUR  |
 
 - IP detectado via header `X-Forwarded-For` (compatível com Cloud Run)
 - Retorna `429 Too Many Requests` quando limite excedido
@@ -694,12 +743,16 @@ Implementado em `RateLimitFilter` (in-memory `ConcurrentHashMap`):
 **Por quê:** Os PDFs são acessados direto pelo browser via Signed URL. O Cloud Run não faz proxy do conteúdo. Então a latência que importa é browser → GCS, não Cloud Run → GCS. Com o bucket em São Paulo, usuários brasileiros (público-alvo) têm latência baixa no download de PDFs (~20ms vs ~120ms pra us-east1). O Cloud Run fica em us-east1 porque oferece free tier generoso e os requests de API são leves (JSONs de poucos KB). A única comunicação Cloud Run → GCS é no finalize (leitura de metadados, poucos KB, ~100ms de latência cross-region, uma vez por upload).  
 **Tradeoff:** Latência cross-region de ~100ms na comunicação backend → GCS (só pra operações administrativas: gerar Signed URL, ler metadados no finalize). Imperceptível pro usuário, que já está esperando o upload terminar.
 
+---
+
 ### ADR-27 — Canvas do pdfjs escalado por devicePixelRatio + escala mínima
 
 **Contexto:** O pdfjs renderizava o canvas em resolução 1x independente do dispositivo. Em celulares com tela de alta densidade (DPR 2x ou 3x), isso deixava texto e imagens visivelmente borrados. O modo responsivo do DevTools no desktop não reproduzia o problema — só aparecia em celulares reais.
 **Decisão:** Multiplicar a escala de renderização pelo `devicePixelRatio` do dispositivo (limitado a 3) e forçar um piso de 1.5 na escala base. O truque é usar escalas diferentes para o canvas: `canvas.width/height` recebe a escala alta (mais pixels reais), enquanto `canvas.style.width/height` mantém a escala original (tamanho visual inalterado).
 **Justificativa:** Só aplicar o DPR não bastou — em telas estreitas, a escala base calculada era tão baixa que mesmo multiplicada por 3 o resultado ficava pobre. O piso de 1.5 resolve isso garantindo uma resolução mínima de renderização. A separação entre resolução e tamanho visual é o que permite renderizar em alta qualidade sem alterar o layout da página.
 **Tradeoff aceito:** O canvas usa mais memória no celular (entre 3x e 4.5x mais pixels). Na prática não causou problemas — se um dia causar em devices com pouca RAM, o cap de 3 no DPR já limita o pior caso.
+
+---
 
 ### ADR-28 — Refresh token rotation no /auth/refresh
 
@@ -717,3 +770,13 @@ Já implementado desde o MVP
 **Decisão:** Migrar para a API HTTP do Resend com domínio `buruna.com.br` configurado com DKIM, SPF e DMARC. Criamos uma interface `EmailSender` e a implementação `ResendEmailSender` que faz `POST https://api.resend.com/emails`. Se a API key estiver vazia, o envio é ignorado com log — permite rodar localmente sem configuração.
 **Justificativa:** O Resend tem free tier de 100 e-mails/dia (suficiente por anos no volume atual), API simples sem SDK pesado, e o setup de DNS garante que os e-mails não caiam em spam. A interface `EmailSender` existe porque agora há justificativa real para a abstração — se amanhã o Resend mudar pricing ou cair, trocar o provider é criar uma classe nova e trocar o `@Component`.
 **Tradeoff aceito:** Dependência de serviço externo para envio de e-mails. Se o Resend sair do ar, os e-mails ficam silenciosamente perdidos (o `@Async` não tem retry). Pro volume atual, isso é aceitável — nenhum e-mail do Burūna é crítico a ponto de exigir fila com dead letter.
+
+---
+
+### ADR-30 — 2FA via TOTP (Google Authenticator)
+
+**Contexto:** Sem 2FA, acesso ao e-mail de qualquer usuário vira acesso à conta — bastava acionar o reset de senha. Com cadastro por aprovação admin, isso é pior do que parece: uma conta comprometida pode ser usada por alguém que nunca deveria ter entrado. Adicionamos TOTP antes de habilitar o reset de senha.
+**Decisão:** Implementar 2FA via TOTP usando dev.samstevens.totp:totp Funciona com Google Authenticator, Authy e qualquer app TOTP compatível com RFC 6238. O reset de senha exige código TOTP quando o usuário tem 2FA habilitado; sem 2FA, aceita só o token do e-mail.
+**Alternativa** descartada: 2FA via e-mail. Descartada porque o e-mail já é o canal do reset de senha, usar o mesmo canal como segundo fator não adiciona nada. TOTP é independente do e-mail e funciona offline.
+**Fluxo de login** com 2FA: O login retorna um tempToken (JWT de 5 min com claim purpose:2fa) quando o usuário tem TOTP habilitado. O frontend exibe campo de código e envia POST /auth/2fa/authenticate { tempToken, totpCode }. Só depois da validação do TOTP o backend emite accessToken + refreshToken.
+**Tradeoff aceito:** Se o usuário perder o dispositivo autenticador, não existe recovery code, vai precisar pedir ao admin pra desabilitar o 2FA manualmente no banco. Aceitável pro volume atual de usuários.

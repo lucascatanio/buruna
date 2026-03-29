@@ -282,8 +282,8 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [ ] Suporte a tablet
 - [x] Refresh token rotation
 - [x] Limite de tamanho de payload JSON - spring.codec.max-in-memory-size
-- [ ] 2FA (TOTP ou e-mail)
-- [ ] Reset de senha (precisa de 2FA)
+- [x] 2FA (TOTP ou e-mail)
+- [x] Reset de senha (precisa de 2FA)
 - [ ] Signed URL não revogada imediatamente - limitação conhecida
 - [x] UptimeRobot configurado pra monitoramento + alerta de downtime por e-mail
 - [x] GitHub Actions pra build e deploy automático no push pra main
@@ -296,3 +296,4 @@ Coisas que foram identificadas durante o desenvolvimento pra resolver depois:
 - [ ] Adicionar git/linkedin na tela de login
 - [ ] Exibir de alguma forma uma lista com as últimas atualizações na tela principal
 - [x] HealthController criado pro UptimeRobot conseguir monitorar a aplicação em produção
+- [ ] Após criar um mangá publico, a tela de adicionar volumes não funciona, retorna 500.

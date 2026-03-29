@@ -2,7 +2,7 @@ import {Outlet, useNavigate, useLocation} from "react-router-dom";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
 import {FeedbackButton} from "@/components/FeedbackDialog";
-import {BookOpen, Library, Settings, LogOut, History, BookMarked} from "lucide-react";
+import {BookOpen, Library, Settings, LogOut, History, BookMarked, Shield} from "lucide-react";
 
 export function AppLayout() {
     const navigate = useNavigate();
@@ -75,17 +75,32 @@ export function AppLayout() {
                         )}
                     </nav>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleLogout}>
-                    <LogOut className="w-4 h-4 mr-1.5"/>
-                    Sair
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant={isActive("/seguranca") ? "secondary" : "ghost"}
+                        size="sm"
+                        onClick={() => navigate("/seguranca")}
+                    >
+                        <Shield className="w-4 h-4 mr-1.5"/>
+                        Segurança
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleLogout}>
+                        <LogOut className="w-4 h-4 mr-1.5"/>
+                        Sair
+                    </Button>
+                </div>
             </header>
 
             <header className="border-b px-4 py-3 flex md:hidden items-center justify-between">
                 <span className="text-lg font-semibold select-none">Burūna</span>
-                <Button variant="ghost" size="icon" onClick={handleLogout}>
-                    <LogOut className="w-4 h-4"/>
-                </Button>
+                <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => navigate("/seguranca")}>
+                        <Shield className="w-4 h-4"/>
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={handleLogout}>
+                        <LogOut className="w-4 h-4"/>
+                    </Button>
+                </div>
             </header>
 
             <main className="flex-1 pb-20 md:pb-0">

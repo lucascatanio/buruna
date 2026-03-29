@@ -48,4 +48,19 @@ public class EmailService {
                 "[Burūna] Inactivity warning",
                 "Hello %s, your account will be deactivated in 15 days due to inactivity.".formatted(username));
     }
+
+    @Async
+    public void sendPasswordResetEmail(String userEmail, String username, String resetLink) {
+        emailSender.send(userEmail,
+                "[Burūna] Password reset",
+                """
+                Hello %s,
+
+                We received a request to reset your password. Click the link below to set a new password:
+
+                %s
+
+                This link expires in 1 hour. If you didn't request this, you can safely ignore this email.
+                """.formatted(username, resetLink));
+    }
 }

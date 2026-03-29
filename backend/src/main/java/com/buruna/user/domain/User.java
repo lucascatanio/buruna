@@ -50,6 +50,12 @@ public class User {
     @Column(name = "quota_gb", nullable = false, precision = 10, scale = 2)
     private BigDecimal quotaGb;
 
+    @Column(name = "totp_secret", length = 64)
+    private String totpSecret;
+
+    @Column(name = "totp_enabled", nullable = false)
+    private boolean totpEnabled;
+
     @Column(name = "last_access_at")
     private OffsetDateTime lastAccessAt;
 

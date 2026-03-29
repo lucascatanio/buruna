@@ -43,6 +43,32 @@ public class TokenService {
                 .compact();
     }
 
+    public String generateTempToken(User user) {
+        return Jwts.builder()
+                .subject(user.getId().toString())
+                .claim("purpose", "2fa")
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 5 * 60 * 1000))
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public UUID validateTempTokenAndGetUserId(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            if (!"2fa".equals(claims.get("purpose", String.class))) {
+                throw new InvalidTokenException();
+            }
+            return UUID.fromString(claims.getSubject());
+        } catch (JwtException e) {
+            throw new InvalidTokenException();
+        }
+    }
+
     @Transactional
     public RefreshToken createRefreshToken(User user) {
         refreshTokenRepository.deleteByUserId(user.getId());
