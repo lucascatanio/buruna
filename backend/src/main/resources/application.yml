@@ -39,6 +39,7 @@ app:
     bucket-name: ${GCS_BUCKET_NAME}
     credentials-path: ${GCS_CREDENTIALS_PATH}
   admin-email: ${ADMIN_EMAIL}
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
   jobs:
     secret: ${APP_JOBS_SECRET:dev-secret-change-me}
   cors:
@@ -47,6 +48,7 @@ app:
     register-per-hour: ${RATE_LIMIT_REGISTER_PER_HOUR:5}
     login-per-hour: ${RATE_LIMIT_LOGIN_PER_HOUR:10}
     feedback-per-hour: ${RATE_LIMIT_FEEDBACK_PER_HOUR:3}
+    forgot-password-per-hour: ${RATE_LIMIT_FORGOT_PASSWORD_PER_HOUR:3}
   hcaptcha:
     secret: ${HCAPTCHA_SECRET:}
   mail:

@@ -25,6 +25,9 @@ function ReaderPageWrapper() {
     return <ReaderPage key={volumeId}/>;
 }
 import {AdminDashboardPage} from "@/pages/AdminDashboardPage.tsx";
+import {ForgotPasswordPage} from "@/pages/ForgotPasswordPage.tsx";
+import {ResetPasswordPage} from "@/pages/ResetPasswordPage.tsx";
+import {SecuritySettingsPage} from "@/pages/SecuritySettingsPage.tsx";
 
 export default function App() {
     return (
@@ -32,6 +35,8 @@ export default function App() {
             <Routes>
                 <Route path="/login" element={<LoginPage/>}/>
                 <Route path="/register" element={<RegisterPage/>}/>
+                <Route path="/forgot-password" element={<ForgotPasswordPage/>}/>
+                <Route path="/reset-password" element={<ResetPasswordPage/>}/>
 
                 <Route element={<ProtectedRoute/>}>
                     <Route element={<AppLayout/>}>
@@ -43,6 +48,7 @@ export default function App() {
                         <Route path="/colecao/:id" element={<PrivateMangaDetailPage/>}/>
                         <Route path="/historico" element={<ReadingHistoryPage/>}/>
                         <Route path="/lista" element={<ReadingListPage/>}/>
+                        <Route path="/seguranca" element={<SecuritySettingsPage/>}/>
                     </Route>
                     <Route element={<ProtectedRoute/>}>
                         <Route path="/leitor/:volumeId" element={<ReaderPageWrapper/>}/>

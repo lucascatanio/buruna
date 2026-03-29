@@ -7,6 +7,7 @@ public record AppProperties(
         JwtProperties jwt,
         GcsProperties gcs,
         String adminEmail,
+        String frontendUrl,
         RateLimitProperties rateLimit
 ) {
     public record JwtProperties(
@@ -25,7 +26,8 @@ public record AppProperties(
     public record RateLimitProperties(
             int registerPerHour,
             int loginPerHour,
-            int feedbackPerHour
+            int feedbackPerHour,
+            int forgotPasswordPerHour
     ) {
     }
 }
