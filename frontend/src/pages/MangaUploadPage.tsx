@@ -15,6 +15,7 @@ const FORMAT_OPTIONS = [
     {value: "MANHUA", label: "Manhua"},
     {value: "WEBTOON", label: "Webtoon"},
     {value: "ONE_SHOT", label: "One-shot"},
+    {value: "LIVRO", label: "Livro"},
 ];
 
 const STATUS_ORIGIN_OPTIONS = [

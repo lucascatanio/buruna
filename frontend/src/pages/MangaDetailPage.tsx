@@ -50,7 +50,7 @@ interface MangaDetail {
 
 const FORMAT_LABELS: Record<string, string> = {
     MANGA: "Mangá", MANHWA: "Manhwa", MANHUA: "Manhua",
-    WEBTOON: "Webtoon", ONE_SHOT: "One-shot",
+    WEBTOON: "Webtoon", ONE_SHOT: "One-shot", LIVRO: "Livro"
 };
 
 const STATUS_ORIGIN_LABELS: Record<string, string> = {

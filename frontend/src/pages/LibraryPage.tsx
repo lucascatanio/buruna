@@ -35,6 +35,7 @@ const FORMAT_OPTIONS = [
     {value: "MANHUA", label: "Manhua"},
     {value: "WEBTOON", label: "Webtoon"},
     {value: "ONE_SHOT", label: "One-shot"},
+    {value: "LIVRO", label: "Livro"},
 ];
 
 const STATUS_OPTIONS = [
@@ -48,6 +49,7 @@ const STATUS_OPTIONS = [
 const FORMAT_LABELS: Record<string, string> = {
     MANGA: "Mangá", MANHWA: "Manhwa", MANHUA: "Manhua",
     WEBTOON: "Webtoon", ONE_SHOT: "One-shot",
+    LIVRO: "Livro",
 };
 
 export function LibraryPage() {
