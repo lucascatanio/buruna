@@ -5,9 +5,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -22,10 +24,17 @@ public class ResendEmailSender implements EmailSender {
     private final String from;
 
     public ResendEmailSender(
-            RestTemplateBuilder builder,
             @Value("${resend.api-key}") String apiKey,
             @Value("${app.mail.from}") String from) {
-        this.restTemplate = builder.build();
+        this.restTemplate = new RestTemplateBuilder()
+                .requestFactory(() -> {
+                    HttpComponentsClientHttpRequestFactory factory =
+                            new HttpComponentsClientHttpRequestFactory();
+                    factory.setConnectTimeout(Duration.ofSeconds(10));
+                    factory.setConnectionRequestTimeout(Duration.ofSeconds(10));
+                    return factory;
+                })
+                .build();
         this.apiKey = apiKey;
         this.from = from;
     }
@@ -50,6 +59,7 @@ public class ResendEmailSender implements EmailSender {
 
             restTemplate.exchange(RESEND_API_URL, HttpMethod.POST,
                     new HttpEntity<>(payload, headers), Void.class);
+            log.info("Email sent successfully to {}", to);
         } catch (Exception e) {
             log.warn("Failed to send email to {}: {}", to, e.getMessage());
         }
