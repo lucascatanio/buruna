@@ -16,6 +16,9 @@ declare global {
     }
 }
 
+const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY;
+const HAS_CAPTCHA = Boolean(HCAPTCHA_SITE_KEY);
+
 export function RegisterPage() {
     const navigate = useNavigate();
     const widgetId = useRef<string | undefined>(undefined);
@@ -26,17 +29,18 @@ export function RegisterPage() {
         password: "",
         presentationMessage: "",
     });
-    const [captchaToken, setCaptchaToken] = useState("");
+    const [captchaToken, setCaptchaToken] = useState(HAS_CAPTCHA ? "" : "dev-skip-captcha");
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        if (!HAS_CAPTCHA) return;
         const script = document.createElement("script");
         script.src = "https://js.hcaptcha.com/1/api.js";
         script.async = true;
         script.defer = true;
         script.onload = () => {
             widgetId.current = window.hcaptcha.render("hcaptcha-container", {
-                sitekey: import.meta.env.VITE_HCAPTCHA_SITE_KEY,
+                sitekey: HCAPTCHA_SITE_KEY,
                 callback: (token: string) => setCaptchaToken(token),
                 "expired-callback": () => setCaptchaToken(""),
             });
@@ -65,7 +69,7 @@ export function RegisterPage() {
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Erro ao enviar solicitação");
             window.hcaptcha?.reset(widgetId.current);
-            setCaptchaToken("");
+            setCaptchaToken(HAS_CAPTCHA ? "" : "dev-skip-captcha");
         } finally {
             setLoading(false);
         }
@@ -129,8 +133,8 @@ export function RegisterPage() {
                                 required
                             />
                         </div>
-                        <div id="hcaptcha-container" className="flex justify-center" />
-                        <Button type="submit" className="w-full" disabled={loading || !captchaToken}>
+                        {HAS_CAPTCHA && <div id="hcaptcha-container" className="flex justify-center" />}
+                        <Button type="submit" className="w-full" disabled={loading || (HAS_CAPTCHA && !captchaToken)}>
                             {loading ? "Enviando…" : "Solicitar acesso"}
                         </Button>
                     </form>

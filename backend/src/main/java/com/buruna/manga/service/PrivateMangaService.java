@@ -14,7 +14,6 @@ import com.buruna.user.domain.Role;
 import com.buruna.user.domain.User;
 import com.buruna.user.domain.UserStatus;
 import com.buruna.user.repository.UserRepository;
-import com.google.cloud.storage.Blob;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -108,9 +107,9 @@ public class PrivateMangaService {
     public PrivateMangaResponse finalizeVolume(UUID mangaId, VolumeFinalizeRequest request, User owner) {
         Manga manga = findPrivateByIdAndOwner(mangaId, owner);
 
-        Blob blob = storageClient.getBlob(request.objectName());
-        String fileHash = blob.getMd5();
-        long fileSizeBytes = blob.getSize();
+        var metadata = storageClient.getFileMetadata(request.objectName());
+        String fileHash = metadata.md5();
+        long fileSizeBytes = metadata.size();
 
         quotaService.assertHasQuota(owner, fileSizeBytes);
 

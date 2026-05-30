@@ -14,7 +14,6 @@ import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.VolumeRepository;
 import com.buruna.user.domain.Role;
 import com.buruna.user.domain.User;
-import com.google.cloud.storage.Blob;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,10 +87,9 @@ public class VolumeService {
                     "Use /my/mangas para finalizar upload em mangás privados");
         }
 
-        Blob blob = storageClient.getBlob(request.objectName());
-        String fileHash = blob.getMd5();
+        var metadata = storageClient.getFileMetadata(request.objectName());
 
-        if (volumeRepository.existsByFileHashAndMangaIsPublicTrue(fileHash)) {
+        if (volumeRepository.existsByFileHashAndMangaIsPublicTrue(metadata.md5())) {
             throw new DuplicateVolumeException();
         }
 
@@ -103,8 +101,8 @@ public class VolumeService {
         volume.setManga(manga);
         volume.setVolumeNumber(request.volumeNumber());
         volume.setFileUrl(request.objectName());
-        volume.setFileHash(fileHash);
-        volume.setFileSizeBytes(blob.getSize());
+        volume.setFileHash(metadata.md5());
+        volume.setFileSizeBytes(metadata.size());
         volume.setUploadedBy(uploader);
 
         Volume saved = volumeRepository.save(volume);

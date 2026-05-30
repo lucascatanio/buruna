@@ -1,5 +1,7 @@
 package com.buruna.infra.config;
 
+import com.buruna.infra.storage.GcsStorageClient;
+import com.buruna.infra.storage.StorageClient;
 import com.google.api.services.storage.StorageScopes;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.Storage;
@@ -8,12 +10,14 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 
 @Configuration
+@Profile("!local")
 public class GcsConfig {
 
     @Value("${app.gcs.credentials-path:}")
@@ -37,5 +41,12 @@ public class GcsConfig {
                 .setCredentials(credentials)
                 .build()
                 .getService();
+    }
+
+    @Bean
+    public StorageClient gcsStorageClient(Storage storage,
+                                          @Qualifier("gcsCredentials") GoogleCredentials credentials,
+                                          @Value("${app.gcs.bucket-name}") String bucketName) {
+        return new GcsStorageClient(storage, bucketName, credentials);
     }
 }
