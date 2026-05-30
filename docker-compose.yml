@@ -23,6 +23,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      SPRING_PROFILES_ACTIVE: local
       DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
@@ -31,20 +32,22 @@ services:
       REFRESH_TOKEN_EXPIRATION: ${REFRESH_TOKEN_EXPIRATION}
       GCS_BUCKET_NAME: ${GCS_BUCKET_NAME}
       GCS_CREDENTIALS_PATH: ${GCS_CREDENTIALS_PATH}
-      MAIL_USERNAME: ${MAIL_USERNAME}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB}
       RATE_LIMIT_REGISTER_PER_HOUR: ${RATE_LIMIT_REGISTER_PER_HOUR}
       RESEND_API_KEY: ${RESEND_API_KEY}
       APP_FRONTEND_URL: ${APP_FRONTEND_URL}
+      APP_CORS_ALLOWED_ORIGIN: ${APP_CORS_ALLOWED_ORIGIN}
     ports:
       - "8080:8080"
     volumes:
-      - ./gcs-credentials.json:/app/gcs-credentials.json:ro
+      - storage_data:/app/storage
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_HCAPTCHA_SITE_KEY: ${VITE_HCAPTCHA_SITE_KEY}
     container_name: buruna_frontend
     depends_on:
       - backend
@@ -67,3 +70,4 @@ services:
 
 volumes:
   postgres_data:
+  storage_data:

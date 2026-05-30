@@ -5,6 +5,9 @@ import java.net.URL;
 import java.time.Duration;
 
 public interface StorageClient {
+
+    record FileMetadata(String md5, long size) {}
+
     String upload(InputStream content, String fileName, String contentType, long contentLength);
 
     void delete(String fileName);
@@ -13,5 +16,5 @@ public interface StorageClient {
 
     URL generateUploadSignedUrl(String objectName, Duration expiration);
 
-    com.google.cloud.storage.Blob getBlob(String objectName);
+    FileMetadata getFileMetadata(String objectName);
 }
