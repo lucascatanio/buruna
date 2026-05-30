@@ -9,6 +9,7 @@ const NAV_ITEMS = [
     {label: "Pendentes", path: "/admin/users/pending"},
     {label: "Usuários", path: "/admin/users"},
     {label: "Tags", path: "/admin/tags"},
+    {label: "Submissões", path: "/admin/submissions"},
 ];
 
 export function AdminLayout() {

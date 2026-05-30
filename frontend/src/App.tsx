@@ -10,6 +10,7 @@ import {MangaDetailPage} from "@/pages/MangaDetailPage";
 import {MangaUploadPage} from "@/pages/MangaUploadPage";
 import {MangaEditPage} from "@/pages/MangaEditPage";
 import {PendingUsersPage} from "@/pages/admin/PendingUsersPage";
+import {PendingSubmissionsPage} from "@/pages/admin/PendingSubmissionsPage";
 import {UsersPage} from "@/pages/admin/UsersPage";
 import {TagsPage} from "@/pages/admin/TagsPage";
 import {MyCollectionPage} from "@/pages/MyCollectionPage.tsx";
@@ -68,6 +69,7 @@ export default function App() {
                         <Route path="/admin/users" element={<UsersPage/>}/>
                         <Route path="/admin/tags" element={<TagsPage/>}/>
                         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+                        <Route path="/admin/submissions" element={<PendingSubmissionsPage/>}/>
                     </Route>
                 </Route>
 

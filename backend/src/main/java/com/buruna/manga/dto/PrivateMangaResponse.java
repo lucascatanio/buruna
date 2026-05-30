@@ -11,6 +11,8 @@ public record PrivateMangaResponse(
         String coverUrl,
         List<VolumeResponse> volumes,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        String submissionStatus,
+        String rejectionReason
 ) {
 }

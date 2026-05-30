@@ -63,4 +63,28 @@ public class EmailService {
                 This link expires in 1 hour. If you didn't request this, you can safely ignore this email.
                 """.formatted(username, resetLink));
     }
+
+    @Async
+    public void sendMangaSubmissionNotification(String adminEmail, String submitterUsername, String mangaTitle) {
+        emailSender.send(adminEmail,
+                "[Burūna] New manga submission pending approval",
+                "User '%s' has submitted '%s' for publication and is awaiting your approval."
+                        .formatted(submitterUsername, mangaTitle));
+    }
+
+    @Async
+    public void sendMangaApprovalNotification(String userEmail, String mangaTitle) {
+        emailSender.send(userEmail,
+                "[Burūna] Your manga has been approved",
+                "Your manga '%s' has been approved and is now visible in the public library."
+                        .formatted(mangaTitle));
+    }
+
+    @Async
+    public void sendMangaRejectionNotification(String userEmail, String mangaTitle, String reason) {
+        String body = (reason != null && !reason.isBlank())
+                ? "Your manga '%s' was not approved. Reason: %s".formatted(mangaTitle, reason)
+                : "Your manga '%s' was not approved.".formatted(mangaTitle);
+        emailSender.send(userEmail, "[Burūna] Manga submission update", body);
+    }
 }

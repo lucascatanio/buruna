@@ -7,7 +7,7 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {toast} from "sonner";
-import {ArrowLeft, Upload, Trash2, Pencil, Check, X, Globe, BookOpen} from "lucide-react";
+import {ArrowLeft, Upload, Trash2, Pencil, Check, X, Globe, BookOpen, Send, AlertCircle, Clock} from "lucide-react";
 
 interface Volume {
     id: string;
@@ -24,6 +24,8 @@ interface PrivateManga {
     volumes: Volume[];
     createdAt: string;
     updatedAt: string;
+    submissionStatus: string | null;
+    rejectionReason: string | null;
 }
 
 function formatBytes(bytes: number): string {
@@ -54,6 +56,7 @@ export function PrivateMangaDetailPage() {
     const [deletingVolumeId, setDeletingVolumeId] = useState<string | null>(null);
 
     const [promoting, setPromoting] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     const isCollab = user?.role === "COLLABORATOR" || user?.role === "ADMIN";
 
@@ -142,6 +145,21 @@ export function PrivateMangaDetailPage() {
             toast.error(err.response?.data?.message ?? "Erro ao deletar volume");
         } finally {
             setDeletingVolumeId(null);
+        }
+    }
+
+    async function handleSubmitForApproval() {
+        if (!manga) return;
+        if (!confirm(`Enviar "${manga.title}" para aprovação? Um administrador precisará aceitá-la antes de ficar pública.`)) return;
+        setSubmitting(true);
+        try {
+            const {data} = await api.post<PrivateManga>(`/my/mangas/${manga.id}/submit`);
+            setManga(data);
+            toast.success("Solicitação enviada! Aguarde a aprovação de um administrador.");
+        } catch (err: any) {
+            toast.error(err.response?.data?.message ?? "Erro ao solicitar publicação");
+        } finally {
+            setSubmitting(false);
         }
     }
 
@@ -347,8 +365,8 @@ export function PrivateMangaDetailPage() {
                 </CardContent>
             </Card>
 
-            {/* promote só para collab/admin */}
-            {isCollab && (
+            {/* promote - admin pode tornar público diretamente */}
+            {isCollab && !manga.submissionStatus && (
                 <Card className="border-dashed">
                     <CardContent
                         className="pt-5 pb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -367,6 +385,78 @@ export function PrivateMangaDetailPage() {
                         >
                             <Globe className="w-4 h-4 mr-1.5"/>
                             {promoting ? "Publicando…" : "Tornar público"}
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* submissão para aprovação - qualquer usuário */}
+            {!isCollab && manga.submissionStatus === null && (
+                <Card className="border-dashed border-primary/50">
+                    <CardContent
+                        className="pt-5 pb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                        <div>
+                            <p className="text-sm font-medium">Solicitar publicação</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Envie para aprovação de um administrador. Se aprovado, ficará visível na biblioteca pública.
+                            </p>
+                        </div>
+                        <Button
+                            variant="default"
+                            size="sm"
+                            className="shrink-0"
+                            onClick={handleSubmitForApproval}
+                            disabled={submitting}
+                        >
+                            <Send className="w-4 h-4 mr-1.5"/>
+                            {submitting ? "Enviando…" : "Solicitar publicação"}
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* status: pendente */}
+            {manga.submissionStatus === "PENDING" && (
+                <Card className="border-dashed border-amber-500/50 bg-amber-500/5">
+                    <CardContent className="pt-5 pb-5 flex items-start gap-3">
+                        <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5"/>
+                        <div>
+                            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                                Aguardando aprovação
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Sua solicitação foi enviada. Um administrador irá revisá-la em breve.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* status: rejeitado */}
+            {manga.submissionStatus === "REJECTED" && (
+                <Card className="border-dashed border-destructive/50 bg-destructive/5">
+                    <CardContent className="pt-5 pb-5 space-y-3">
+                        <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5"/>
+                            <div>
+                                <p className="text-sm font-medium text-destructive">
+                                    Publicação rejeitada
+                                </p>
+                                {manga.rejectionReason && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Motivo: {manga.rejectionReason}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleSubmitForApproval}
+                            disabled={submitting}
+                        >
+                            <Send className="w-4 h-4 mr-1.5"/>
+                            {submitting ? "Enviando…" : "Reenviar para aprovação"}
                         </Button>
                     </CardContent>
                 </Card>

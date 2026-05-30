@@ -101,6 +101,14 @@ public class PrivateMangaController {
         return ResponseEntity.ok(privateMangaService.deleteVolume(id, volumeId, currentUser));
     }
 
+    @PostMapping("/{id}/submit")
+    public ResponseEntity<PrivateMangaResponse> submitForApproval(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        return ResponseEntity.ok(privateMangaService.submitForApproval(id, currentUser));
+    }
+
     @PreAuthorize("hasAnyRole('COLLABORATOR', 'ADMIN')")
     @PostMapping("/{id}/promote")
     public ResponseEntity<PrivateMangaResponse> promote(
