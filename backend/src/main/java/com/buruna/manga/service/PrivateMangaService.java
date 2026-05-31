@@ -1,6 +1,7 @@
 package com.buruna.manga.service;
 
 import com.buruna.infra.exception.DomainException;
+import com.buruna.infra.notification.EmailService;
 import com.buruna.infra.storage.StorageClient;
 import com.buruna.infra.storage.StorageUploadHelper;
 import com.buruna.manga.domain.*;
@@ -11,7 +12,8 @@ import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.VolumeRepository;
 import com.buruna.user.domain.Role;
 import com.buruna.user.domain.User;
-import com.google.cloud.storage.Blob;
+import com.buruna.user.domain.UserStatus;
+import com.buruna.user.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -20,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class PrivateMangaService {
@@ -32,15 +36,21 @@ public class PrivateMangaService {
     private final VolumeRepository volumeRepository;
     private final StorageClient storageClient;
     private final StorageQuotaService quotaService;
+    private final EmailService emailService;
+    private final UserRepository userRepository;
 
     public PrivateMangaService(MangaRepository mangaRepository,
                                VolumeRepository volumeRepository,
                                StorageClient storageClient,
-                               StorageQuotaService quotaService) {
+                               StorageQuotaService quotaService,
+                               EmailService emailService,
+                               UserRepository userRepository) {
         this.mangaRepository = mangaRepository;
         this.volumeRepository = volumeRepository;
         this.storageClient = storageClient;
         this.quotaService = quotaService;
+        this.emailService = emailService;
+        this.userRepository = userRepository;
     }
 
     @Transactional(readOnly = true)
@@ -97,9 +107,9 @@ public class PrivateMangaService {
     public PrivateMangaResponse finalizeVolume(UUID mangaId, VolumeFinalizeRequest request, User owner) {
         Manga manga = findPrivateByIdAndOwner(mangaId, owner);
 
-        Blob blob = storageClient.getBlob(request.objectName());
-        String fileHash = blob.getMd5();
-        long fileSizeBytes = blob.getSize();
+        var metadata = storageClient.getFileMetadata(request.objectName());
+        String fileHash = metadata.md5();
+        long fileSizeBytes = metadata.size();
 
         quotaService.assertHasQuota(owner, fileSizeBytes);
 
@@ -163,6 +173,87 @@ public class PrivateMangaService {
         volumeRepository.delete(volume);
         List<Volume> remaining = volumeRepository.findByMangaId(mangaId);
         return toResponse(manga, remaining);
+    }
+
+    @Transactional
+    public PrivateMangaResponse submitForApproval(UUID id, User owner) {
+        Manga manga = findPrivateByIdAndOwner(id, owner);
+
+        if (manga.isPublic()) {
+            throw new DomainException(HttpStatus.BAD_REQUEST,
+                    "Este mangá já está na biblioteca pública");
+        }
+
+        if (manga.getSubmissionStatus() == MangaSubmissionStatus.PENDING) {
+            throw new DomainException(HttpStatus.CONFLICT,
+                    "Este mangá já foi submetido para aprovação");
+        }
+
+        manga.setSubmissionStatus(MangaSubmissionStatus.PENDING);
+        manga.setSubmittedAt(OffsetDateTime.now());
+        manga.setRejectionReason(null);
+        mangaRepository.save(manga);
+
+        userRepository.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE).forEach(admin ->
+                emailService.sendMangaSubmissionNotification(
+                        admin.getEmail(), owner.getUsername(), manga.getTitle()));
+
+        List<Volume> volumes = volumeRepository.findByMangaId(id);
+        return toResponse(manga, volumes);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PendingSubmissionResponse> listPendingSubmissions(Pageable pageable) {
+        return mangaRepository.findBySubmissionStatusWithOwner(MangaSubmissionStatus.PENDING, pageable)
+                .map(m -> {
+                    String coverUrl = m.getCoverUrl() != null
+                            ? storageClient.generateSignedUrl(m.getCoverUrl(), COVER_URL_EXPIRATION).toString()
+                            : null;
+                    return new PendingSubmissionResponse(
+                            m.getId(), m.getTitle(), coverUrl,
+                            m.getOwner().getUsername(), m.getOwner().getEmail(),
+                            m.getSubmittedAt());
+                });
+    }
+
+    @Transactional
+    public void approveSubmission(UUID id, User admin) {
+        Manga manga = mangaRepository.findById(id)
+                .orElseThrow(() -> new MangaNotFoundException(id));
+
+        if (manga.getSubmissionStatus() != MangaSubmissionStatus.PENDING) {
+            throw new DomainException(HttpStatus.BAD_REQUEST,
+                    "Submissão não está pendente");
+        }
+
+        manga.setPublic(true);
+        manga.setSubmissionStatus(null);
+        manga.setReviewedBy(admin);
+        manga.setReviewedAt(OffsetDateTime.now());
+        mangaRepository.save(manga);
+
+        emailService.sendMangaApprovalNotification(
+                manga.getOwner().getEmail(), manga.getTitle());
+    }
+
+    @Transactional
+    public void rejectSubmission(UUID id, User admin, String reason) {
+        Manga manga = mangaRepository.findById(id)
+                .orElseThrow(() -> new MangaNotFoundException(id));
+
+        if (manga.getSubmissionStatus() != MangaSubmissionStatus.PENDING) {
+            throw new DomainException(HttpStatus.BAD_REQUEST,
+                    "Submissão não está pendente");
+        }
+
+        manga.setSubmissionStatus(MangaSubmissionStatus.REJECTED);
+        manga.setRejectionReason(reason);
+        manga.setReviewedBy(admin);
+        manga.setReviewedAt(OffsetDateTime.now());
+        mangaRepository.save(manga);
+
+        emailService.sendMangaRejectionNotification(
+                manga.getOwner().getEmail(), manga.getTitle(), reason);
     }
 
     @Transactional
@@ -241,6 +332,9 @@ public class PrivateMangaService {
                         v.getFileSizeBytes(), v.getCreatedAt()))
                 .toList();
 
+        String status = manga.getSubmissionStatus() != null
+                ? manga.getSubmissionStatus().name() : null;
+
         return new PrivateMangaResponse(
                 manga.getId(),
                 manga.getTitle(),
@@ -248,7 +342,9 @@ public class PrivateMangaService {
                 coverSignedUrl,
                 volumeResponses,
                 manga.getCreatedAt(),
-                manga.getUpdatedAt()
+                manga.getUpdatedAt(),
+                status,
+                manga.getRejectionReason()
         );
     }
 }
