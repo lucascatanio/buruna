@@ -4,7 +4,7 @@ import com.buruna.engagement.domain.ReadingList;
 import com.buruna.engagement.dto.ReadingListRequest;
 import com.buruna.engagement.dto.ReadingListResponse;
 import com.buruna.engagement.repository.ReadingListRepository;
-import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.exception.LegacyHttpDomainException;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.repository.MangaRepository;
@@ -46,7 +46,7 @@ public class ReadingListService {
     public ReadingListResponse upsert(UUID mangaId, ReadingListRequest request, User user) {
         Manga manga = mangaRepository.findById(mangaId)
                 .filter(Manga::isPublic)
-                .orElseThrow(() -> new DomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado"));
+                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado"));
 
         ReadingList entry = readingListRepository
                 .findByUserIdAndMangaId(user.getId(), mangaId)
@@ -64,7 +64,7 @@ public class ReadingListService {
     @Transactional
     public void remove(UUID mangaId, User user) {
         if (!readingListRepository.existsByUserIdAndMangaId(user.getId(), mangaId)) {
-            throw new DomainException(HttpStatus.NOT_FOUND, "Item não encontrado na lista de leitura");
+            throw new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Item não encontrado na lista de leitura");
         }
         readingListRepository.deleteByUserIdAndMangaId(user.getId(), mangaId);
     }

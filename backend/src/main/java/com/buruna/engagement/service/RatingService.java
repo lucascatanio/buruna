@@ -4,7 +4,7 @@ import com.buruna.engagement.domain.Rating;
 import com.buruna.engagement.dto.RatingRequest;
 import com.buruna.engagement.dto.RatingResponse;
 import com.buruna.engagement.repository.RatingRepository;
-import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.exception.LegacyHttpDomainException;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.user.domain.User;
@@ -32,7 +32,7 @@ public class RatingService {
         Manga manga = findPublicManga(mangaId);
 
         if (ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId).isPresent()) {
-            throw new DomainException(HttpStatus.CONFLICT,
+            throw new LegacyHttpDomainException(HttpStatus.CONFLICT,
                     "Você já avaliou este mangá. Use PUT para atualizar.");
         }
 
@@ -48,7 +48,7 @@ public class RatingService {
     @Transactional
     public RatingResponse update(UUID mangaId, RatingRequest request, User user) {
         Rating rating = ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId)
-                .orElseThrow(() -> new DomainException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND,
                         "Você ainda não avaliou este mangá. Use POST para avaliar."));
 
         rating.setScore(request.score());
@@ -61,7 +61,7 @@ public class RatingService {
     @Transactional
     public void remove(UUID mangaId, User user) {
         if (ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId).isEmpty()) {
-            throw new DomainException(HttpStatus.NOT_FOUND, "Avaliação não encontrada");
+            throw new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Avaliação não encontrada");
         }
         ratingRepository.deleteByUserIdAndMangaId(user.getId(), mangaId);
         recalculate(findPublicManga(mangaId));
@@ -97,7 +97,7 @@ public class RatingService {
     private Manga findPublicManga(UUID mangaId) {
         return mangaRepository.findById(mangaId)
                 .filter(Manga::isPublic)
-                .orElseThrow(() -> new DomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado"));
+                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado"));
     }
 
     private RatingResponse toResponse(UUID mangaId, int score, RecalcResult recalc) {

@@ -1,6 +1,6 @@
 package com.buruna.manga.service;
 
-import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.exception.LegacyHttpDomainException;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Volume;
@@ -59,7 +59,7 @@ public class VolumeService {
         assertCanModify(manga, uploader);
 
         if (!manga.isPublic()) {
-            throw new DomainException(HttpStatus.FORBIDDEN,
+            throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Use /my/mangas para fazer upload em mangás privados");
         }
 
@@ -83,7 +83,7 @@ public class VolumeService {
         assertCanModify(manga, uploader);
 
         if (!manga.isPublic()) {
-            throw new DomainException(HttpStatus.FORBIDDEN,
+            throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Use /my/mangas para finalizar upload em mangás privados");
         }
 
@@ -127,7 +127,7 @@ public class VolumeService {
         boolean isAdmin = user.getRole() == Role.ADMIN;
         boolean isOwner = manga.getOwner().getId().equals(user.getId());
         if (!isAdmin && !isOwner) {
-            throw new DomainException(HttpStatus.FORBIDDEN,
+            throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Você não tem permissão para modificar os volumes deste mangá");
         }
     }

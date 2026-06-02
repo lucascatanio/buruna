@@ -1,6 +1,6 @@
 package com.buruna.manga.service;
 
-import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.exception.LegacyHttpDomainException;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.shared.storage.StorageUploadHelper;
 import com.buruna.manga.domain.Manga;
@@ -184,7 +184,7 @@ public class MangaService {
         boolean isAdmin = user.getRole() == Role.ADMIN;
         boolean isOwner = manga.getOwner().getId().equals(user.getId());
         if (!isAdmin && !isOwner) {
-            throw new DomainException(HttpStatus.FORBIDDEN,
+            throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Você não tem permissão para modificar este mangá");
         }
     }

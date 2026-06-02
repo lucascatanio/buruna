@@ -1,16 +1,23 @@
 package com.buruna.shared.exception;
 
-import lombok.Getter;
-import org.springframework.http.HttpStatus;
+/**
+ * Base das exceções de domínio — pura, sem dependência de framework web (ADR-33).
+ * Carrega apenas a mensagem e uma {@link DomainErrorType} (categoria de domínio);
+ * a tradução para status HTTP acontece exclusivamente no GlobalExceptionHandler.
+ *
+ * <p>Subclasses concretas e nomeadas por intenção (ex.: MangaNotFoundException)
+ * são criadas em cada contexto durante a migração.
+ */
+public abstract class DomainException extends RuntimeException {
 
-@Getter
-public class DomainException extends RuntimeException {
+    private final DomainErrorType errorType;
 
-    private final HttpStatus status;
-
-    public DomainException(HttpStatus status, String message) {
+    protected DomainException(DomainErrorType errorType, String message) {
         super(message);
-        this.status = status;
+        this.errorType = errorType;
     }
 
+    public DomainErrorType errorType() {
+        return errorType;
+    }
 }

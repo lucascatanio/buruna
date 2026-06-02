@@ -1,6 +1,6 @@
 package com.buruna.reader.service;
 
-import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.exception.LegacyHttpDomainException;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Volume;
@@ -94,7 +94,7 @@ public class ReaderService {
     @Transactional(readOnly = true)
     public ProgressResponse getProgress(UUID mangaId, User user) {
         mangaRepository.findById(mangaId)
-                .orElseThrow(() -> new DomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado"));
+                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado"));
 
         return progressRepository
                 .findLatestByUserIdAndMangaId(user.getId(), mangaId)
@@ -139,12 +139,12 @@ public class ReaderService {
     // verifica acesso: volume público (qualquer auth) ou volume privado (só owner)
     private Volume findAccessibleVolume(UUID volumeId, User user) {
         Volume volume = volumeRepository.findById(volumeId)
-                .orElseThrow(() -> new DomainException(HttpStatus.NOT_FOUND, "Volume não encontrado"));
+                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Volume não encontrado"));
 
         Manga manga = volume.getManga();
 
         if (!manga.isPublic() && !manga.getOwner().getId().equals(user.getId())) {
-            throw new DomainException(HttpStatus.FORBIDDEN,
+            throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Você não tem acesso a este volume");
         }
 

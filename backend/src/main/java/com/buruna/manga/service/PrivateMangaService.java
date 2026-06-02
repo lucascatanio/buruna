@@ -1,6 +1,6 @@
 package com.buruna.manga.service;
 
-import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.exception.LegacyHttpDomainException;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.shared.storage.StorageUploadHelper;
@@ -168,7 +168,7 @@ public class PrivateMangaService {
     public PrivateMangaResponse deleteVolume(UUID mangaId, UUID volumeId, User owner) {
         Manga manga = findPrivateByIdAndOwner(mangaId, owner);
         Volume volume = volumeRepository.findByIdAndMangaId(volumeId, mangaId)
-                .orElseThrow(() -> new DomainException(HttpStatus.NOT_FOUND, "Volume não encontrado"));
+                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Volume não encontrado"));
         storageClient.delete(volume.getFileUrl());
         volumeRepository.delete(volume);
         List<Volume> remaining = volumeRepository.findByMangaId(mangaId);
@@ -180,12 +180,12 @@ public class PrivateMangaService {
         Manga manga = findPrivateByIdAndOwner(id, owner);
 
         if (manga.isPublic()) {
-            throw new DomainException(HttpStatus.BAD_REQUEST,
+            throw new LegacyHttpDomainException(HttpStatus.BAD_REQUEST,
                     "Este mangá já está na biblioteca pública");
         }
 
         if (manga.getSubmissionStatus() == MangaSubmissionStatus.PENDING) {
-            throw new DomainException(HttpStatus.CONFLICT,
+            throw new LegacyHttpDomainException(HttpStatus.CONFLICT,
                     "Este mangá já foi submetido para aprovação");
         }
 
@@ -222,7 +222,7 @@ public class PrivateMangaService {
                 .orElseThrow(() -> new MangaNotFoundException(id));
 
         if (manga.getSubmissionStatus() != MangaSubmissionStatus.PENDING) {
-            throw new DomainException(HttpStatus.BAD_REQUEST,
+            throw new LegacyHttpDomainException(HttpStatus.BAD_REQUEST,
                     "Submissão não está pendente");
         }
 
@@ -242,7 +242,7 @@ public class PrivateMangaService {
                 .orElseThrow(() -> new MangaNotFoundException(id));
 
         if (manga.getSubmissionStatus() != MangaSubmissionStatus.PENDING) {
-            throw new DomainException(HttpStatus.BAD_REQUEST,
+            throw new LegacyHttpDomainException(HttpStatus.BAD_REQUEST,
                     "Submissão não está pendente");
         }
 
@@ -259,7 +259,7 @@ public class PrivateMangaService {
     @Transactional
     public PrivateMangaResponse promote(UUID id, User owner) {
         if (owner.getRole() != Role.COLLABORATOR && owner.getRole() != Role.ADMIN) {
-            throw new DomainException(HttpStatus.FORBIDDEN,
+            throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Apenas colaboradores e administradores podem promover mangás para a biblioteca pública");
         }
 
@@ -267,7 +267,7 @@ public class PrivateMangaService {
 
         // 1. título duplicado na biblioteca pública
         if (mangaRepository.existsByTitleIgnoreCaseAndIsPublicTrue(manga.getTitle())) {
-            throw new DomainException(HttpStatus.CONFLICT,
+            throw new LegacyHttpDomainException(HttpStatus.CONFLICT,
                     "Já existe um mangá com este título na biblioteca pública");
         }
 
@@ -276,7 +276,7 @@ public class PrivateMangaService {
         boolean hasPublicHash = volumes.stream()
                 .anyMatch(v -> volumeRepository.existsByFileHashAndMangaIsPublicTrue(v.getFileHash()));
         if (hasPublicHash) {
-            throw new DomainException(HttpStatus.CONFLICT,
+            throw new LegacyHttpDomainException(HttpStatus.CONFLICT,
                     "Um ou mais volumes já existem na biblioteca pública");
         }
 
@@ -295,10 +295,10 @@ public class PrivateMangaService {
         Manga manga = mangaRepository.findById(id)
                 .orElseThrow(() -> new MangaNotFoundException(id));
         if (manga.isPublic()) {
-            throw new DomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado na coleção privada");
+            throw new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado na coleção privada");
         }
         if (!manga.getOwner().getId().equals(owner.getId())) {
-            throw new DomainException(HttpStatus.FORBIDDEN,
+            throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Você não tem permissão para modificar este mangá");
         }
         return manga;

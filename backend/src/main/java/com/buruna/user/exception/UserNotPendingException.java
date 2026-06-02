@@ -1,9 +1,9 @@
 package com.buruna.user.exception;
 
-import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.exception.LegacyHttpDomainException;
 import org.springframework.http.HttpStatus;
 
-public class UserNotPendingException extends DomainException {
+public class UserNotPendingException extends LegacyHttpDomainException {
     public UserNotPendingException() {
         super(HttpStatus.CONFLICT, "User is not in PENDING status");
     }
