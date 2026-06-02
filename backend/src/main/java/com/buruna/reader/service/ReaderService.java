@@ -1,7 +1,7 @@
 package com.buruna.reader.service;
 
-import com.buruna.infra.exception.DomainException;
-import com.buruna.infra.storage.StorageClient;
+import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.storage.StorageClient;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.repository.MangaRepository;

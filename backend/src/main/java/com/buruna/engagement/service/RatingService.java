@@ -4,7 +4,7 @@ import com.buruna.engagement.domain.Rating;
 import com.buruna.engagement.dto.RatingRequest;
 import com.buruna.engagement.dto.RatingResponse;
 import com.buruna.engagement.repository.RatingRepository;
-import com.buruna.infra.exception.DomainException;
+import com.buruna.shared.exception.DomainException;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.user.domain.User;

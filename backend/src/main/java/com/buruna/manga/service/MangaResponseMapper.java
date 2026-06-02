@@ -1,6 +1,6 @@
 package com.buruna.manga.service;
 
-import com.buruna.infra.storage.StorageClient;
+import com.buruna.shared.storage.StorageClient;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.dto.MangaResponse;
 import com.buruna.manga.dto.TagCategoryResponse;

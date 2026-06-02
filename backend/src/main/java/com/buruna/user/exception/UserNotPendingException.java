@@ -1,6 +1,6 @@
 package com.buruna.user.exception;
 
-import com.buruna.infra.exception.DomainException;
+import com.buruna.shared.exception.DomainException;
 import org.springframework.http.HttpStatus;
 
 public class UserNotPendingException extends DomainException {

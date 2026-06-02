@@ -1,9 +1,9 @@
 package com.buruna.manga.service;
 
-import com.buruna.infra.exception.DomainException;
-import com.buruna.infra.notification.EmailService;
-import com.buruna.infra.storage.StorageClient;
-import com.buruna.infra.storage.StorageUploadHelper;
+import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.notification.EmailService;
+import com.buruna.shared.storage.StorageClient;
+import com.buruna.shared.storage.StorageUploadHelper;
 import com.buruna.manga.domain.*;
 import com.buruna.manga.dto.*;
 import com.buruna.manga.exception.DuplicateVolumeException;

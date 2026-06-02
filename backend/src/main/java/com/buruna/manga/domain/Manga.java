@@ -1,6 +1,6 @@
 package com.buruna.manga.domain;
 
-import com.buruna.infra.converter.StringListConverter;
+import com.buruna.shared.converter.StringListConverter;
 import com.buruna.user.domain.User;
 import jakarta.persistence.*;
 import lombok.Getter;

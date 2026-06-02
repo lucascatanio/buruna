@@ -3,7 +3,7 @@ package com.buruna.auth.service;
 import com.buruna.auth.domain.RefreshToken;
 import com.buruna.auth.exception.InvalidTokenException;
 import com.buruna.auth.repository.RefreshTokenRepository;
-import com.buruna.infra.config.AppProperties;
+import com.buruna.shared.config.AppProperties;
 import com.buruna.user.domain.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;

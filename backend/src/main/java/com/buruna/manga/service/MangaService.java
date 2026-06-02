@@ -1,8 +1,8 @@
 package com.buruna.manga.service;
 
-import com.buruna.infra.exception.DomainException;
-import com.buruna.infra.storage.StorageClient;
-import com.buruna.infra.storage.StorageUploadHelper;
+import com.buruna.shared.exception.DomainException;
+import com.buruna.shared.storage.StorageClient;
+import com.buruna.shared.storage.StorageUploadHelper;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;

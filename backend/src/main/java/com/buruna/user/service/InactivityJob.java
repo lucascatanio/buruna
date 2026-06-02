@@ -1,7 +1,7 @@
 package com.buruna.user.service;
 
-import com.buruna.infra.notification.EmailService;
-import com.buruna.infra.storage.StorageClient;
+import com.buruna.shared.notification.EmailService;
+import com.buruna.shared.storage.StorageClient;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.VolumeRepository;
 import com.buruna.user.domain.User;

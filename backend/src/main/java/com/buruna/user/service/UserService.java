@@ -1,6 +1,6 @@
 package com.buruna.user.service;
 
-import com.buruna.infra.notification.EmailService;
+import com.buruna.shared.notification.EmailService;
 import com.buruna.user.domain.Role;
 import com.buruna.user.domain.User;
 import com.buruna.user.domain.UserStatus;

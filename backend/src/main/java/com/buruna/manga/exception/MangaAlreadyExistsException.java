@@ -1,6 +1,6 @@
 package com.buruna.manga.exception;
 
-import com.buruna.infra.exception.DomainException;
+import com.buruna.shared.exception.DomainException;
 import org.springframework.http.HttpStatus;
 
 public class MangaAlreadyExistsException extends DomainException {
