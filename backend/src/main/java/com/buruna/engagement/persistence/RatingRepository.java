@@ -14,9 +14,9 @@ public interface RatingRepository extends JpaRepository<Rating, UUID> {
 
     void deleteByUserIdAndMangaId(UUID userId, UUID mangaId);
 
-    @Query("SELECT COUNT(r) FROM Rating r WHERE r.manga.id = :mangaId")
+    @Query("SELECT COUNT(r) FROM Rating r WHERE r.mangaId = :mangaId")
     int countByMangaId(@Param("mangaId") UUID mangaId);
 
-    @Query("SELECT COALESCE(AVG(r.score), 0) FROM Rating r WHERE r.manga.id = :mangaId")
+    @Query("SELECT COALESCE(AVG(r.score), 0) FROM Rating r WHERE r.mangaId = :mangaId")
     double avgScoreByMangaId(@Param("mangaId") UUID mangaId);
 }

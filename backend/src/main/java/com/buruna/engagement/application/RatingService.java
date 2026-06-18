@@ -10,10 +10,10 @@ import com.buruna.engagement.web.RatingRequest;
 import com.buruna.engagement.web.RatingResponse;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.repository.MangaRepository;
-import com.buruna.user.domain.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,31 +30,26 @@ public class RatingService {
     }
 
     @Transactional
-    public RatingResponse rate(UUID mangaId, RatingRequest request, User user) {
+    public RatingResponse rate(UUID mangaId, RatingRequest request, UUID actorId) {
         Manga manga = findPublicManga(mangaId);
 
-        if (ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId).isPresent()) {
+        if (ratingRepository.findByUserIdAndMangaId(actorId, mangaId).isPresent()) {
             throw new RatingAlreadyExistsException(mangaId);
         }
 
         Score score = Score.of(request.score());
-
-        Rating rating = new Rating();
-        rating.setUser(user);
-        rating.setManga(manga);
-        rating.setScore(score.value());
-        ratingRepository.save(rating);
+        ratingRepository.save(Rating.create(actorId, mangaId, score));
 
         return toResponse(mangaId, score.value(), recalculate(manga));
     }
 
     @Transactional
-    public RatingResponse update(UUID mangaId, RatingRequest request, User user) {
-        Rating rating = ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId)
+    public RatingResponse update(UUID mangaId, RatingRequest request, UUID actorId) {
+        Rating rating = ratingRepository.findByUserIdAndMangaId(actorId, mangaId)
                 .orElseThrow(() -> new RatingNotFoundException(mangaId));
 
         Score score = Score.of(request.score());
-        rating.setScore(score.value());
+        rating.updateScore(score);
         ratingRepository.save(rating);
 
         Manga manga = findPublicManga(mangaId);
@@ -62,17 +57,17 @@ public class RatingService {
     }
 
     @Transactional
-    public void remove(UUID mangaId, User user) {
-        if (ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId).isEmpty()) {
+    public void remove(UUID mangaId, UUID actorId) {
+        if (ratingRepository.findByUserIdAndMangaId(actorId, mangaId).isEmpty()) {
             throw new RatingNotFoundException(mangaId);
         }
-        ratingRepository.deleteByUserIdAndMangaId(user.getId(), mangaId);
+        ratingRepository.deleteByUserIdAndMangaId(actorId, mangaId);
         recalculate(findPublicManga(mangaId));
     }
 
     @Transactional(readOnly = true)
-    public Optional<RatingResponse> findByUser(UUID mangaId, User user) {
-        return ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId)
+    public Optional<RatingResponse> findByUser(UUID mangaId, UUID actorId) {
+        return ratingRepository.findByUserIdAndMangaId(actorId, mangaId)
                 .map(r -> {
                     Manga manga = findPublicManga(mangaId);
                     return new RatingResponse(
@@ -87,14 +82,11 @@ public class RatingService {
     private RecalcResult recalculate(Manga manga) {
         double avg = ratingRepository.avgScoreByMangaId(manga.getId());
         int count = ratingRepository.countByMangaId(manga.getId());
-
         double avgRounded = Math.round(avg * 10.0) / 10.0;
-
-        manga.setAvgRating(java.math.BigDecimal.valueOf(avgRounded));
+        manga.setAvgRating(BigDecimal.valueOf(avgRounded));
         manga.setRatingCount(count);
         mangaRepository.save(manga);
-
-        return new RecalcResult(java.math.BigDecimal.valueOf(avgRounded), count);
+        return new RecalcResult(BigDecimal.valueOf(avgRounded), count);
     }
 
     private Manga findPublicManga(UUID mangaId) {
@@ -107,5 +99,5 @@ public class RatingService {
         return new RatingResponse(mangaId, score, recalc.avg(), recalc.count());
     }
 
-    private record RecalcResult(java.math.BigDecimal avg, int count) {}
+    private record RecalcResult(BigDecimal avg, int count) {}
 }

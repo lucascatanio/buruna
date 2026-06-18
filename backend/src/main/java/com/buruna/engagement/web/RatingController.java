@@ -24,7 +24,7 @@ public class RatingController {
     public ResponseEntity<RatingResponse> getMyRating(
             @PathVariable UUID mangaId,
             @AuthenticationPrincipal User user) {
-        return ratingService.findByUser(mangaId, user)
+        return ratingService.findByUser(mangaId, user.getId())
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
     }
@@ -35,7 +35,7 @@ public class RatingController {
             @Valid @RequestBody RatingRequest request,
             @AuthenticationPrincipal User user) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ratingService.rate(mangaId, request, user));
+                .body(ratingService.rate(mangaId, request, user.getId()));
     }
 
     @PutMapping
@@ -43,14 +43,14 @@ public class RatingController {
             @PathVariable UUID mangaId,
             @Valid @RequestBody RatingRequest request,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(ratingService.update(mangaId, request, user));
+        return ResponseEntity.ok(ratingService.update(mangaId, request, user.getId()));
     }
 
     @DeleteMapping
     public ResponseEntity<Void> remove(
             @PathVariable UUID mangaId,
             @AuthenticationPrincipal User user) {
-        ratingService.remove(mangaId, user);
+        ratingService.remove(mangaId, user.getId());
         return ResponseEntity.noContent().build();
     }
 }
