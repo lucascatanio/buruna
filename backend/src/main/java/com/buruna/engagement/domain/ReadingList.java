@@ -1,10 +1,7 @@
 package com.buruna.engagement.domain;
 
-import com.buruna.manga.domain.Manga;
-import com.buruna.user.domain.User;
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
@@ -16,20 +13,17 @@ import java.util.UUID;
 @Table(name = "reading_list",
         uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "manga_id"}))
 @Getter
-@Setter
 public class ReadingList {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "manga_id", nullable = false)
-    private Manga manga;
+    @Column(name = "manga_id", nullable = false)
+    private UUID mangaId;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -39,4 +33,18 @@ public class ReadingList {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private OffsetDateTime updatedAt;
+
+    protected ReadingList() {}
+
+    public static ReadingList create(UUID userId, UUID mangaId, ReadingStatus status) {
+        ReadingList rl = new ReadingList();
+        rl.userId = userId;
+        rl.mangaId = mangaId;
+        rl.status = status;
+        return rl;
+    }
+
+    public void updateStatus(ReadingStatus newStatus) {
+        this.status = newStatus;
+    }
 }

@@ -116,6 +116,11 @@ public class Manga {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    public void applyRatingStats(java.math.BigDecimal avgRating, int ratingCount) {
+        this.avgRating = avgRating;
+        this.ratingCount = ratingCount;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = OffsetDateTime.now();

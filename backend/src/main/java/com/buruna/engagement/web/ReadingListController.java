@@ -23,7 +23,7 @@ public class ReadingListController {
     @GetMapping
     public ResponseEntity<List<ReadingListResponse>> findAll(
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(readingListService.findAll(user));
+        return ResponseEntity.ok(readingListService.findAll(user.getId()));
     }
 
     @PutMapping("/{mangaId}")
@@ -31,14 +31,14 @@ public class ReadingListController {
             @PathVariable UUID mangaId,
             @Valid @RequestBody ReadingListRequest request,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(readingListService.upsert(mangaId, request, user));
+        return ResponseEntity.ok(readingListService.upsert(mangaId, request, user.getId()));
     }
 
     @DeleteMapping("/{mangaId}")
     public ResponseEntity<Void> remove(
             @PathVariable UUID mangaId,
             @AuthenticationPrincipal User user) {
-        readingListService.remove(mangaId, user);
+        readingListService.remove(mangaId, user.getId());
         return ResponseEntity.noContent().build();
     }
 }

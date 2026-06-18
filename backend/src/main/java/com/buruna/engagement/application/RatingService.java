@@ -1,6 +1,5 @@
 package com.buruna.engagement.application;
 
-import com.buruna.engagement.domain.MangaNotFoundException;
 import com.buruna.engagement.domain.Rating;
 import com.buruna.engagement.domain.RatingAlreadyExistsException;
 import com.buruna.engagement.domain.RatingNotFoundException;
@@ -8,8 +7,8 @@ import com.buruna.engagement.domain.Score;
 import com.buruna.engagement.persistence.RatingRepository;
 import com.buruna.engagement.web.RatingRequest;
 import com.buruna.engagement.web.RatingResponse;
-import com.buruna.manga.domain.Manga;
-import com.buruna.manga.repository.MangaRepository;
+import com.buruna.manga.application.FindPublicMangaUseCase;
+import com.buruna.manga.application.UpdateMangaRatingStatsUseCase;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,17 +20,20 @@ import java.util.UUID;
 public class RatingService {
 
     private final RatingRepository ratingRepository;
-    private final MangaRepository mangaRepository;
+    private final FindPublicMangaUseCase findPublicMangaUseCase;
+    private final UpdateMangaRatingStatsUseCase updateMangaRatingStatsUseCase;
 
     public RatingService(RatingRepository ratingRepository,
-                         MangaRepository mangaRepository) {
+                         FindPublicMangaUseCase findPublicMangaUseCase,
+                         UpdateMangaRatingStatsUseCase updateMangaRatingStatsUseCase) {
         this.ratingRepository = ratingRepository;
-        this.mangaRepository = mangaRepository;
+        this.findPublicMangaUseCase = findPublicMangaUseCase;
+        this.updateMangaRatingStatsUseCase = updateMangaRatingStatsUseCase;
     }
 
     @Transactional
     public RatingResponse rate(UUID mangaId, RatingRequest request, UUID actorId) {
-        Manga manga = findPublicManga(mangaId);
+        findPublicMangaUseCase.requirePublicManga(mangaId);
 
         if (ratingRepository.findByUserIdAndMangaId(actorId, mangaId).isPresent()) {
             throw new RatingAlreadyExistsException(mangaId);
@@ -40,7 +42,8 @@ public class RatingService {
         Score score = Score.of(request.score());
         ratingRepository.save(Rating.create(actorId, mangaId, score));
 
-        return toResponse(mangaId, score.value(), recalculate(manga));
+        RecalcResult recalc = recalcAndPush(mangaId);
+        return new RatingResponse(mangaId, score.value(), recalc.avg(), recalc.count());
     }
 
     @Transactional
@@ -48,12 +51,14 @@ public class RatingService {
         Rating rating = ratingRepository.findByUserIdAndMangaId(actorId, mangaId)
                 .orElseThrow(() -> new RatingNotFoundException(mangaId));
 
+        findPublicMangaUseCase.requirePublicManga(mangaId);
+
         Score score = Score.of(request.score());
         rating.updateScore(score);
         ratingRepository.save(rating);
 
-        Manga manga = findPublicManga(mangaId);
-        return toResponse(mangaId, score.value(), recalculate(manga));
+        RecalcResult recalc = recalcAndPush(mangaId);
+        return new RatingResponse(mangaId, score.value(), recalc.avg(), recalc.count());
     }
 
     @Transactional
@@ -62,41 +67,28 @@ public class RatingService {
             throw new RatingNotFoundException(mangaId);
         }
         ratingRepository.deleteByUserIdAndMangaId(actorId, mangaId);
-        recalculate(findPublicManga(mangaId));
+        recalcAndPush(mangaId);
     }
 
     @Transactional(readOnly = true)
     public Optional<RatingResponse> findByUser(UUID mangaId, UUID actorId) {
         return ratingRepository.findByUserIdAndMangaId(actorId, mangaId)
                 .map(r -> {
-                    Manga manga = findPublicManga(mangaId);
-                    return new RatingResponse(
-                            mangaId,
-                            r.getScore(),
-                            manga.getAvgRating(),
-                            manga.getRatingCount()
-                    );
+                    findPublicMangaUseCase.requirePublicManga(mangaId);
+                    double avg = ratingRepository.avgScoreByMangaId(mangaId);
+                    int count = ratingRepository.countByMangaId(mangaId);
+                    return new RatingResponse(mangaId, r.getScore(),
+                            BigDecimal.valueOf(Math.round(avg * 10.0) / 10.0), count);
                 });
     }
 
-    private RecalcResult recalculate(Manga manga) {
-        double avg = ratingRepository.avgScoreByMangaId(manga.getId());
-        int count = ratingRepository.countByMangaId(manga.getId());
-        double avgRounded = Math.round(avg * 10.0) / 10.0;
-        manga.setAvgRating(BigDecimal.valueOf(avgRounded));
-        manga.setRatingCount(count);
-        mangaRepository.save(manga);
-        return new RecalcResult(BigDecimal.valueOf(avgRounded), count);
-    }
-
-    private Manga findPublicManga(UUID mangaId) {
-        return mangaRepository.findById(mangaId)
-                .filter(Manga::isPublic)
-                .orElseThrow(() -> new MangaNotFoundException(mangaId));
-    }
-
-    private RatingResponse toResponse(UUID mangaId, int score, RecalcResult recalc) {
-        return new RatingResponse(mangaId, score, recalc.avg(), recalc.count());
+    // engagement é dono da tabela ratings: calcula avg/count aqui e empurra para manga
+    private RecalcResult recalcAndPush(UUID mangaId) {
+        double avg = ratingRepository.avgScoreByMangaId(mangaId);
+        int count = ratingRepository.countByMangaId(mangaId);
+        BigDecimal avgRounded = BigDecimal.valueOf(Math.round(avg * 10.0) / 10.0);
+        updateMangaRatingStatsUseCase.handle(mangaId, avgRounded, count);
+        return new RecalcResult(avgRounded, count);
     }
 
     private record RecalcResult(BigDecimal avg, int count) {}

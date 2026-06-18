@@ -1,21 +1,23 @@
 package com.buruna.engagement.application;
 
-import com.buruna.engagement.domain.MangaNotFoundException;
 import com.buruna.engagement.domain.ReadingList;
 import com.buruna.engagement.domain.ReadingListItemNotFoundException;
 import com.buruna.engagement.persistence.ReadingListRepository;
 import com.buruna.engagement.web.ReadingListRequest;
 import com.buruna.engagement.web.ReadingListResponse;
-import com.buruna.manga.domain.Manga;
-import com.buruna.manga.repository.MangaRepository;
+import com.buruna.manga.application.FindPublicMangaUseCase;
+import com.buruna.manga.application.GetMangaInfoUseCase;
+import com.buruna.manga.application.MangaInfo;
 import com.buruna.shared.storage.StorageClient;
-import com.buruna.user.domain.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ReadingListService {
@@ -23,61 +25,65 @@ public class ReadingListService {
     private static final Duration COVER_URL_EXPIRATION = Duration.ofHours(1);
 
     private final ReadingListRepository readingListRepository;
-    private final MangaRepository mangaRepository;
+    private final FindPublicMangaUseCase findPublicMangaUseCase;
+    private final GetMangaInfoUseCase getMangaInfoUseCase;
     private final StorageClient storageClient;
 
     public ReadingListService(ReadingListRepository readingListRepository,
-                              MangaRepository mangaRepository,
+                              FindPublicMangaUseCase findPublicMangaUseCase,
+                              GetMangaInfoUseCase getMangaInfoUseCase,
                               StorageClient storageClient) {
         this.readingListRepository = readingListRepository;
-        this.mangaRepository = mangaRepository;
+        this.findPublicMangaUseCase = findPublicMangaUseCase;
+        this.getMangaInfoUseCase = getMangaInfoUseCase;
         this.storageClient = storageClient;
     }
 
     @Transactional(readOnly = true)
-    public List<ReadingListResponse> findAll(User user) {
-        return readingListRepository.findAllByUserIdWithManga(user.getId())
-                .stream()
-                .map(this::toResponse)
+    public List<ReadingListResponse> findAll(UUID actorId) {
+        List<ReadingList> entries = readingListRepository.findAllByUserIdOrderByUpdatedAtDesc(actorId);
+        if (entries.isEmpty()) return List.of();
+
+        Set<UUID> mangaIds = entries.stream().map(ReadingList::getMangaId).collect(Collectors.toSet());
+        Map<UUID, MangaInfo> infoMap = getMangaInfoUseCase.getInfoByIds(mangaIds);
+
+        return entries.stream()
+                .map(rl -> toResponse(rl, infoMap.get(rl.getMangaId())))
                 .toList();
     }
 
     @Transactional
-    public ReadingListResponse upsert(UUID mangaId, ReadingListRequest request, User user) {
-        Manga manga = mangaRepository.findById(mangaId)
-                .filter(Manga::isPublic)
-                .orElseThrow(() -> new MangaNotFoundException(mangaId));
+    public ReadingListResponse upsert(UUID mangaId, ReadingListRequest request, UUID actorId) {
+        MangaInfo info = findPublicMangaUseCase.getPublicMangaInfo(mangaId);
 
         ReadingList entry = readingListRepository
-                .findByUserIdAndMangaId(user.getId(), mangaId)
-                .orElseGet(() -> {
-                    ReadingList rl = new ReadingList();
-                    rl.setUser(user);
-                    rl.setManga(manga);
-                    return rl;
-                });
+                .findByUserIdAndMangaId(actorId, mangaId)
+                .orElseGet(() -> ReadingList.create(actorId, mangaId, request.status()));
 
-        entry.setStatus(request.status());
-        return toResponse(readingListRepository.save(entry));
+        if (entry.getId() != null) {
+            entry.updateStatus(request.status());
+        }
+
+        ReadingList saved = readingListRepository.save(entry);
+        return toResponse(saved, info);
     }
 
     @Transactional
-    public void remove(UUID mangaId, User user) {
-        if (!readingListRepository.existsByUserIdAndMangaId(user.getId(), mangaId)) {
+    public void remove(UUID mangaId, UUID actorId) {
+        if (!readingListRepository.existsByUserIdAndMangaId(actorId, mangaId)) {
             throw new ReadingListItemNotFoundException(mangaId);
         }
-        readingListRepository.deleteByUserIdAndMangaId(user.getId(), mangaId);
+        readingListRepository.deleteByUserIdAndMangaId(actorId, mangaId);
     }
 
-    private ReadingListResponse toResponse(ReadingList rl) {
-        Manga manga = rl.getManga();
-        String coverUrl = manga.getCoverUrl() != null
-                ? storageClient.generateSignedUrl(manga.getCoverUrl(), COVER_URL_EXPIRATION).toString()
+    private ReadingListResponse toResponse(ReadingList rl, MangaInfo info) {
+        String coverUrl = info.coverUrl() != null
+                ? storageClient.generateSignedUrl(info.coverUrl(), COVER_URL_EXPIRATION).toString()
                 : null;
         return new ReadingListResponse(
-                manga.getId(),
-                manga.getSlug(),
-                manga.getTitle(),
+                info.id(),
+                info.slug(),
+                info.title(),
                 coverUrl,
                 rl.getStatus(),
                 rl.getUpdatedAt()
