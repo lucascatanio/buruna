@@ -1,7 +1,7 @@
 package com.buruna.engagement;
 
-import com.buruna.engagement.repository.RatingRepository;
-import com.buruna.engagement.repository.ReadingListRepository;
+import com.buruna.engagement.persistence.RatingRepository;
+import com.buruna.engagement.persistence.ReadingListRepository;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;

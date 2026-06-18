@@ -1,8 +1,6 @@
-package com.buruna.engagement.controller;
+package com.buruna.engagement.web;
 
-import com.buruna.engagement.dto.ReadingListRequest;
-import com.buruna.engagement.dto.ReadingListResponse;
-import com.buruna.engagement.service.ReadingListService;
+import com.buruna.engagement.application.ReadingListService;
 import com.buruna.user.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

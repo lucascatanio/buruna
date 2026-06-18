@@ -1,15 +1,15 @@
-package com.buruna.engagement.service;
+package com.buruna.engagement.application;
 
+import com.buruna.engagement.domain.MangaNotFoundException;
 import com.buruna.engagement.domain.ReadingList;
-import com.buruna.engagement.dto.ReadingListRequest;
-import com.buruna.engagement.dto.ReadingListResponse;
-import com.buruna.engagement.repository.ReadingListRepository;
-import com.buruna.shared.exception.LegacyHttpDomainException;
-import com.buruna.shared.storage.StorageClient;
+import com.buruna.engagement.domain.ReadingListItemNotFoundException;
+import com.buruna.engagement.persistence.ReadingListRepository;
+import com.buruna.engagement.web.ReadingListRequest;
+import com.buruna.engagement.web.ReadingListResponse;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.repository.MangaRepository;
+import com.buruna.shared.storage.StorageClient;
 import com.buruna.user.domain.User;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +46,7 @@ public class ReadingListService {
     public ReadingListResponse upsert(UUID mangaId, ReadingListRequest request, User user) {
         Manga manga = mangaRepository.findById(mangaId)
                 .filter(Manga::isPublic)
-                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado"));
+                .orElseThrow(() -> new MangaNotFoundException(mangaId));
 
         ReadingList entry = readingListRepository
                 .findByUserIdAndMangaId(user.getId(), mangaId)
@@ -64,7 +64,7 @@ public class ReadingListService {
     @Transactional
     public void remove(UUID mangaId, User user) {
         if (!readingListRepository.existsByUserIdAndMangaId(user.getId(), mangaId)) {
-            throw new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Item não encontrado na lista de leitura");
+            throw new ReadingListItemNotFoundException(mangaId);
         }
         readingListRepository.deleteByUserIdAndMangaId(user.getId(), mangaId);
     }

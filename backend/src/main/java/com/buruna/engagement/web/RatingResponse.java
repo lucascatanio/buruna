@@ -1,7 +1,6 @@
-package com.buruna.engagement.dto;
+package com.buruna.engagement.web;
 
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record RatingResponse(

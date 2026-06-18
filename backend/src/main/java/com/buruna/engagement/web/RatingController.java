@@ -1,8 +1,6 @@
-package com.buruna.engagement.controller;
+package com.buruna.engagement.web;
 
-import com.buruna.engagement.dto.RatingRequest;
-import com.buruna.engagement.dto.RatingResponse;
-import com.buruna.engagement.service.RatingService;
+import com.buruna.engagement.application.RatingService;
 import com.buruna.user.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

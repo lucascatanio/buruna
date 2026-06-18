@@ -1,14 +1,16 @@
-package com.buruna.engagement.service;
+package com.buruna.engagement.application;
 
+import com.buruna.engagement.domain.MangaNotFoundException;
 import com.buruna.engagement.domain.Rating;
-import com.buruna.engagement.dto.RatingRequest;
-import com.buruna.engagement.dto.RatingResponse;
-import com.buruna.engagement.repository.RatingRepository;
-import com.buruna.shared.exception.LegacyHttpDomainException;
+import com.buruna.engagement.domain.RatingAlreadyExistsException;
+import com.buruna.engagement.domain.RatingNotFoundException;
+import com.buruna.engagement.domain.Score;
+import com.buruna.engagement.persistence.RatingRepository;
+import com.buruna.engagement.web.RatingRequest;
+import com.buruna.engagement.web.RatingResponse;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.user.domain.User;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,36 +34,37 @@ public class RatingService {
         Manga manga = findPublicManga(mangaId);
 
         if (ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId).isPresent()) {
-            throw new LegacyHttpDomainException(HttpStatus.CONFLICT,
-                    "Você já avaliou este mangá. Use PUT para atualizar.");
+            throw new RatingAlreadyExistsException(mangaId);
         }
+
+        Score score = Score.of(request.score());
 
         Rating rating = new Rating();
         rating.setUser(user);
         rating.setManga(manga);
-        rating.setScore(request.score());
-        Rating saved = ratingRepository.save(rating);
+        rating.setScore(score.value());
+        ratingRepository.save(rating);
 
-        return toResponse(mangaId, saved.getScore(), recalculate(manga));
+        return toResponse(mangaId, score.value(), recalculate(manga));
     }
 
     @Transactional
     public RatingResponse update(UUID mangaId, RatingRequest request, User user) {
         Rating rating = ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId)
-                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND,
-                        "Você ainda não avaliou este mangá. Use POST para avaliar."));
+                .orElseThrow(() -> new RatingNotFoundException(mangaId));
 
-        rating.setScore(request.score());
+        Score score = Score.of(request.score());
+        rating.setScore(score.value());
         ratingRepository.save(rating);
 
         Manga manga = findPublicManga(mangaId);
-        return toResponse(mangaId, rating.getScore(), recalculate(manga));
+        return toResponse(mangaId, score.value(), recalculate(manga));
     }
 
     @Transactional
     public void remove(UUID mangaId, User user) {
         if (ratingRepository.findByUserIdAndMangaId(user.getId(), mangaId).isEmpty()) {
-            throw new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Avaliação não encontrada");
+            throw new RatingNotFoundException(mangaId);
         }
         ratingRepository.deleteByUserIdAndMangaId(user.getId(), mangaId);
         recalculate(findPublicManga(mangaId));
@@ -97,7 +100,7 @@ public class RatingService {
     private Manga findPublicManga(UUID mangaId) {
         return mangaRepository.findById(mangaId)
                 .filter(Manga::isPublic)
-                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado"));
+                .orElseThrow(() -> new MangaNotFoundException(mangaId));
     }
 
     private RatingResponse toResponse(UUID mangaId, int score, RecalcResult recalc) {

@@ -1,4 +1,4 @@
-package com.buruna.engagement.repository;
+package com.buruna.engagement.persistence;
 
 import com.buruna.engagement.domain.Rating;
 import org.springframework.data.jpa.repository.JpaRepository;
