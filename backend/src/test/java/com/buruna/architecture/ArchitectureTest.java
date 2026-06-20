@@ -1,13 +1,18 @@
 package com.buruna.architecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 
 /**
  * Garante que domain e application de um contexto não importem domain/persistence de outro.
@@ -49,6 +54,40 @@ class ArchitectureTest {
                              "application layer only (ADR-35 §2.3)");
 
             rule.check(classes);
+        }
+    }
+
+    /**
+     * Guard parcial para ADR-39: detecta @Query(nativeQuery=true) nas camadas persistence
+     * de contextos migrados. Native SQL escapa à análise de imports Java, então esse guard
+     * captura o vetor de violação mais provável (repositório de um contexto fazendo SQL
+     * direto em tabelas de outro). Se um native query intracontexto for necessário por
+     * performance, ele deve ser documentado e explicitamente permitido via @ArchIgnore.
+     */
+    @Test
+    void persistenceLayer_shouldNotUseNativeQueries() {
+        ArchCondition<JavaMethod> noNativeQuery =
+                new ArchCondition<JavaMethod>("not use @Query(nativeQuery=true)") {
+                    @Override
+                    public void check(JavaMethod method, ConditionEvents events) {
+                        method.getAnnotations().stream()
+                                .filter(a -> a.getRawType().getSimpleName().equals("Query"))
+                                .filter(a -> Boolean.TRUE.equals(a.get("nativeQuery").orElse(false)))
+                                .forEach(a -> events.add(SimpleConditionEvent.violated(method,
+                                        method.getDescription() + " usa @Query(nativeQuery=true); " +
+                                        "acesso cross-contexto deve passar por use case público (ADR-39). " +
+                                        "Se for intracontexto e necessário, anote com @ArchIgnore.")));
+                    }
+                };
+
+        for (String context : MIGRATED_CONTEXTS) {
+            noMethods()
+                    .that().areDeclaredInClassesThat()
+                    .resideInAPackage(BASE + "." + context + ".persistence..")
+                    .should(noNativeQuery)
+                    .because("native SQL escapa à análise de imports e pode acoplar contextos " +
+                             "silenciosamente (ADR-39)")
+                    .check(classes);
         }
     }
 
