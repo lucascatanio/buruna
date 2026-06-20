@@ -1,7 +1,5 @@
-package com.buruna.reader.domain;
+package com.buruna.reading.domain;
 
-import com.buruna.manga.domain.Volume;
-import com.buruna.user.domain.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,13 +17,11 @@ public class ReadingHistory {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "volume_id", nullable = false)
-    private Volume volume;
+    @Column(name = "volume_id", nullable = false)
+    private UUID volumeId;
 
     @Column(name = "read_at", nullable = false)
     private OffsetDateTime readAt;

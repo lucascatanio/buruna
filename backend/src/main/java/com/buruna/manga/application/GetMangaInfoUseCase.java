@@ -1,5 +1,6 @@
 package com.buruna.manga.application;
 
+import com.buruna.manga.exception.MangaNotFoundException;
 import com.buruna.manga.repository.MangaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,5 +27,13 @@ public class GetMangaInfoUseCase {
                         m -> m.getId(),
                         m -> new MangaInfo(m.getId(), m.getSlug(), m.getTitle(), m.getCoverUrl())
                 ));
+    }
+
+    /** Lança MangaNotFoundException se o mangá não existir — usado pelo contexto reading. */
+    @Transactional(readOnly = true)
+    public void requireExists(UUID mangaId) {
+        if (!mangaRepository.existsById(mangaId)) {
+            throw new MangaNotFoundException(mangaId);
+        }
     }
 }

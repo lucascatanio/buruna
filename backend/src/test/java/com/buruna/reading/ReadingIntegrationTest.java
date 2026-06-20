@@ -1,4 +1,4 @@
-package com.buruna.reader;
+package com.buruna.reading;
 
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaFormat;
@@ -7,8 +7,8 @@ import com.buruna.manga.domain.MangaStatusSite;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.VolumeRepository;
-import com.buruna.reader.repository.ReadingHistoryRepository;
-import com.buruna.reader.repository.ReadingProgressRepository;
+import com.buruna.reading.persistence.ReadingHistoryRepository;
+import com.buruna.reading.persistence.ReadingProgressRepository;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.user.domain.Role;
 import com.buruna.user.domain.User;
