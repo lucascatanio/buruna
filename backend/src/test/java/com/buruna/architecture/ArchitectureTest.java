@@ -61,8 +61,15 @@ class ArchitectureTest {
      * Guard parcial para ADR-39: detecta @Query(nativeQuery=true) nas camadas persistence
      * de contextos migrados. Native SQL escapa à análise de imports Java, então esse guard
      * captura o vetor de violação mais provável (repositório de um contexto fazendo SQL
-     * direto em tabelas de outro). Se um native query intracontexto for necessário por
-     * performance, ele deve ser documentado e explicitamente permitido via @ArchIgnore.
+     * direto em tabelas de outro).
+     *
+     * JPQL que referencia entidade de outro contexto por nome (string) NÃO é detectado por
+     * este guard nem pelo guard de imports — não há import Java nem é native query.
+     * Esse caso permanece exclusivamente por revisão de código (ADR-39).
+     *
+     * Se um native query estritamente intracontexto for necessário por performance, ajuste
+     * o filtro desta regra para excluir o método específico. NÃO use @ArchIgnore: ele
+     * desliga a regra inteira para toda a classe anotada.
      */
     @Test
     void persistenceLayer_shouldNotUseNativeQueries() {
@@ -76,7 +83,8 @@ class ArchitectureTest {
                                 .forEach(a -> events.add(SimpleConditionEvent.violated(method,
                                         method.getDescription() + " usa @Query(nativeQuery=true); " +
                                         "acesso cross-contexto deve passar por use case público (ADR-39). " +
-                                        "Se for intracontexto e necessário, anote com @ArchIgnore.")));
+                                        "Se for intracontexto e necessário, ajuste o filtro do guard em " +
+                                        "ArchitectureTest (não use @ArchIgnore — ele desliga a regra inteira).")));
                     }
                 };
 

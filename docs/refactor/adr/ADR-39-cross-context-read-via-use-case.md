@@ -21,6 +21,11 @@
 
 **Guard de arquitetura:**
 
-O ArchUnit detecta `@Query(nativeQuery=true)` nas camadas `persistence` de contextos migrados e falha o build (ver `ArchitectureTest.persistenceLayer_shouldNotUseNativeQueries`). Esse guard cobre a violação mais provável (native SQL em repositório de reading/engagement acessando tabela de manga). **Não** cobre JPQL com referência a entidades de outro contexto (ex.: `FROM Volume v` num repositório de reading) — essa forma já é detectada pelo guard principal `domainAndApplication_shouldNotImportInternalsOfOtherContexts` via importação Java, e é improvável em repositórios puramente derivados.
+O ArchUnit detecta `@Query(nativeQuery=true)` nas camadas `persistence` de contextos migrados e falha o build (ver `ArchitectureTest.persistenceLayer_shouldNotUseNativeQueries`). Esse guard cobre a violação mais provável: native SQL que faz JOIN em tabela de outro contexto.
 
-A regra de não fazer JOIN cross-contexto em qualquer forma (native SQL ou JPQL) é, portanto, parcialmente garantida pelo guard e parcialmente pela revisão de código.
+**O que nenhum guard cobre — review-only:**
+
+- **JPQL com nome de entidade de outro contexto** (ex.: `FROM Volume v` em repositório de `reading`): nomes de entidade JPQL são strings na anotação; não geram importação Java no bytecode, logo o guard de imports não os vê. O guard de native query também não os detecta. Essa forma de acoplamento é invisível ao ArchUnit e depende exclusivamente de revisão de código.
+- O guard de imports (`domainAndApplication_shouldNotImportInternalsOfOtherContexts`) captura apenas referências ao *tipo* Java — tipo de retorno, parâmetro, uso da Criteria API — onde o compilador registra um import real no bytecode.
+
+A regra é, portanto, garantida por dois mecanismos complementares: guard automático (native SQL) + revisão de código (JPQL cross-contexto e qualquer outra forma de acoplamento por string).
