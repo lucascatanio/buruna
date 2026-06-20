@@ -2,6 +2,7 @@ package com.buruna.reading.application;
 
 import com.buruna.manga.application.GetMangaInfoUseCase;
 import com.buruna.manga.application.GetVolumeAccessUseCase;
+import com.buruna.manga.application.GetVolumeIdsByMangaUseCase;
 import com.buruna.manga.application.GetVolumeInfoUseCase;
 import com.buruna.manga.application.MangaInfo;
 import com.buruna.manga.application.VolumeInfo;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +38,7 @@ public class ReadingService {
     private final GetVolumeAccessUseCase volumeAccessUseCase;
     private final GetVolumeInfoUseCase volumeInfoUseCase;
     private final GetMangaInfoUseCase mangaInfoUseCase;
+    private final GetVolumeIdsByMangaUseCase volumeIdsByMangaUseCase;
     private final ReadingProgressRepository progressRepository;
     private final ReadingHistoryRepository historyRepository;
     private final StorageClient storageClient;
@@ -43,12 +46,14 @@ public class ReadingService {
     public ReadingService(GetVolumeAccessUseCase volumeAccessUseCase,
                           GetVolumeInfoUseCase volumeInfoUseCase,
                           GetMangaInfoUseCase mangaInfoUseCase,
+                          GetVolumeIdsByMangaUseCase volumeIdsByMangaUseCase,
                           ReadingProgressRepository progressRepository,
                           ReadingHistoryRepository historyRepository,
                           StorageClient storageClient) {
         this.volumeAccessUseCase = volumeAccessUseCase;
         this.volumeInfoUseCase = volumeInfoUseCase;
         this.mangaInfoUseCase = mangaInfoUseCase;
+        this.volumeIdsByMangaUseCase = volumeIdsByMangaUseCase;
         this.progressRepository = progressRepository;
         this.historyRepository = historyRepository;
         this.storageClient = storageClient;
@@ -92,7 +97,15 @@ public class ReadingService {
     @Transactional(readOnly = true)
     public Optional<ProgressResponse> getProgress(UUID mangaId, UUID actorId) {
         mangaInfoUseCase.requireExists(mangaId);
-        return progressRepository.findLatestByUserIdAndMangaId(actorId, mangaId)
+
+        List<UUID> volumeIds = volumeIdsByMangaUseCase.getVolumeIdsOrderedByNumberDesc(mangaId);
+        if (volumeIds.isEmpty()) {
+            return Optional.empty();
+        }
+
+        // Picks the progress on the highest-numbered volume (volumeIds is ordered DESC)
+        return progressRepository.findByUserIdAndVolumeIdIn(actorId, volumeIds).stream()
+                .min(Comparator.comparingInt(p -> volumeIds.indexOf(p.getVolumeId())))
                 .map(p -> new ProgressResponse(p.getVolumeId(), p.getCurrentPage(), p.getUpdatedAt()));
     }
 

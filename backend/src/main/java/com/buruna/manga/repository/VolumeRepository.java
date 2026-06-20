@@ -19,6 +19,10 @@ public interface VolumeRepository extends JpaRepository<Volume, UUID> {
 
     List<Volume> findByMangaId(UUID mangaId);
 
+    /** Retorna IDs dos volumes de um mangá ordenados por volume_number DESC (para o contexto reading). */
+    @Query("SELECT v.id FROM Volume v WHERE v.manga.id = :mangaId ORDER BY v.volumeNumber DESC")
+    List<UUID> findIdsByMangaIdOrderByVolumeNumberDesc(@Param("mangaId") UUID mangaId);
+
     // soma os bytes de todos os volumes privados do usuário, usado para validação de cota
     @Query("SELECT COALESCE(SUM(v.fileSizeBytes), 0) FROM Volume v " +
             "WHERE v.manga.owner.id = :ownerId AND v.manga.isPublic = false")
