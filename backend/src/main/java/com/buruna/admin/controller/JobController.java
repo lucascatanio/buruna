@@ -1,6 +1,6 @@
 package com.buruna.admin.controller;
 
-import com.buruna.identity.admin.InactivityJob;
+import com.buruna.identity.application.admin.InactivityJob;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

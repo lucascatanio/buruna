@@ -49,6 +49,12 @@ class ArchitectureTest {
             ArchRule rule = noClasses()
                     .that().resideInAPackage(BASE + "." + context + ".domain..")
                     .or().resideInAPackage(BASE + "." + context + ".application..")
+                    // TODO Epic 5.3: remover esta exclusão quando o job usar
+                    //   DeletePrivateCollectionForUserUseCase (ADR-35). Sem a exclusão, as ~11
+                    //   violações de acoplamento manga.* fazem o build falhar — é proposital:
+                    //   força o desacoplamento no 5.3.
+                    .and().doNotHaveFullyQualifiedName(
+                            "com.buruna.identity.application.admin.InactivityJob")
                     .should().dependOnClassesThat()
                     .resideInAnyPackage(forbidden)
                     .because("cross-context access must go through another context's " +

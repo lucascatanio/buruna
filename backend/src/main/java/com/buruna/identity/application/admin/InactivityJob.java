@@ -1,4 +1,4 @@
-package com.buruna.identity.admin;
+package com.buruna.identity.application.admin;
 
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
@@ -23,12 +23,13 @@ import java.util.List;
 /**
  * Job de inatividade: avisa/desativa usuários e apaga sua coleção privada.
  *
- * Mora em {@code identity.admin} (FORA de {@code identity.application}) de propósito:
- * ainda acessa {@code manga.repository}/{@code manga.domain} diretamente, o que violaria
- * o guard de fronteira (ADR-35) se estivesse na camada application guardada. O Epic 5.3
- * extrai esse acesso para um use case público de {@code manga}
- * ({@code DeletePrivateCollectionForUserUseCase}) e então promove este job a
- * {@code identity/application/admin/RunInactivityUseCase}. Até lá, fica aqui.
+ * Vive na camada application, mas AINDA acessa {@code manga.repository}/{@code manga.domain}
+ * diretamente — acoplamento cross-contexto que viola o guard de fronteira (ADR-35). Por isso
+ * esta classe tem uma exclusão EXPLÍCITA em {@code ArchitectureTest} (não escondida fora da
+ * camada guardada). O Epic 5.3 extrai esse acesso para um use case público de {@code manga}
+ * ({@code DeletePrivateCollectionForUserUseCase}), renomeia para {@code RunInactivityUseCase}
+ * e remove a exclusão. Os bugs B1 (self-invocation do @Transactional) e B2 (paginação por
+ * offset sobre conjunto mutável) também são escopo do 5.3 e permanecem como estão.
  */
 @Service
 public class InactivityJob {
