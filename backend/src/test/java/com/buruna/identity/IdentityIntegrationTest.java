@@ -5,9 +5,12 @@ import com.buruna.identity.domain.RefreshToken;
 import com.buruna.identity.persistence.PasswordResetTokenRepository;
 import com.buruna.identity.persistence.RefreshTokenRepository;
 import com.buruna.shared.notification.EmailSender;
+import com.buruna.identity.domain.Email;
+import com.buruna.identity.domain.Quota;
 import com.buruna.identity.domain.Role;
 import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserStatus;
+import com.buruna.identity.domain.Username;
 import com.buruna.identity.persistence.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -119,15 +122,10 @@ class IdentityIntegrationTest {
     }
 
     User buildUser(String email, String username, Role role, UserStatus status) {
-        User u = new User();
-        u.setEmail(email);
-        u.setUsername(username);
-        u.setPasswordHash(passwordEncoder.encode(KNOWN_PASSWORD));
-        u.setPresentationMessage("test");
-        u.setRole(role);
-        u.setStatus(status);
-        u.setQuotaGb(new BigDecimal("2.00"));
-        u.setTotpEnabled(false);
+        User u = User.register(Email.of(email), Username.of(username),
+                passwordEncoder.encode(KNOWN_PASSWORD), "test", Quota.of(new BigDecimal("2.00")));
+        u.changeRole(role);
+        u.changeStatus(status);
         return u;
     }
 
@@ -334,7 +332,7 @@ class IdentityIntegrationTest {
     void refresh_userBecameInactive_returns403() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
-        activeUser.setStatus(UserStatus.INACTIVE);
+        activeUser.deactivate();
         userRepository.save(activeUser);
 
         assertThat(refresh(r1).getResponse().getStatus()).isEqualTo(403);
@@ -774,8 +772,8 @@ class IdentityIntegrationTest {
     String enableTotp(User user) {
         String secret = new DefaultSecretGenerator().generate();
         User persisted = userRepository.findById(user.getId()).orElseThrow();
-        persisted.setTotpSecret(secret);
-        persisted.setTotpEnabled(true);
+        persisted.startTotpSetup(secret);
+        persisted.enableTotp();
         userRepository.save(persisted);
         return secret;
     }

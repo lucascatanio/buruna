@@ -3,13 +3,16 @@ package com.buruna.identity.application.account;
 import com.buruna.identity.application.authentication.CaptchaService;
 import com.buruna.identity.application.authentication.TokenService;
 import com.buruna.identity.application.authentication.TotpService;
+import com.buruna.identity.domain.Email;
 import com.buruna.identity.domain.InvalidTokenException;
 import com.buruna.identity.domain.PasswordResetToken;
+import com.buruna.identity.domain.Quota;
 import com.buruna.identity.domain.Role;
 import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserAlreadyExistsException;
 import com.buruna.identity.domain.UserNotFoundException;
 import com.buruna.identity.domain.UserStatus;
+import com.buruna.identity.domain.Username;
 import com.buruna.identity.persistence.PasswordResetTokenRepository;
 import com.buruna.identity.persistence.UserRepository;
 import com.buruna.identity.web.RegisterRequest;
@@ -71,27 +74,23 @@ public class AccountService {
 
     @Transactional
     public void register(RegisterRequest request, String clientIp) {
+        Email email = Email.of(request.email());
+        Username username = Username.of(request.username());
+
         captchaService.verify(request.captchaToken(), clientIp);
 
-        if (userRepository.existsByEmail(request.email())) {
+        if (userRepository.existsByEmail(email.value())) {
             throw new UserAlreadyExistsException("email");
         }
-        if (userRepository.existsByUsername(request.username())) {
+        if (userRepository.existsByUsername(username.value())) {
             throw new UserAlreadyExistsException("username");
         }
 
-        User user = new User();
-        user.setEmail(request.email());
-        user.setUsername(request.username());
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.setPresentationMessage(request.presentationMessage());
-        user.setRole(Role.READER);
-        user.setStatus(UserStatus.PENDING);
-        user.setQuotaGb(new BigDecimal("2.00"));
+        User user = User.register(email, username, passwordEncoder.encode(request.password()),
+                request.presentationMessage(), Quota.of(new BigDecimal("2.00")));
 
         if (request.avatarBase64() != null && !request.avatarBase64().isBlank()) {
-            String avatarObjectName = uploadAvatar(request.avatarBase64());
-            user.setAvatarUrl(avatarObjectName);
+            user.assignAvatar(uploadAvatar(request.avatarBase64()));
         }
 
         userRepository.save(user);
@@ -129,12 +128,9 @@ public class AccountService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
-        if (user.isTotpEnabled()) {
-            throw new IllegalStateException("2FA is already enabled");
-        }
-
+        // Invariante "2FA já habilitado" mora em User.startTotpSetup.
         String secret = totpService.generateSecret();
-        user.setTotpSecret(secret);
+        user.startTotpSetup(secret);
         userRepository.save(user);
 
         String qrUri = totpService.generateQrUri(secret, user.getEmail());
@@ -154,7 +150,7 @@ public class AccountService {
             throw new BadCredentialsException("Invalid TOTP code");
         }
 
-        user.setTotpEnabled(true);
+        user.enableTotp();
         userRepository.save(user);
     }
 
@@ -171,8 +167,7 @@ public class AccountService {
             throw new BadCredentialsException("Invalid TOTP code");
         }
 
-        user.setTotpEnabled(false);
-        user.setTotpSecret(null);
+        user.disableTotp();
         userRepository.save(user);
     }
 
@@ -229,7 +224,7 @@ public class AccountService {
             }
         }
 
-        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.changePassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
 
         resetToken.setUsedAt(OffsetDateTime.now());

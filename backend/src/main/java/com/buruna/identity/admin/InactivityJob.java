@@ -115,7 +115,7 @@ public class InactivityJob {
                     privateMangas.size(), user.getUsername());
         }
 
-        user.setStatus(UserStatus.INACTIVE);
+        user.deactivate();
         userRepository.save(user);
         log.info("User {} deactivated due to inactivity", user.getUsername());
 

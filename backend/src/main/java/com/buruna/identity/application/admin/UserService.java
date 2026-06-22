@@ -1,12 +1,12 @@
 package com.buruna.identity.application.admin;
 
 import com.buruna.shared.notification.EmailService;
+import com.buruna.identity.domain.Quota;
 import com.buruna.identity.domain.Role;
 import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.web.*;
 import com.buruna.identity.domain.UserNotFoundException;
-import com.buruna.identity.domain.UserNotPendingException;
 import com.buruna.identity.persistence.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,12 +42,7 @@ public class UserService {
     @Transactional
     public void approve(UUID id) {
         User user = findOrThrow(id);
-
-        if (user.getStatus() != UserStatus.PENDING) {
-            throw new UserNotPendingException();
-        }
-
-        user.setStatus(UserStatus.ACTIVE);
+        user.approve();
         userRepository.save(user);
         emailService.sendApprovalNotification(user.getEmail(), user.getUsername());
     }
@@ -55,11 +50,7 @@ public class UserService {
     @Transactional
     public void reject(UUID id, String reason) {
         User user = findOrThrow(id);
-
-        if (user.getStatus() != UserStatus.PENDING) {
-            throw new UserNotPendingException();
-        }
-
+        user.reject();
         userRepository.delete(user);
         emailService.sendRejectionNotification(user.getEmail(), user.getUsername(), reason);
     }
@@ -67,21 +58,21 @@ public class UserService {
     @Transactional
     public UserResponse updateRole(UUID id, Role role) {
         User user = findOrThrow(id);
-        user.setRole(role);
+        user.changeRole(role);
         return toResponse(userRepository.save(user));
     }
 
     @Transactional
     public UserResponse updateStatus(UUID id, UserStatus status) {
         User user = findOrThrow(id);
-        user.setStatus(status);
+        user.changeStatus(status);
         return toResponse(userRepository.save(user));
     }
 
     @Transactional
     public UserResponse updateQuota(UUID id, BigDecimal quotaGb) {
         User user = findOrThrow(id);
-        user.setQuotaGb(quotaGb);
+        user.changeQuota(Quota.of(quotaGb));
         return toResponse(userRepository.save(user));
     }
 

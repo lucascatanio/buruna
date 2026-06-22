@@ -84,7 +84,7 @@ public class AuthenticationService {
     }
 
     private LoginResponse issueTokens(User user) {
-        user.setLastAccessAt(OffsetDateTime.now());
+        user.recordLogin(OffsetDateTime.now());
         userRepository.save(user);
 
         String accessToken = tokenService.generateAccessToken(user);

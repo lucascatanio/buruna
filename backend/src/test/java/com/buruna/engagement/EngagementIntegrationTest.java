@@ -7,9 +7,12 @@ import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;
 import com.buruna.manga.domain.MangaStatusSite;
 import com.buruna.manga.repository.MangaRepository;
+import com.buruna.identity.domain.Email;
+import com.buruna.identity.domain.Quota;
 import com.buruna.identity.domain.Role;
 import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserStatus;
+import com.buruna.identity.domain.Username;
 import com.buruna.identity.persistence.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -85,15 +88,11 @@ class EngagementIntegrationTest {
     }
 
     static User buildUser(String email, String username, Role role) {
-        User u = new User();
-        u.setEmail(email);
-        u.setUsername(username);
-        u.setPasswordHash("$2a$10$aGw6owR1pcMYQfdZvSWDTeglPDHItLt7DUt9cCmxHMyXCntVPdmRC");
-        u.setPresentationMessage("test");
-        u.setRole(role);
-        u.setStatus(UserStatus.ACTIVE);
-        u.setQuotaGb(BigDecimal.ONE);
-        u.setTotpEnabled(false);
+        User u = User.register(Email.of(email), Username.of(username),
+                "$2a$10$aGw6owR1pcMYQfdZvSWDTeglPDHItLt7DUt9cCmxHMyXCntVPdmRC", "test",
+                Quota.of(BigDecimal.ONE));
+        u.changeRole(role);
+        u.changeStatus(UserStatus.ACTIVE);
         return u;
     }
 
