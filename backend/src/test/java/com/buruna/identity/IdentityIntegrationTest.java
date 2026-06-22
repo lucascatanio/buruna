@@ -1,14 +1,14 @@
 package com.buruna.identity;
 
-import com.buruna.auth.domain.PasswordResetToken;
-import com.buruna.auth.domain.RefreshToken;
-import com.buruna.auth.repository.PasswordResetTokenRepository;
-import com.buruna.auth.repository.RefreshTokenRepository;
+import com.buruna.identity.domain.PasswordResetToken;
+import com.buruna.identity.domain.RefreshToken;
+import com.buruna.identity.persistence.PasswordResetTokenRepository;
+import com.buruna.identity.persistence.RefreshTokenRepository;
 import com.buruna.shared.notification.EmailSender;
-import com.buruna.user.domain.Role;
-import com.buruna.user.domain.User;
-import com.buruna.user.domain.UserStatus;
-import com.buruna.user.repository.UserRepository;
+import com.buruna.identity.domain.Role;
+import com.buruna.identity.domain.User;
+import com.buruna.identity.domain.UserStatus;
+import com.buruna.identity.persistence.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.samstevens.totp.code.CodeGenerator;

@@ -1,6 +1,6 @@
 package com.buruna.manga.domain;
 
-import com.buruna.user.domain.User;
+import com.buruna.identity.domain.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

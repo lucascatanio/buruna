@@ -1,8 +1,8 @@
 package com.buruna.shared.security;
 
-import com.buruna.auth.exception.InvalidTokenException;
-import com.buruna.auth.service.TokenService;
-import com.buruna.user.repository.UserRepository;
+import com.buruna.identity.domain.InvalidTokenException;
+import com.buruna.identity.application.authentication.TokenService;
+import com.buruna.identity.persistence.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,7 +1,7 @@
 package com.buruna.engagement.web;
 
 import com.buruna.engagement.application.RatingService;
-import com.buruna.user.domain.User;
+import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

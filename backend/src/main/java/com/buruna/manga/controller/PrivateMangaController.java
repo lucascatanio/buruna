@@ -2,7 +2,7 @@ package com.buruna.manga.controller;
 
 import com.buruna.manga.dto.*;
 import com.buruna.manga.service.PrivateMangaService;
-import com.buruna.user.domain.User;
+import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

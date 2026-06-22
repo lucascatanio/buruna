@@ -4,9 +4,9 @@ import com.buruna.admin.dto.DashboardResponse;
 import com.buruna.admin.dto.UserStorageResponse;
 import com.buruna.manga.repository.VolumeStorageProjection;
 import com.buruna.manga.repository.VolumeRepository;
-import com.buruna.user.domain.User;
-import com.buruna.user.domain.UserStatus;
-import com.buruna.user.repository.UserRepository;
+import com.buruna.identity.domain.User;
+import com.buruna.identity.domain.UserStatus;
+import com.buruna.identity.persistence.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

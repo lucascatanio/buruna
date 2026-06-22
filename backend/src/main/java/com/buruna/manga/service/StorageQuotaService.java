@@ -3,7 +3,7 @@ package com.buruna.manga.service;
 import com.buruna.manga.dto.QuotaInfo;
 import com.buruna.manga.exception.InsufficientStorageQuotaException;
 import com.buruna.manga.repository.VolumeRepository;
-import com.buruna.user.domain.User;
+import com.buruna.identity.domain.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

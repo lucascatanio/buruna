@@ -27,7 +27,8 @@ class ArchitectureTest {
 
     private static final String[] MIGRATED_CONTEXTS = {
             "engagement",
-            "reading"
+            "reading",
+            "identity"
     };
 
     private static final String BASE = "com.buruna";
@@ -100,7 +101,7 @@ class ArchitectureTest {
     }
 
     private static String[] buildForbiddenPackages(String self) {
-        String[] allContexts = {"engagement", "manga", "reading", "user", "auth", "admin"};
+        String[] allContexts = {"engagement", "manga", "reading", "identity", "admin"};
         return java.util.Arrays.stream(allContexts)
                 .filter(c -> !c.equals(self))
                 .flatMap(c -> java.util.Arrays.stream(new String[]{

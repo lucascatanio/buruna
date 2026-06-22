@@ -1,7 +1,7 @@
 package com.buruna.reading.web;
 
 import com.buruna.reading.application.ReadingService;
-import com.buruna.user.domain.User;
+import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

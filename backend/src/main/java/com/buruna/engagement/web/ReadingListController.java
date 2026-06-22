@@ -1,7 +1,7 @@
 package com.buruna.engagement.web;
 
 import com.buruna.engagement.application.ReadingListService;
-import com.buruna.user.domain.User;
+import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

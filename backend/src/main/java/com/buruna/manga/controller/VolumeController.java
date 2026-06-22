@@ -5,7 +5,7 @@ import com.buruna.manga.dto.VolumeResponse;
 import com.buruna.manga.dto.VolumeUploadUrlRequest;
 import com.buruna.manga.dto.VolumeUploadUrlResponse;
 import com.buruna.manga.service.VolumeService;
-import com.buruna.user.domain.User;
+import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

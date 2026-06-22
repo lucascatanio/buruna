@@ -3,7 +3,7 @@ package com.buruna.admin.controller;
 import com.buruna.admin.dto.SubmissionReviewRequest;
 import com.buruna.manga.dto.PendingSubmissionResponse;
 import com.buruna.manga.service.PrivateMangaService;
-import com.buruna.user.domain.User;
+import com.buruna.identity.domain.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
