@@ -1,11 +1,11 @@
 package com.buruna.identity.domain;
 
-import com.buruna.shared.exception.LegacyHttpDomainException;
-import org.springframework.http.HttpStatus;
+import com.buruna.shared.exception.DomainErrorType;
+import com.buruna.shared.exception.DomainException;
 
-public class InvalidCaptchaException extends LegacyHttpDomainException {
+public final class InvalidCaptchaException extends DomainException {
 
     public InvalidCaptchaException() {
-        super(HttpStatus.BAD_REQUEST, "Captcha inválido ou expirado");
+        super(DomainErrorType.VALIDATION, "Captcha inválido ou expirado");
     }
 }

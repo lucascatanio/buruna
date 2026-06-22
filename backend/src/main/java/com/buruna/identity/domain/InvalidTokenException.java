@@ -1,10 +1,10 @@
 package com.buruna.identity.domain;
 
-import com.buruna.shared.exception.LegacyHttpDomainException;
-import org.springframework.http.HttpStatus;
+import com.buruna.shared.exception.DomainErrorType;
+import com.buruna.shared.exception.DomainException;
 
-public class InvalidTokenException extends LegacyHttpDomainException {
+public final class InvalidTokenException extends DomainException {
     public InvalidTokenException() {
-        super(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
+        super(DomainErrorType.UNAUTHORIZED, "Invalid or expired token");
     }
 }

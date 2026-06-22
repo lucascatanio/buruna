@@ -1,12 +1,12 @@
 package com.buruna.identity.domain;
 
-import com.buruna.shared.exception.LegacyHttpDomainException;
-import org.springframework.http.HttpStatus;
+import com.buruna.shared.exception.DomainErrorType;
+import com.buruna.shared.exception.DomainException;
 
 import java.util.UUID;
 
-public class UserNotFoundException extends LegacyHttpDomainException {
+public final class UserNotFoundException extends DomainException {
     public UserNotFoundException(UUID id) {
-        super(HttpStatus.NOT_FOUND, "User not found: " + id);
+        super(DomainErrorType.NOT_FOUND, "User not found: " + id);
     }
 }

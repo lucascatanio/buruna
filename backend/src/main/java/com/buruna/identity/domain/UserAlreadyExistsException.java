@@ -1,10 +1,10 @@
 package com.buruna.identity.domain;
 
-import com.buruna.shared.exception.LegacyHttpDomainException;
-import org.springframework.http.HttpStatus;
+import com.buruna.shared.exception.DomainErrorType;
+import com.buruna.shared.exception.DomainException;
 
-public class UserAlreadyExistsException extends LegacyHttpDomainException {
+public final class UserAlreadyExistsException extends DomainException {
     public UserAlreadyExistsException(String field) {
-        super(HttpStatus.CONFLICT, "Already exists an user with this " + field);
+        super(DomainErrorType.CONFLICT, "Already exists an user with this " + field);
     }
 }
