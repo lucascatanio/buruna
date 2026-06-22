@@ -1,5 +1,7 @@
 package com.buruna.architecture;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -11,6 +13,9 @@ import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
+import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods;
 
@@ -46,15 +51,23 @@ class ArchitectureTest {
             String[] forbidden = buildForbiddenPackages(context);
             if (forbidden.length == 0) continue;
 
+            // (domain.. OR application..) — agrupado como um único predicado para que o
+            // AND-NOT abaixo se aplique ao conjunto INTEIRO. ArchUnit encadeia .or()/.and()
+            // estritamente da esquerda p/ direita (sem precedência booleana), então usar a
+            // forma fluente faria o ≠job valer só para o ramo application.
+            DescribedPredicate<JavaClass> inContext =
+                    resideInAPackage(BASE + "." + context + ".domain..")
+                            .or(resideInAPackage(BASE + "." + context + ".application.."));
+
+            // TODO Epic 5.3: remover esta exclusão quando o job usar
+            //   DeletePrivateCollectionForUserUseCase (ADR-35). Sem a exclusão, as ~11
+            //   violações de acoplamento manga.* fazem o build falhar — é proposital:
+            //   força o desacoplamento no 5.3.
+            DescribedPredicate<JavaClass> inContextExceptInactivityJob =
+                    inContext.and(not(name("com.buruna.identity.application.admin.InactivityJob")));
+
             ArchRule rule = noClasses()
-                    .that().resideInAPackage(BASE + "." + context + ".domain..")
-                    .or().resideInAPackage(BASE + "." + context + ".application..")
-                    // TODO Epic 5.3: remover esta exclusão quando o job usar
-                    //   DeletePrivateCollectionForUserUseCase (ADR-35). Sem a exclusão, as ~11
-                    //   violações de acoplamento manga.* fazem o build falhar — é proposital:
-                    //   força o desacoplamento no 5.3.
-                    .and().doNotHaveFullyQualifiedName(
-                            "com.buruna.identity.application.admin.InactivityJob")
+                    .that(inContextExceptInactivityJob)
                     .should().dependOnClassesThat()
                     .resideInAnyPackage(forbidden)
                     .because("cross-context access must go through another context's " +
