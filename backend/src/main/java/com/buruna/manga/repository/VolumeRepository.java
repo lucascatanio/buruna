@@ -25,16 +25,16 @@ public interface VolumeRepository extends JpaRepository<Volume, UUID> {
 
     // soma os bytes de todos os volumes privados do usuário, usado para validação de cota
     @Query("SELECT COALESCE(SUM(v.fileSizeBytes), 0) FROM Volume v " +
-            "WHERE v.manga.owner.id = :ownerId AND v.manga.isPublic = false")
+            "WHERE v.manga.ownerId = :ownerId AND v.manga.isPublic = false")
     long sumPrivateFileSizeByOwnerId(@Param("ownerId") UUID ownerId);
 
     boolean existsByFileHashAndMangaIsPublicTrue(String fileHash);
 
     @Query("""
-    SELECT v.manga.owner.id AS ownerId, SUM(v.fileSizeBytes) AS totalBytes
+    SELECT v.manga.ownerId AS ownerId, SUM(v.fileSizeBytes) AS totalBytes
     FROM Volume v
     WHERE v.manga.isPublic = false
-    GROUP BY v.manga.owner.id
+    GROUP BY v.manga.ownerId
     """)
     List<VolumeStorageProjection> findStorageByOwner();
 }

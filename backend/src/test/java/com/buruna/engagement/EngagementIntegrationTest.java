@@ -6,6 +6,7 @@ import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;
 import com.buruna.manga.domain.MangaStatusSite;
+import com.buruna.manga.domain.Slug;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.identity.domain.Email;
 import com.buruna.identity.domain.Quota;
@@ -97,14 +98,9 @@ class EngagementIntegrationTest {
     }
 
     static Manga buildPublicManga(String slug, String title, User owner) {
-        Manga m = new Manga();
-        m.setSlug(slug);
-        m.setTitle(title);
-        m.setFormat(MangaFormat.MANGA);
-        m.setStatusOrigin(MangaStatusOrigin.ONGOING);
-        m.setStatusSite(MangaStatusSite.INCOMPLETE);
-        m.setPublic(true);
-        m.setOwner(owner);
+        Manga m = Manga.createPublic(Slug.of(slug), owner.getId());
+        m.updateCatalogDetails(title, null, null, MangaFormat.MANGA, null,
+                MangaStatusOrigin.ONGOING, MangaStatusSite.INCOMPLETE, null, null, null);
         return m;
     }
 

@@ -6,7 +6,6 @@ import com.buruna.shared.storage.StorageClient;
 import com.buruna.shared.storage.StorageUploadHelper;
 import com.buruna.manga.domain.*;
 import com.buruna.manga.dto.*;
-import com.buruna.manga.exception.DuplicateVolumeException;
 import com.buruna.manga.exception.MangaNotFoundException;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.VolumeRepository;
@@ -20,11 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.Normalizer;
 import java.time.Duration;
-import java.time.OffsetDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class PrivateMangaService {
@@ -65,23 +61,12 @@ public class PrivateMangaService {
                                             String synopsis,
                                             String coverBase64,
                                             User owner) {
-        Manga manga = new Manga();
-        manga.setTitle(title);
-        manga.setSynopsis(synopsis);
-        manga.setSlug(generateUniqueSlug(title));
-        manga.setOwner(owner);
-        manga.setPublic(false);
-        manga.setFormat(MangaFormat.MANGA);
-        manga.setStatusOrigin(MangaStatusOrigin.ONGOING);
-        manga.setStatusSite(MangaStatusSite.INCOMPLETE);
-        manga.setAlternativeTitles(List.of());
-        manga.setContentWarnings(List.of());
-        manga.setTags(new HashSet<>());
+        Manga manga = Manga.createPrivate(uniqueSlug(title), title, synopsis, owner.getId());
 
         if (coverBase64 != null && !coverBase64.isBlank()) {
             String coverObjectName = StorageUploadHelper.uploadBase64Image(
                     storageClient, coverBase64, "covers");
-            manga.setCoverUrl(coverObjectName);
+            manga.changeCover(coverObjectName);
         }
 
         Manga savedManga = mangaRepository.save(manga);
@@ -89,7 +74,7 @@ public class PrivateMangaService {
     }
 
     public VolumeUploadUrlResponse generateUploadUrl(UUID mangaId, Integer volumeNumber, User owner) {
-        Manga manga = findPrivateByIdAndOwner(mangaId, owner);
+        findPrivateByIdAndOwner(mangaId, owner);
 
         if (volumeRepository.existsByMangaIdAndVolumeNumber(mangaId, volumeNumber)) {
             throw new DuplicateVolumeException(volumeNumber);
@@ -108,26 +93,15 @@ public class PrivateMangaService {
         Manga manga = findPrivateByIdAndOwner(mangaId, owner);
 
         var metadata = storageClient.getFileMetadata(request.objectName());
-        String fileHash = metadata.md5();
-        long fileSizeBytes = metadata.size();
 
-        quotaService.assertHasQuota(owner, fileSizeBytes);
+        quotaService.assertHasQuota(owner, metadata.size());
 
-        if (volumeRepository.existsByMangaIdAndVolumeNumber(mangaId, request.volumeNumber())) {
-            throw new DuplicateVolumeException(request.volumeNumber());
-        }
-
-        Volume volume = new Volume();
-        volume.setManga(manga);
-        volume.setVolumeNumber(request.volumeNumber());
-        volume.setFileUrl(request.objectName());
-        volume.setFileHash(fileHash);
-        volume.setFileSizeBytes(fileSizeBytes);
-        volume.setUploadedBy(owner);
+        Volume volume = manga.addVolume(
+                VolumeNumber.of(request.volumeNumber()), request.objectName(),
+                FileHash.of(metadata.md5()), metadata.size(), owner.getId());
         volumeRepository.save(volume);
 
-        List<Volume> allVolumes = volumeRepository.findByMangaId(mangaId);
-        return toResponse(manga, allVolumes);
+        return toResponse(manga, manga.getVolumes());
     }
 
     @Transactional(readOnly = true)
@@ -144,8 +118,7 @@ public class PrivateMangaService {
     @Transactional
     public PrivateMangaResponse update(UUID id, PrivateMangaRequest request, User owner) {
         Manga manga = findPrivateByIdAndOwner(id, owner);
-        manga.setTitle(request.title());
-        manga.setSynopsis(request.synopsis());
+        manga.updatePrivateDetails(request.title(), request.synopsis());
         return toResponse(mangaRepository.save(manga), manga.getVolumes().stream().toList());
     }
 
@@ -162,36 +135,20 @@ public class PrivateMangaService {
         mangaRepository.delete(manga);
     }
 
-    // addVolume agora é feito via generateUploadUrl + finalizeVolume
-
     @Transactional
     public PrivateMangaResponse deleteVolume(UUID mangaId, UUID volumeId, User owner) {
         Manga manga = findPrivateByIdAndOwner(mangaId, owner);
-        Volume volume = volumeRepository.findByIdAndMangaId(volumeId, mangaId)
-                .orElseThrow(() -> new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Volume não encontrado"));
+        Volume volume = manga.removeVolume(volumeId);
         storageClient.delete(volume.getFileUrl());
-        volumeRepository.delete(volume);
-        List<Volume> remaining = volumeRepository.findByMangaId(mangaId);
-        return toResponse(manga, remaining);
+        mangaRepository.save(manga);
+        return toResponse(manga, manga.getVolumes());
     }
 
     @Transactional
     public PrivateMangaResponse submitForApproval(UUID id, User owner) {
         Manga manga = findPrivateByIdAndOwner(id, owner);
 
-        if (manga.isPublic()) {
-            throw new LegacyHttpDomainException(HttpStatus.BAD_REQUEST,
-                    "Este mangá já está na biblioteca pública");
-        }
-
-        if (manga.getSubmissionStatus() == MangaSubmissionStatus.PENDING) {
-            throw new LegacyHttpDomainException(HttpStatus.CONFLICT,
-                    "Este mangá já foi submetido para aprovação");
-        }
-
-        manga.setSubmissionStatus(MangaSubmissionStatus.PENDING);
-        manga.setSubmittedAt(OffsetDateTime.now());
-        manga.setRejectionReason(null);
+        manga.submitForApproval();
         mangaRepository.save(manga);
 
         userRepository.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE).forEach(admin ->
@@ -204,16 +161,23 @@ public class PrivateMangaService {
 
     @Transactional(readOnly = true)
     public Page<PendingSubmissionResponse> listPendingSubmissions(Pageable pageable) {
-        return mangaRepository.findBySubmissionStatusWithOwner(MangaSubmissionStatus.PENDING, pageable)
-                .map(m -> {
-                    String coverUrl = m.getCoverUrl() != null
-                            ? storageClient.generateSignedUrl(m.getCoverUrl(), COVER_URL_EXPIRATION).toString()
-                            : null;
-                    return new PendingSubmissionResponse(
-                            m.getId(), m.getTitle(), coverUrl,
-                            m.getOwner().getUsername(), m.getOwner().getEmail(),
-                            m.getSubmittedAt());
-                });
+        Page<Manga> page = mangaRepository.findBySubmissionStatus(MangaSubmissionStatus.PENDING, pageable);
+
+        List<UUID> ownerIds = page.map(Manga::getOwnerId).toList();
+        Map<UUID, User> owners = new HashMap<>();
+        userRepository.findAllById(ownerIds).forEach(u -> owners.put(u.getId(), u));
+
+        return page.map(m -> {
+            String coverUrl = m.getCoverUrl() != null
+                    ? storageClient.generateSignedUrl(m.getCoverUrl(), COVER_URL_EXPIRATION).toString()
+                    : null;
+            User owner = owners.get(m.getOwnerId());
+            return new PendingSubmissionResponse(
+                    m.getId(), m.getTitle(), coverUrl,
+                    owner != null ? owner.getUsername() : null,
+                    owner != null ? owner.getEmail() : null,
+                    m.getSubmittedAt());
+        });
     }
 
     @Transactional
@@ -221,19 +185,11 @@ public class PrivateMangaService {
         Manga manga = mangaRepository.findById(id)
                 .orElseThrow(() -> new MangaNotFoundException(id));
 
-        if (manga.getSubmissionStatus() != MangaSubmissionStatus.PENDING) {
-            throw new LegacyHttpDomainException(HttpStatus.BAD_REQUEST,
-                    "Submissão não está pendente");
-        }
-
-        manga.setPublic(true);
-        manga.setSubmissionStatus(null);
-        manga.setReviewedBy(admin);
-        manga.setReviewedAt(OffsetDateTime.now());
+        manga.approve(admin.getId());
         mangaRepository.save(manga);
 
-        emailService.sendMangaApprovalNotification(
-                manga.getOwner().getEmail(), manga.getTitle());
+        ownerEmail(manga).ifPresent(email ->
+                emailService.sendMangaApprovalNotification(email, manga.getTitle()));
     }
 
     @Transactional
@@ -241,19 +197,11 @@ public class PrivateMangaService {
         Manga manga = mangaRepository.findById(id)
                 .orElseThrow(() -> new MangaNotFoundException(id));
 
-        if (manga.getSubmissionStatus() != MangaSubmissionStatus.PENDING) {
-            throw new LegacyHttpDomainException(HttpStatus.BAD_REQUEST,
-                    "Submissão não está pendente");
-        }
-
-        manga.setSubmissionStatus(MangaSubmissionStatus.REJECTED);
-        manga.setRejectionReason(reason);
-        manga.setReviewedBy(admin);
-        manga.setReviewedAt(OffsetDateTime.now());
+        manga.reject(admin.getId(), reason);
         mangaRepository.save(manga);
 
-        emailService.sendMangaRejectionNotification(
-                manga.getOwner().getEmail(), manga.getTitle(), reason);
+        ownerEmail(manga).ifPresent(email ->
+                emailService.sendMangaRejectionNotification(email, manga.getTitle(), reason));
     }
 
     @Transactional
@@ -282,10 +230,10 @@ public class PrivateMangaService {
 
         // 3. slug em conflito: regenera se necessário
         if (mangaRepository.existsBySlug(manga.getSlug())) {
-            manga.setSlug(generateUniqueSlug(manga.getTitle()));
+            manga.changeSlug(uniqueSlug(manga.getTitle()));
         }
 
-        manga.setPublic(true);
+        manga.promoteToPublic();
         return toResponse(mangaRepository.save(manga), volumes);
     }
 
@@ -297,27 +245,27 @@ public class PrivateMangaService {
         if (manga.isPublic()) {
             throw new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "Mangá não encontrado na coleção privada");
         }
-        if (!manga.getOwner().getId().equals(owner.getId())) {
+        if (!manga.getOwnerId().equals(owner.getId())) {
             throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Você não tem permissão para modificar este mangá");
         }
         return manga;
     }
 
-    private String generateUniqueSlug(String title) {
-        String normalized = Normalizer.normalize(title, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "");
-        String base = normalized.toLowerCase()
-                .replaceAll("[^a-z0-9\\s]", "")
-                .trim()
-                .replaceAll("\\s+", "-")
-                .replaceAll("-+", "-");
+    private Optional<String> ownerEmail(Manga manga) {
+        return userRepository.findById(manga.getOwnerId()).map(User::getEmail);
+    }
 
-        if (!mangaRepository.existsBySlug(base)) return base;
-
+    private Slug uniqueSlug(String title) {
+        Slug base = Slug.fromTitle(title);
+        if (!mangaRepository.existsBySlug(base.value())) {
+            return base;
+        }
         int suffix = 2;
-        while (mangaRepository.existsBySlug(base + "-" + suffix)) suffix++;
-        return base + "-" + suffix;
+        while (mangaRepository.existsBySlug(base.withSuffix(suffix).value())) {
+            suffix++;
+        }
+        return base.withSuffix(suffix);
     }
 
     private PrivateMangaResponse toResponse(Manga manga, List<Volume> volumes) {
@@ -326,7 +274,7 @@ public class PrivateMangaService {
                 : null;
 
         List<VolumeResponse> volumeResponses = volumes.stream()
-                .sorted((a, b) -> Integer.compare(a.getVolumeNumber(), b.getVolumeNumber()))
+                .sorted(Comparator.comparingInt(Volume::getVolumeNumber))
                 .map(v -> new VolumeResponse(
                         v.getId(), v.getVolumeNumber(),
                         v.getFileSizeBytes(), v.getCreatedAt()))

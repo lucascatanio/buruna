@@ -6,6 +6,7 @@ import com.buruna.shared.storage.StorageUploadHelper;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;
+import com.buruna.manga.domain.Slug;
 import com.buruna.manga.domain.Tag;
 import com.buruna.manga.dto.MangaRequest;
 import com.buruna.manga.dto.MangaResponse;
@@ -23,7 +24,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.Normalizer;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,10 +51,7 @@ public class MangaService {
             throw new MangaAlreadyExistsException(request.title());
         }
 
-        Manga manga = new Manga();
-        manga.setSlug(generateUniqueSlug(request.title()));
-        manga.setOwner(owner);
-        manga.setPublic(true);
+        Manga manga = Manga.createPublic(uniqueSlug(request.title()), owner.getId());
         applyRequest(manga, request);
 
         return mangaResponseMapper.toResponse(mangaRepository.save(manga), true);
@@ -129,27 +126,25 @@ public class MangaService {
     // helpers internos
 
     private void applyRequest(Manga manga, MangaRequest request) {
-        manga.setTitle(request.title());
-        manga.setAlternativeTitles(
-                request.alternativeTitles() != null ? request.alternativeTitles() : List.of());
-        manga.setSynopsis(request.synopsis());
-        manga.setFormat(request.format());
-        manga.setOriginCountry(request.originCountry());
-        manga.setStatusOrigin(request.statusOrigin());
-        manga.setStatusSite(request.statusSite());
-        manga.setYear(request.year());
-        manga.setContentWarnings(
-                request.contentWarnings() != null ? request.contentWarnings() : List.of());
-
-        if (request.coverBase64() != null && !request.coverBase64().isBlank()) {
-            String objectName = uploadCover(request.coverBase64(), manga.getCoverUrl());
-            manga.setCoverUrl(objectName);
-        }
-
         Set<Tag> tags = (request.tagIds() != null && !request.tagIds().isEmpty())
                 ? new HashSet<>(tagRepository.findAllById(request.tagIds()))
                 : new HashSet<>();
-        manga.setTags(tags);
+
+        manga.updateCatalogDetails(
+                request.title(),
+                request.alternativeTitles(),
+                request.synopsis(),
+                request.format(),
+                request.originCountry(),
+                request.statusOrigin(),
+                request.statusSite(),
+                request.year(),
+                request.contentWarnings(),
+                tags);
+
+        if (request.coverBase64() != null && !request.coverBase64().isBlank()) {
+            manga.changeCover(uploadCover(request.coverBase64(), manga.getCoverUrl()));
+        }
     }
 
     // faz upload da capa como objeto privado no GCS. aceita data URI ou base64 puro.
@@ -160,29 +155,21 @@ public class MangaService {
         return StorageUploadHelper.uploadBase64Image(storageClient, coverBase64, "covers");
     }
 
-    private String generateUniqueSlug(String title) {
-        String normalized = Normalizer.normalize(title, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "");
-        String base = normalized.toLowerCase()
-                .replaceAll("[^a-z0-9\\s]", "")
-                .trim()
-                .replaceAll("\\s+", "-")
-                .replaceAll("-+", "-");
-
-        if (!mangaRepository.existsBySlug(base)) {
+    private Slug uniqueSlug(String title) {
+        Slug base = Slug.fromTitle(title);
+        if (!mangaRepository.existsBySlug(base.value())) {
             return base;
         }
-
         int suffix = 2;
-        while (mangaRepository.existsBySlug(base + "-" + suffix)) {
+        while (mangaRepository.existsBySlug(base.withSuffix(suffix).value())) {
             suffix++;
         }
-        return base + "-" + suffix;
+        return base.withSuffix(suffix);
     }
 
     private void assertCanModify(Manga manga, User user) {
         boolean isAdmin = user.getRole() == Role.ADMIN;
-        boolean isOwner = manga.getOwner().getId().equals(user.getId());
+        boolean isOwner = manga.getOwnerId().equals(user.getId());
         if (!isAdmin && !isOwner) {
             throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Você não tem permissão para modificar este mangá");

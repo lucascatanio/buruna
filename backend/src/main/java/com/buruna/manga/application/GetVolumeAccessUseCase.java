@@ -2,8 +2,8 @@ package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Volume;
+import com.buruna.manga.domain.VolumeNotFoundException;
 import com.buruna.manga.exception.VolumeAccessDeniedException;
-import com.buruna.manga.exception.VolumeNotFoundException;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.VolumeRepository;
 import org.springframework.stereotype.Service;
@@ -32,7 +32,7 @@ public class GetVolumeAccessUseCase {
     public VolumeReadInfo openVolume(UUID volumeId, UUID actorId) {
         Volume volume = loadAndCheck(volumeId, actorId);
         Manga manga = volume.getManga();
-        manga.setViewCount(manga.getViewCount() + 1);
+        manga.registerView();
         mangaRepository.save(manga);
         return new VolumeReadInfo(volume.getId(), volume.getFileUrl(), manga.getId());
     }
@@ -48,7 +48,7 @@ public class GetVolumeAccessUseCase {
         Volume volume = volumeRepository.findById(volumeId)
                 .orElseThrow(() -> new VolumeNotFoundException(volumeId));
         Manga manga = volume.getManga();
-        if (!manga.isPublic() && !manga.getOwner().getId().equals(actorId)) {
+        if (!manga.isPublic() && !manga.getOwnerId().equals(actorId)) {
             throw new VolumeAccessDeniedException(volumeId);
         }
         return volume;

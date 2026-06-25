@@ -2,14 +2,15 @@ package com.buruna.manga.service;
 
 import com.buruna.shared.exception.LegacyHttpDomainException;
 import com.buruna.shared.storage.StorageClient;
+import com.buruna.manga.domain.DuplicateVolumeException;
+import com.buruna.manga.domain.FileHash;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Volume;
+import com.buruna.manga.domain.VolumeNumber;
 import com.buruna.manga.dto.VolumeFinalizeRequest;
 import com.buruna.manga.dto.VolumeResponse;
 import com.buruna.manga.dto.VolumeUploadUrlResponse;
-import com.buruna.manga.exception.DuplicateVolumeException;
 import com.buruna.manga.exception.MangaNotFoundException;
-import com.buruna.manga.exception.VolumeNotFoundException;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.VolumeRepository;
 import com.buruna.identity.domain.Role;
@@ -89,21 +90,15 @@ public class VolumeService {
 
         var metadata = storageClient.getFileMetadata(request.objectName());
 
+        // dedup por hash atravessa agregados (outros mangás públicos): permanece na application
         if (volumeRepository.existsByFileHashAndMangaIsPublicTrue(metadata.md5())) {
             throw new DuplicateVolumeException();
         }
 
-        if (volumeRepository.existsByMangaIdAndVolumeNumber(mangaId, request.volumeNumber())) {
-            throw new DuplicateVolumeException(request.volumeNumber());
-        }
-
-        Volume volume = new Volume();
-        volume.setManga(manga);
-        volume.setVolumeNumber(request.volumeNumber());
-        volume.setFileUrl(request.objectName());
-        volume.setFileHash(metadata.md5());
-        volume.setFileSizeBytes(metadata.size());
-        volume.setUploadedBy(uploader);
+        // dedup por número é invariante do agregado (Manga.addVolume)
+        Volume volume = manga.addVolume(
+                VolumeNumber.of(request.volumeNumber()), request.objectName(),
+                FileHash.of(metadata.md5()), metadata.size(), uploader.getId());
 
         Volume saved = volumeRepository.save(volume);
         return new VolumeResponse(
@@ -113,19 +108,20 @@ public class VolumeService {
 
     @Transactional
     public void delete(UUID mangaId, UUID volumeId, User currentUser) {
-        Volume volume = volumeRepository.findByIdAndMangaId(volumeId, mangaId)
-                .orElseThrow(() -> new VolumeNotFoundException(volumeId));
+        Manga manga = mangaRepository.findById(mangaId)
+                .orElseThrow(() -> new MangaNotFoundException(mangaId));
 
-        assertCanModify(volume.getManga(), currentUser);
+        assertCanModify(manga, currentUser);
+        Volume volume = manga.removeVolume(volumeId);
         storageClient.delete(volume.getFileUrl());
-        volumeRepository.delete(volume);
+        mangaRepository.save(manga);
     }
 
     // helpers internos
 
     private void assertCanModify(Manga manga, User user) {
         boolean isAdmin = user.getRole() == Role.ADMIN;
-        boolean isOwner = manga.getOwner().getId().equals(user.getId());
+        boolean isOwner = manga.getOwnerId().equals(user.getId());
         if (!isAdmin && !isOwner) {
             throw new LegacyHttpDomainException(HttpStatus.FORBIDDEN,
                     "Você não tem permissão para modificar os volumes deste mangá");

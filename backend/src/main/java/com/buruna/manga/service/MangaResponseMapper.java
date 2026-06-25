@@ -60,7 +60,7 @@ public class MangaResponseMapper {
                 manga.getRatingCount(),
                 manga.getViewCount(),
                 manga.isPublic(),
-                manga.getOwner().getId(),
+                manga.getOwnerId(),
                 tags,
                 volumes,
                 manga.getCreatedAt(),

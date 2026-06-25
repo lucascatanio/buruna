@@ -4,6 +4,7 @@ import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;
 import com.buruna.manga.domain.MangaStatusSite;
+import com.buruna.manga.domain.Slug;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.VolumeRepository;
@@ -128,26 +129,17 @@ class ReadingIntegrationTest {
     }
 
     static Manga buildManga(String slug, String title, boolean isPublic, User owner) {
-        Manga m = new Manga();
-        m.setSlug(slug);
-        m.setTitle(title);
-        m.setFormat(MangaFormat.MANGA);
-        m.setStatusOrigin(MangaStatusOrigin.ONGOING);
-        m.setStatusSite(MangaStatusSite.INCOMPLETE);
-        m.setPublic(isPublic);
-        m.setOwner(owner);
+        Manga m = isPublic
+                ? Manga.createPublic(Slug.of(slug), owner.getId())
+                : Manga.createPrivate(Slug.of(slug), title, null, owner.getId());
+        m.updateCatalogDetails(title, null, null, MangaFormat.MANGA, null,
+                MangaStatusOrigin.ONGOING, MangaStatusSite.INCOMPLETE, null, null, null);
         return m;
     }
 
     static Volume buildVolume(Manga manga, int volumeNumber, String fileUrl, User uploadedBy) {
-        Volume v = new Volume();
-        v.setManga(manga);
-        v.setVolumeNumber(volumeNumber);
-        v.setFileUrl(fileUrl);
-        v.setFileHash("hash-" + UUID.randomUUID());
-        v.setFileSizeBytes(1024L);
-        v.setUploadedBy(uploadedBy);
-        return v;
+        return new Volume(manga, volumeNumber, fileUrl,
+                "hash-" + UUID.randomUUID(), 1024L, uploadedBy.getId());
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -8,8 +8,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -39,7 +37,4 @@ public interface MangaRepository extends JpaRepository<Manga, UUID>, JpaSpecific
     List<Manga> findByOwnerIdAndIsPublicFalse(UUID ownerId);
 
     Page<Manga> findBySubmissionStatus(MangaSubmissionStatus status, Pageable pageable);
-
-    @Query("SELECT m FROM Manga m JOIN FETCH m.owner WHERE m.submissionStatus = :status")
-    Page<Manga> findBySubmissionStatusWithOwner(@Param("status") MangaSubmissionStatus status, Pageable pageable);
 }
