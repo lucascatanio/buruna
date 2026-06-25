@@ -13,7 +13,7 @@ import com.buruna.manga.exception.MangaAlreadyExistsException;
 import com.buruna.manga.exception.MangaNotFoundException;
 import com.buruna.manga.repository.MangaRepository;
 import com.buruna.manga.repository.MangaSpecification;
-import com.buruna.manga.repository.TagRepository;
+import com.buruna.manga.persistence.TagRepository;
 import com.buruna.identity.domain.Role;
 import com.buruna.identity.domain.User;
 import org.springframework.data.domain.Page;

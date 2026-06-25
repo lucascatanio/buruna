@@ -6,9 +6,9 @@ import com.buruna.manga.domain.MangaStatusOrigin;
 import com.buruna.manga.domain.MangaStatusSite;
 import com.buruna.manga.domain.Tag;
 import com.buruna.manga.domain.TagCategory;
+import com.buruna.manga.persistence.TagCategoryRepository;
+import com.buruna.manga.persistence.TagRepository;
 import com.buruna.manga.repository.MangaRepository;
-import com.buruna.manga.repository.TagCategoryRepository;
-import com.buruna.manga.repository.TagRepository;
 import com.buruna.manga.repository.VolumeRepository;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
@@ -199,18 +199,9 @@ class MangaIntegrationTest {
     }
 
     UUID seedTag(String slug) {
-        TagCategory category = tagCategoryRepository.save(newCategory("ITestCat-" + UUID.randomUUID()));
-        Tag tag = new Tag();
-        tag.setName("ITest " + slug);
-        tag.setSlug(slug + "-" + UUID.randomUUID());
-        tag.setCategory(category);
+        TagCategory category = tagCategoryRepository.save(new TagCategory("ITestCat-" + UUID.randomUUID()));
+        Tag tag = new Tag("ITest " + slug, slug + "-" + UUID.randomUUID(), category);
         return tagRepository.save(tag).getId();
-    }
-
-    static TagCategory newCategory(String name) {
-        TagCategory c = new TagCategory();
-        c.setName(name);
-        return c;
     }
 
     // ══════════════════════════════════════════════════════════════════════════

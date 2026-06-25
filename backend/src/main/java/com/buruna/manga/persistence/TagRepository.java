@@ -1,4 +1,4 @@
-package com.buruna.manga.repository;
+package com.buruna.manga.persistence;
 
 import com.buruna.manga.domain.Tag;
 import org.springframework.data.jpa.repository.JpaRepository;

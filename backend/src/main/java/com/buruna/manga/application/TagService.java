@@ -1,19 +1,18 @@
-package com.buruna.manga.service;
+package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Tag;
+import com.buruna.manga.domain.TagAlreadyExistsException;
 import com.buruna.manga.domain.TagCategory;
+import com.buruna.manga.domain.TagCategoryAlreadyExistsException;
+import com.buruna.manga.domain.TagCategoryNotFoundException;
+import com.buruna.manga.domain.TagNotFoundException;
 import com.buruna.manga.dto.*;
-import com.buruna.manga.exception.TagAlreadyExistsException;
-import com.buruna.manga.exception.TagCategoryAlreadyExistsException;
-import com.buruna.manga.exception.TagCategoryNotFoundException;
-import com.buruna.manga.exception.TagNotFoundException;
-import com.buruna.manga.repository.TagCategoryRepository;
-import com.buruna.manga.repository.TagRepository;
+import com.buruna.manga.persistence.TagCategoryRepository;
+import com.buruna.manga.persistence.TagRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,8 +42,7 @@ public class TagService {
         if (tagCategoryRepository.existsByName(request.name())) {
             throw new TagCategoryAlreadyExistsException(request.name());
         }
-        TagCategory category = new TagCategory();
-        category.setName(request.name());
+        TagCategory category = new TagCategory(request.name());
         return TagCategoryResponse.from(tagCategoryRepository.save(category));
     }
 
@@ -56,10 +54,7 @@ public class TagService {
         TagCategory category = tagCategoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new TagCategoryNotFoundException(request.categoryId()));
 
-        Tag tag = new Tag();
-        tag.setName(request.name());
-        tag.setSlug(request.slug());
-        tag.setCategory(category);
+        Tag tag = new Tag(request.name(), request.slug(), category);
         return TagResponse.from(tagRepository.save(tag));
     }
 
@@ -73,16 +68,14 @@ public class TagService {
         TagCategory category = tagCategoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new TagCategoryNotFoundException(request.categoryId()));
 
-        tag.setName(request.name());
-        tag.setSlug(request.slug());
-        tag.setCategory(category);
+        tag.rename(request.name(), request.slug(), category);
         return TagResponse.from(tagRepository.save(tag));
     }
 
     @Transactional
     public void deleteTag(UUID id) {
         Tag tag = findActiveTagById(id);
-        tag.setDeletedAt(OffsetDateTime.now());
+        tag.softDelete();
         tagRepository.save(tag);
     }
 
