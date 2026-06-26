@@ -1,5 +1,14 @@
 package com.buruna.manga.controller;
 
+import com.buruna.manga.application.CreatePrivateMangaUseCase;
+import com.buruna.manga.application.DeletePrivateMangaUseCase;
+import com.buruna.manga.application.DeleteVolumeUseCase;
+import com.buruna.manga.application.FinalizeVolumeUseCase;
+import com.buruna.manga.application.GenerateVolumeUploadUrlUseCase;
+import com.buruna.manga.application.GetPrivateMangaUseCase;
+import com.buruna.manga.application.ListPrivateMangasUseCase;
+import com.buruna.manga.application.QuotaService;
+import com.buruna.manga.application.UpdatePrivateMangaUseCase;
 import com.buruna.manga.dto.*;
 import com.buruna.manga.service.PrivateMangaService;
 import com.buruna.identity.domain.User;
@@ -19,16 +28,43 @@ import java.util.UUID;
 @RequestMapping("/my/mangas")
 public class PrivateMangaController {
 
-    private final PrivateMangaService privateMangaService;
+    private final CreatePrivateMangaUseCase createPrivateManga;
+    private final UpdatePrivateMangaUseCase updatePrivateManga;
+    private final DeletePrivateMangaUseCase deletePrivateManga;
+    private final GenerateVolumeUploadUrlUseCase generateVolumeUploadUrl;
+    private final FinalizeVolumeUseCase finalizeVolume;
+    private final DeleteVolumeUseCase deleteVolume;
+    private final GetPrivateMangaUseCase getPrivateManga;
+    private final ListPrivateMangasUseCase listPrivateMangas;
+    private final QuotaService quotaService;
+    private final PrivateMangaService privateMangaService; // submit/promote — extraídos no [4.5]
 
-    public PrivateMangaController(PrivateMangaService privateMangaService) {
+    public PrivateMangaController(CreatePrivateMangaUseCase createPrivateManga,
+                                  UpdatePrivateMangaUseCase updatePrivateManga,
+                                  DeletePrivateMangaUseCase deletePrivateManga,
+                                  GenerateVolumeUploadUrlUseCase generateVolumeUploadUrl,
+                                  FinalizeVolumeUseCase finalizeVolume,
+                                  DeleteVolumeUseCase deleteVolume,
+                                  GetPrivateMangaUseCase getPrivateManga,
+                                  ListPrivateMangasUseCase listPrivateMangas,
+                                  QuotaService quotaService,
+                                  PrivateMangaService privateMangaService) {
+        this.createPrivateManga = createPrivateManga;
+        this.updatePrivateManga = updatePrivateManga;
+        this.deletePrivateManga = deletePrivateManga;
+        this.generateVolumeUploadUrl = generateVolumeUploadUrl;
+        this.finalizeVolume = finalizeVolume;
+        this.deleteVolume = deleteVolume;
+        this.getPrivateManga = getPrivateManga;
+        this.listPrivateMangas = listPrivateMangas;
+        this.quotaService = quotaService;
         this.privateMangaService = privateMangaService;
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<PrivateMangaResponse> findById(@PathVariable UUID id,
                                                          @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(privateMangaService.findById(id, user));
+        return ResponseEntity.ok(getPrivateManga.handle(id, user.getId()));
     }
 
     @GetMapping
@@ -36,12 +72,12 @@ public class PrivateMangaController {
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable,
             @AuthenticationPrincipal User currentUser
     ) {
-        return ResponseEntity.ok(privateMangaService.findAllByOwner(currentUser, pageable));
+        return ResponseEntity.ok(listPrivateMangas.handle(currentUser.getId(), pageable));
     }
 
     @GetMapping("/quota")
     public ResponseEntity<QuotaInfo> getQuota(@AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(privateMangaService.getQuotaInfo(currentUser));
+        return ResponseEntity.ok(quotaService.getQuotaInfo(currentUser.getId(), currentUser.getQuotaGb()));
     }
 
     @PostMapping
@@ -49,8 +85,8 @@ public class PrivateMangaController {
             @Valid @RequestBody PrivateMangaCreateRequest request,
             @AuthenticationPrincipal User currentUser
     ) {
-        PrivateMangaResponse response = privateMangaService.createManga(
-                request.title(), request.synopsis(), request.coverBase64(), currentUser);
+        PrivateMangaResponse response = createPrivateManga.handle(
+                request.title(), request.synopsis(), request.coverBase64(), currentUser.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -61,7 +97,7 @@ public class PrivateMangaController {
             @AuthenticationPrincipal User currentUser
     ) {
         return ResponseEntity.ok(
-                privateMangaService.generateUploadUrl(id, request.volumeNumber(), currentUser));
+                generateVolumeUploadUrl.handle(id, request.volumeNumber(), currentUser.getId()));
     }
 
     @PostMapping("/{id}/volumes/finalize")
@@ -71,7 +107,7 @@ public class PrivateMangaController {
             @AuthenticationPrincipal User currentUser
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(privateMangaService.finalizeVolume(id, request, currentUser));
+                .body(finalizeVolume.handle(id, request, currentUser.getId(), currentUser.getQuotaGb()));
     }
 
     @PutMapping("/{id}")
@@ -80,7 +116,7 @@ public class PrivateMangaController {
             @Valid @RequestBody PrivateMangaRequest request,
             @AuthenticationPrincipal User currentUser
     ) {
-        return ResponseEntity.ok(privateMangaService.update(id, request, currentUser));
+        return ResponseEntity.ok(updatePrivateManga.handle(id, request, currentUser.getId()));
     }
 
     @DeleteMapping("/{id}")
@@ -88,7 +124,7 @@ public class PrivateMangaController {
             @PathVariable UUID id,
             @AuthenticationPrincipal User currentUser
     ) {
-        privateMangaService.delete(id, currentUser);
+        deletePrivateManga.handle(id, currentUser.getId());
         return ResponseEntity.noContent().build();
     }
 
@@ -98,7 +134,7 @@ public class PrivateMangaController {
             @PathVariable UUID volumeId,
             @AuthenticationPrincipal User currentUser
     ) {
-        return ResponseEntity.ok(privateMangaService.deleteVolume(id, volumeId, currentUser));
+        return ResponseEntity.ok(deleteVolume.handle(id, volumeId, currentUser.getId()));
     }
 
     @PostMapping("/{id}/submit")

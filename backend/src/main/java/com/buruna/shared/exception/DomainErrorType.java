@@ -10,5 +10,6 @@ public enum DomainErrorType {
     CONFLICT,
     FORBIDDEN,
     UNAUTHORIZED,
-    VALIDATION
+    VALIDATION,
+    UNPROCESSABLE
 }

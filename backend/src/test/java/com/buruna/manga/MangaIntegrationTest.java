@@ -66,7 +66,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *    mudança de segurança.
  *  - O upload migrou de multipart (file=@) para 2 fases (upload-url + finalize). A dedup
  *    por hash existe APENAS no fluxo público (VolumeService.finalize); o fluxo privado
- *    (PrivateMangaService.finalizeVolume) deduplica só por número + cota.
+ *    (FinalizeVolumeUseCase) deduplica só por número + cota.
  *
  * StorageClient é mockado: generateUploadSignedUrl/generateSignedUrl devolvem URL fake e
  * getFileMetadata devolve, por padrão, um md5 único por objectName (sobrescrito por teste
@@ -778,7 +778,7 @@ class MangaIntegrationTest {
             String id = createPrivateManga("ITest Private DupNum", reader);
             uploadVolume("/my/mangas", id, 1, reader);
 
-            // a dedup por número é feita já na fase upload-url (PrivateMangaService.generateUploadUrl)
+            // a dedup por número é feita já na fase upload-url (GenerateVolumeUploadUrlUseCase)
             mockMvc.perform(post("/my/mangas/{id}/volumes/upload-url", id)
                     .contentType(MediaType.APPLICATION_JSON).content("{\"volumeNumber\":1}").with(auth(reader)))
                     .andExpect(status().isConflict());
@@ -793,20 +793,19 @@ class MangaIntegrationTest {
         }
 
         @Test
-        void finalizeVolume_exceedingQuota_returns500_latentBug() throws Exception {
+        void finalizeVolume_exceedingQuota_returns422() throws Exception {
             String id = createPrivateManga("ITest Private Quota", reader);
             String objectName = requestUploadUrl("/my/mangas", id, 1, reader);
             // 2 GB > cota de 1 GB
             when(storageClient.getFileMetadata(eq(objectName)))
                     .thenReturn(new StorageClient.FileMetadata("md5-quota", 2L * 1024 * 1024 * 1024));
 
-            // BUG LATENTE: InsufficientStorageQuotaException tem @ResponseStatus(422), mas o
-            // @ExceptionHandler(Exception.class) do GlobalExceptionHandler o intercepta antes
-            // do ResponseStatusExceptionResolver, devolvendo 500. Esta asserção trava o
-            // comportamento ATUAL; o Epic [4.4] (QuotaService + exceção pura de domínio) deve
-            // corrigir para um status semântico e este teste será atualizado conscientemente.
+            // CORRIGIDO no [4.4]: a cota estourada virou InsufficientStorageQuotaException de
+            // DOMÍNIO pura (DomainErrorType.UNPROCESSABLE), traduzida pelo GlobalExceptionHandler
+            // para 422. Antes, o @ResponseStatus(422) da exceção legada era engolido pelo
+            // @ExceptionHandler(Exception.class), devolvendo 500 (bug latente).
             finalizeVolume("/my/mangas", id, objectName, 1, reader)
-                    .andExpect(status().isInternalServerError());
+                    .andExpect(status().isUnprocessableEntity());
         }
 
         @Test

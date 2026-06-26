@@ -67,6 +67,7 @@ public class GlobalExceptionHandler {
             case FORBIDDEN -> HttpStatus.FORBIDDEN;
             case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
             case VALIDATION -> HttpStatus.BAD_REQUEST;
+            case UNPROCESSABLE -> HttpStatus.UNPROCESSABLE_ENTITY;
         };
     }
 
