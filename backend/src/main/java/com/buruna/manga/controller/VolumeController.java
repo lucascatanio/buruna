@@ -1,10 +1,14 @@
 package com.buruna.manga.controller;
 
+import com.buruna.manga.application.DeletePublicVolumeUseCase;
+import com.buruna.manga.application.FinalizePublicVolumeUseCase;
+import com.buruna.manga.application.GeneratePublicVolumeUploadUrlUseCase;
+import com.buruna.manga.application.ListPublicVolumesUseCase;
 import com.buruna.manga.dto.VolumeFinalizeRequest;
 import com.buruna.manga.dto.VolumeResponse;
 import com.buruna.manga.dto.VolumeUploadUrlRequest;
 import com.buruna.manga.dto.VolumeUploadUrlResponse;
-import com.buruna.manga.service.VolumeService;
+import com.buruna.identity.domain.Role;
 import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -20,15 +24,24 @@ import java.util.UUID;
 @RequestMapping("/mangas/{mangaId}/volumes")
 public class VolumeController {
 
-    private final VolumeService volumeService;
+    private final ListPublicVolumesUseCase listPublicVolumes;
+    private final GeneratePublicVolumeUploadUrlUseCase generateUploadUrl;
+    private final FinalizePublicVolumeUseCase finalizeVolume;
+    private final DeletePublicVolumeUseCase deleteVolume;
 
-    public VolumeController(VolumeService volumeService) {
-        this.volumeService = volumeService;
+    public VolumeController(ListPublicVolumesUseCase listPublicVolumes,
+                           GeneratePublicVolumeUploadUrlUseCase generateUploadUrl,
+                           FinalizePublicVolumeUseCase finalizeVolume,
+                           DeletePublicVolumeUseCase deleteVolume) {
+        this.listPublicVolumes = listPublicVolumes;
+        this.generateUploadUrl = generateUploadUrl;
+        this.finalizeVolume = finalizeVolume;
+        this.deleteVolume = deleteVolume;
     }
 
     @GetMapping
     public ResponseEntity<List<VolumeResponse>> list(@PathVariable UUID mangaId) {
-        return ResponseEntity.ok(volumeService.findByMangaId(mangaId));
+        return ResponseEntity.ok(listPublicVolumes.handle(mangaId));
     }
 
     @PostMapping("/upload-url")
@@ -38,8 +51,8 @@ public class VolumeController {
             @Valid @RequestBody VolumeUploadUrlRequest request,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(
-                volumeService.generateUploadUrl(mangaId, request.volumeNumber(), user));
+        return ResponseEntity.ok(generateUploadUrl.handle(
+                mangaId, request.volumeNumber(), user.getId(), user.getRole() == Role.ADMIN));
     }
 
     @PostMapping("/finalize")
@@ -50,7 +63,8 @@ public class VolumeController {
             @AuthenticationPrincipal User user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(volumeService.finalize(mangaId, request, user));
+                .body(finalizeVolume.handle(
+                        mangaId, request, user.getId(), user.getRole() == Role.ADMIN));
     }
 
     @DeleteMapping("/{volumeId}")
@@ -60,7 +74,7 @@ public class VolumeController {
             @PathVariable UUID volumeId,
             @AuthenticationPrincipal User currentUser
     ) {
-        volumeService.delete(mangaId, volumeId, currentUser);
+        deleteVolume.handle(mangaId, volumeId, currentUser.getId(), currentUser.getRole() == Role.ADMIN);
         return ResponseEntity.noContent().build();
     }
 }

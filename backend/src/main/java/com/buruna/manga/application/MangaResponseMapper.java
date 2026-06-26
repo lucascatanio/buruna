@@ -1,4 +1,4 @@
-package com.buruna.manga.service;
+package com.buruna.manga.application;
 
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.manga.domain.Manga;
@@ -13,23 +13,26 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Mapper do agregado público {@link Manga} → {@link MangaResponse} (catálogo). Delega a
+ * montagem de {@link VolumeResponse} ao {@link VolumeResponseMapper} (fonte única, ADR-34).
+ */
 @Component
 public class MangaResponseMapper {
 
     private static final Duration COVER_URL_EXPIRATION = Duration.ofHours(1);
-    private final StorageClient storageClient;
 
-    public MangaResponseMapper(StorageClient storageClient) {
+    private final StorageClient storageClient;
+    private final VolumeResponseMapper volumeResponseMapper;
+
+    public MangaResponseMapper(StorageClient storageClient, VolumeResponseMapper volumeResponseMapper) {
         this.storageClient = storageClient;
+        this.volumeResponseMapper = volumeResponseMapper;
     }
 
     public MangaResponse toResponse(Manga manga, boolean includeVolumes) {
         List<VolumeResponse> volumes = includeVolumes
-                ? manga.getVolumes().stream()
-                .map(v -> new VolumeResponse(
-                        v.getId(), v.getVolumeNumber(),
-                        v.getFileSizeBytes(), v.getCreatedAt()))
-                .toList()
+                ? volumeResponseMapper.toResponseList(manga.getVolumes())
                 : List.of();
 
         Set<TagResponse> tags = manga.getTags().stream()
@@ -38,7 +41,6 @@ public class MangaResponseMapper {
                         new TagCategoryResponse(t.getCategory().getId(), t.getCategory().getName())))
                 .collect(Collectors.toSet());
 
-        // gera signed URL para a capa se existir operação local (crypto), sem chamada de rede
         String coverSignedUrl = manga.getCoverUrl() != null
                 ? storageClient.generateSignedUrl(manga.getCoverUrl(), COVER_URL_EXPIRATION).toString()
                 : null;

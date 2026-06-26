@@ -65,7 +65,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *    os GETs "públicos" do bash viram 401 sem token. Os scripts são anteriores a essa
  *    mudança de segurança.
  *  - O upload migrou de multipart (file=@) para 2 fases (upload-url + finalize). A dedup
- *    por hash existe APENAS no fluxo público (VolumeService.finalize); o fluxo privado
+ *    por hash existe APENAS no fluxo público (FinalizePublicVolumeUseCase); o fluxo privado
  *    (FinalizeVolumeUseCase) deduplica só por número + cota.
  *
  * StorageClient é mockado: generateUploadSignedUrl/generateSignedUrl devolvem URL fake e

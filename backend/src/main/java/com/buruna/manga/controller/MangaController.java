@@ -1,10 +1,15 @@
 package com.buruna.manga.controller;
 
+import com.buruna.manga.application.CatalogQueryUseCase;
+import com.buruna.manga.application.CreatePublicMangaUseCase;
+import com.buruna.manga.application.DeleteMangaUseCase;
+import com.buruna.manga.application.GetMangaUseCase;
+import com.buruna.manga.application.UpdateMangaUseCase;
 import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;
 import com.buruna.manga.dto.MangaRequest;
 import com.buruna.manga.dto.MangaResponse;
-import com.buruna.manga.service.MangaService;
+import com.buruna.identity.domain.Role;
 import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -23,10 +28,22 @@ import java.util.UUID;
 @RequestMapping("/mangas")
 public class MangaController {
 
-    private final MangaService mangaService;
+    private final CatalogQueryUseCase catalogQuery;
+    private final GetMangaUseCase getManga;
+    private final CreatePublicMangaUseCase createPublicManga;
+    private final UpdateMangaUseCase updateManga;
+    private final DeleteMangaUseCase deleteManga;
 
-    public MangaController(MangaService mangaService) {
-        this.mangaService = mangaService;
+    public MangaController(CatalogQueryUseCase catalogQuery,
+                          GetMangaUseCase getManga,
+                          CreatePublicMangaUseCase createPublicManga,
+                          UpdateMangaUseCase updateManga,
+                          DeleteMangaUseCase deleteManga) {
+        this.catalogQuery = catalogQuery;
+        this.getManga = getManga;
+        this.createPublicManga = createPublicManga;
+        this.updateManga = updateManga;
+        this.deleteManga = deleteManga;
     }
 
     @GetMapping
@@ -37,13 +54,12 @@ public class MangaController {
             @RequestParam(required = false) Set<UUID> tagIds,
             @PageableDefault(size = 20, sort = "title") Pageable pageable
     ) {
-        return ResponseEntity.ok(
-                mangaService.findPublic(title, format, statusOrigin, tagIds, pageable));
+        return ResponseEntity.ok(catalogQuery.handle(title, format, statusOrigin, tagIds, pageable));
     }
 
     @GetMapping("/{slugOrId}")
     public ResponseEntity<MangaResponse> getBySlugOrId(@PathVariable String slugOrId) {
-        return ResponseEntity.ok(mangaService.findBySlugOrId(slugOrId));
+        return ResponseEntity.ok(getManga.handle(slugOrId));
     }
 
     @PostMapping
@@ -53,7 +69,7 @@ public class MangaController {
             @AuthenticationPrincipal User currentUser
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(mangaService.create(request, currentUser));
+                .body(createPublicManga.handle(request, currentUser.getId()));
     }
 
     @PutMapping("/{id}")
@@ -63,7 +79,8 @@ public class MangaController {
             @Valid @RequestBody MangaRequest request,
             @AuthenticationPrincipal User currentUser
     ) {
-        return ResponseEntity.ok(mangaService.update(id, request, currentUser));
+        return ResponseEntity.ok(updateManga.handle(
+                id, request, currentUser.getId(), currentUser.getRole() == Role.ADMIN));
     }
 
     @DeleteMapping("/{id}")
@@ -72,7 +89,7 @@ public class MangaController {
             @PathVariable UUID id,
             @AuthenticationPrincipal User currentUser
     ) {
-        mangaService.delete(id, currentUser);
+        deleteManga.handle(id, currentUser.getId(), currentUser.getRole() == Role.ADMIN);
         return ResponseEntity.noContent().build();
     }
 }

@@ -1,19 +1,17 @@
 package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Manga;
-import com.buruna.manga.domain.Volume;
 import com.buruna.manga.dto.PrivateMangaResponse;
 import com.buruna.manga.dto.VolumeResponse;
 import com.buruna.shared.storage.StorageClient;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.List;
 
 /**
  * Mapper único do agregado privado {@link Manga} → {@link PrivateMangaResponse} (ADR-34).
- * Substitui a montagem de {@link VolumeResponse} antes duplicada em PrivateMangaService.
+ * Delega a montagem de {@link VolumeResponse} ao {@link VolumeResponseMapper} (fonte única).
  * Lê os volumes diretamente do agregado ({@link Manga#getVolumes()}).
  */
 @Component
@@ -22,9 +20,11 @@ public class PrivateMangaMapper {
     private static final Duration COVER_URL_EXPIRATION = Duration.ofHours(1);
 
     private final StorageClient storageClient;
+    private final VolumeResponseMapper volumeResponseMapper;
 
-    public PrivateMangaMapper(StorageClient storageClient) {
+    public PrivateMangaMapper(StorageClient storageClient, VolumeResponseMapper volumeResponseMapper) {
         this.storageClient = storageClient;
+        this.volumeResponseMapper = volumeResponseMapper;
     }
 
     public PrivateMangaResponse toResponse(Manga manga) {
@@ -32,12 +32,7 @@ public class PrivateMangaMapper {
                 ? storageClient.generateSignedUrl(manga.getCoverUrl(), COVER_URL_EXPIRATION).toString()
                 : null;
 
-        List<VolumeResponse> volumes = manga.getVolumes().stream()
-                .sorted(Comparator.comparingInt(Volume::getVolumeNumber))
-                .map(v -> new VolumeResponse(
-                        v.getId(), v.getVolumeNumber(),
-                        v.getFileSizeBytes(), v.getCreatedAt()))
-                .toList();
+        List<VolumeResponse> volumes = volumeResponseMapper.toResponseList(manga.getVolumes());
 
         String status = manga.getSubmissionStatus() != null
                 ? manga.getSubmissionStatus().name() : null;
