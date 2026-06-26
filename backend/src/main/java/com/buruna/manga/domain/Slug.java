@@ -5,9 +5,9 @@ import java.util.Objects;
 
 /**
  * Slug de URL de um mangá. VO de borda (ADR-32/34): a entidade persiste a string crua
- * na coluna {@code slug}; este VO centraliza a normalização (antes duplicada entre
- * MangaService e PrivateMangaService). A unicidade depende do repositório e permanece
- * na camada application — aqui só se gera a forma base e variações com sufixo.
+ * na coluna {@code slug}; este VO centraliza a normalização (antes duplicada nos services).
+ * A unicidade depende do repositório e permanece na camada application ({@code SlugAllocator})
+ * — aqui só se gera a forma base e variações com sufixo.
  */
 public final class Slug {
 

@@ -7,10 +7,11 @@ import com.buruna.manga.application.FinalizeVolumeUseCase;
 import com.buruna.manga.application.GenerateVolumeUploadUrlUseCase;
 import com.buruna.manga.application.GetPrivateMangaUseCase;
 import com.buruna.manga.application.ListPrivateMangasUseCase;
+import com.buruna.manga.application.PromoteMangaUseCase;
 import com.buruna.manga.application.QuotaService;
+import com.buruna.manga.application.SubmitForApprovalUseCase;
 import com.buruna.manga.application.UpdatePrivateMangaUseCase;
 import com.buruna.manga.dto.*;
-import com.buruna.manga.service.PrivateMangaService;
 import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -37,7 +38,8 @@ public class PrivateMangaController {
     private final GetPrivateMangaUseCase getPrivateManga;
     private final ListPrivateMangasUseCase listPrivateMangas;
     private final QuotaService quotaService;
-    private final PrivateMangaService privateMangaService; // submit/promote — extraídos no [4.5]
+    private final SubmitForApprovalUseCase submitForApproval;
+    private final PromoteMangaUseCase promoteManga;
 
     public PrivateMangaController(CreatePrivateMangaUseCase createPrivateManga,
                                   UpdatePrivateMangaUseCase updatePrivateManga,
@@ -48,7 +50,8 @@ public class PrivateMangaController {
                                   GetPrivateMangaUseCase getPrivateManga,
                                   ListPrivateMangasUseCase listPrivateMangas,
                                   QuotaService quotaService,
-                                  PrivateMangaService privateMangaService) {
+                                  SubmitForApprovalUseCase submitForApproval,
+                                  PromoteMangaUseCase promoteManga) {
         this.createPrivateManga = createPrivateManga;
         this.updatePrivateManga = updatePrivateManga;
         this.deletePrivateManga = deletePrivateManga;
@@ -58,7 +61,8 @@ public class PrivateMangaController {
         this.getPrivateManga = getPrivateManga;
         this.listPrivateMangas = listPrivateMangas;
         this.quotaService = quotaService;
-        this.privateMangaService = privateMangaService;
+        this.submitForApproval = submitForApproval;
+        this.promoteManga = promoteManga;
     }
 
     @GetMapping("/{id}")
@@ -142,7 +146,8 @@ public class PrivateMangaController {
             @PathVariable UUID id,
             @AuthenticationPrincipal User currentUser
     ) {
-        return ResponseEntity.ok(privateMangaService.submitForApproval(id, currentUser));
+        return ResponseEntity.ok(
+                submitForApproval.handle(id, currentUser.getId(), currentUser.getUsername()));
     }
 
     @PreAuthorize("hasAnyRole('COLLABORATOR', 'ADMIN')")
@@ -151,6 +156,6 @@ public class PrivateMangaController {
             @PathVariable UUID id,
             @AuthenticationPrincipal User currentUser
     ) {
-        return ResponseEntity.ok(privateMangaService.promote(id, currentUser));
+        return ResponseEntity.ok(promoteManga.handle(id, currentUser.getId()));
     }
 }
