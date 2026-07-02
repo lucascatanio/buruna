@@ -4,7 +4,7 @@ import com.buruna.manga.domain.Manga;
 import com.buruna.manga.dto.MangaRequest;
 import com.buruna.manga.dto.MangaResponse;
 import com.buruna.manga.exception.MangaAlreadyExistsException;
-import com.buruna.manga.repository.MangaRepository;
+import com.buruna.manga.persistence.MangaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

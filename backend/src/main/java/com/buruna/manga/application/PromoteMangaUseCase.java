@@ -5,8 +5,8 @@ import com.buruna.manga.domain.PublicTitleConflictException;
 import com.buruna.manga.domain.PublicVolumeConflictException;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.dto.PrivateMangaResponse;
-import com.buruna.manga.repository.MangaRepository;
-import com.buruna.manga.repository.VolumeRepository;
+import com.buruna.manga.persistence.MangaRepository;
+import com.buruna.manga.persistence.VolumeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

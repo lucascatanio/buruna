@@ -1,4 +1,4 @@
-package com.buruna.manga.repository;
+package com.buruna.manga.persistence;
 
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaSubmissionStatus;

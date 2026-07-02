@@ -2,8 +2,8 @@ package com.buruna.admin.service;
 
 import com.buruna.admin.dto.DashboardResponse;
 import com.buruna.admin.dto.UserStorageResponse;
-import com.buruna.manga.repository.VolumeStorageProjection;
-import com.buruna.manga.repository.VolumeRepository;
+import com.buruna.manga.persistence.VolumeStorageProjection;
+import com.buruna.manga.persistence.VolumeRepository;
 import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.persistence.UserRepository;

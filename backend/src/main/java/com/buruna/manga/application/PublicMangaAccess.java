@@ -3,7 +3,7 @@ package com.buruna.manga.application;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.exception.MangaModificationDeniedException;
 import com.buruna.manga.exception.MangaNotFoundException;
-import com.buruna.manga.repository.MangaRepository;
+import com.buruna.manga.persistence.MangaRepository;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;

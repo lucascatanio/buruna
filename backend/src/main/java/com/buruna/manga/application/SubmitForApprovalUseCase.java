@@ -3,7 +3,7 @@ package com.buruna.manga.application;
 import com.buruna.identity.application.ListActiveAdminEmailsUseCase;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.dto.PrivateMangaResponse;
-import com.buruna.manga.repository.MangaRepository;
+import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.shared.notification.EmailService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

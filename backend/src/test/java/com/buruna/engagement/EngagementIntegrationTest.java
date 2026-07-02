@@ -7,7 +7,7 @@ import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;
 import com.buruna.manga.domain.MangaStatusSite;
 import com.buruna.manga.domain.Slug;
-import com.buruna.manga.repository.MangaRepository;
+import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.identity.domain.Email;
 import com.buruna.identity.domain.Quota;
 import com.buruna.identity.domain.Role;

@@ -1,4 +1,4 @@
-package com.buruna.manga.repository;
+package com.buruna.manga.persistence;
 
 import java.util.UUID;
 

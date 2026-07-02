@@ -2,8 +2,8 @@ package com.buruna.identity.application.admin;
 
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
-import com.buruna.manga.repository.MangaRepository;
-import com.buruna.manga.repository.VolumeRepository;
+import com.buruna.manga.persistence.MangaRepository;
+import com.buruna.manga.persistence.VolumeRepository;
 import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.persistence.UserRepository;
@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Job de inatividade: avisa/desativa usuários e apaga sua coleção privada.
  *
- * Vive na camada application, mas AINDA acessa {@code manga.repository}/{@code manga.domain}
+ * Vive na camada application, mas AINDA acessa {@code manga.persistence}/{@code manga.domain}
  * diretamente — acoplamento cross-contexto que viola o guard de fronteira (ADR-35). Por isso
  * esta classe tem uma exclusão EXPLÍCITA em {@code ArchitectureTest} (não escondida fora da
  * camada guardada). O Epic 5.3 extrai esse acesso para um use case público de {@code manga}

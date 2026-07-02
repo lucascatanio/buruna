@@ -1,7 +1,7 @@
 package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Slug;
-import com.buruna.manga.repository.MangaRepository;
+import com.buruna.manga.persistence.MangaRepository;
 import org.springframework.stereotype.Component;
 
 /**

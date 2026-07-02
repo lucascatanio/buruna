@@ -8,7 +8,7 @@ import com.buruna.manga.domain.VolumeNumber;
 import com.buruna.manga.dto.VolumeFinalizeRequest;
 import com.buruna.manga.dto.VolumeResponse;
 import com.buruna.manga.exception.PublicVolumeOnPrivateMangaException;
-import com.buruna.manga.repository.VolumeRepository;
+import com.buruna.manga.persistence.VolumeRepository;
 import com.buruna.shared.storage.StorageClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
