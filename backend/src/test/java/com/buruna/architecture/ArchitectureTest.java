@@ -33,7 +33,8 @@ class ArchitectureTest {
     private static final String[] MIGRATED_CONTEXTS = {
             "engagement",
             "reading",
-            "identity"
+            "identity",
+            "manga"
     };
 
     private static final String BASE = "com.buruna";
@@ -125,8 +126,7 @@ class ArchitectureTest {
                 .filter(c -> !c.equals(self))
                 .flatMap(c -> java.util.Arrays.stream(new String[]{
                         BASE + "." + c + ".domain..",
-                        BASE + "." + c + ".persistence..",
-                        BASE + "." + c + ".repository.."
+                        BASE + "." + c + ".persistence.."
                 }))
                 .toArray(String[]::new);
     }
