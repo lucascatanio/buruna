@@ -1,6 +1,6 @@
 package com.buruna.identity.inactivity;
 
-import com.buruna.identity.application.admin.InactivityJob;
+import com.buruna.identity.application.admin.RunInactivityUseCase;
 import com.buruna.identity.domain.Email;
 import com.buruna.identity.domain.Quota;
 import com.buruna.identity.domain.Role;
@@ -21,7 +21,6 @@ import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.hibernate.LazyInitializationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,49 +40,41 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Rede de segurança do Epic 5 [5.1]: reproduz em JUnit os cenários do
- * {@code scripts/test-phase8.sh} (dashboard de admin + job de inatividade) antes de
- * refatorar o job em [5.3]. Este teste captura o COMPORTAMENTO ATUAL do
- * {@link InactivityJob} — não o comportamento desejado. Os bugs B1 (self-invocation do
- * {@code @Transactional}) e B2 (paginação por offset sobre conjunto mutável) permanecem
- * intocados; suas regressões são cobertas em [5.3], não aqui.
+ * Rede de segurança do Epic 5: cobre o {@link RunInactivityUseCase} (job de inatividade) e o
+ * dashboard de admin. Portou os cenários do {@code scripts/test-phase8.sh} em [5.1]; a partir
+ * de [5.3] reflete o COMPORTAMENTO CORRETO após o conserto dos bugs B1/B2 e a injeção do
+ * {@code Clock} (ADR-36).
  *
- * <h2>Determinismo sem {@code Clock}</h2>
- * Hoje o job usa {@code OffsetDateTime.now()} direto (não o {@code Clock} do ADR-36),
- * então NÃO é possível congelar o tempo. A rede de segurança contorna isso ancorando o
- * {@code last_access_at} de cada usuário em {@code now() - N dias} no momento do setup,
- * escolhendo N com folga de ~1 dia dos limiares (74/76/89/91 em vez de exatos 75/90).
- * Como o job recalcula seu próprio {@code now()} milissegundos depois, a folga garante
- * que a classificação (NONE/WARN/DEACTIVATE) é estável em qualquer horário de execução.
+ * <h2>Tempo determinístico via {@code Clock.fixed}</h2>
+ * O use case obtém "agora" de um {@link Clock} injetado. Aqui esse clock é fixado em
+ * {@link #FIXED_NOW}, então os limiares 75/90 podem ser testados nas bordas EXATAS (sem a
+ * folga de ~1 dia que a versão pré-Clock de [5.1] precisava).
  *
- * <p><b>O que só fica determinístico após [5.3]:</b> os casos de fronteira EXATOS
- * (exatamente 75 ou exatamente 90 dias) e qualquer asserção sensível a fração de dia
- * dependem da injeção do {@code Clock.fixed(...)} — fora do escopo desta issue. Aqui
- * cobrimos apenas os degraus com folga, que é o que o {@code test-phase8.sh} também fazia
- * (80 e 95 dias).
- *
- * <h2>Trilha "desativação com coleção privada" está PINADA como bug (B1)</h2>
- * Hoje o job NÃO consegue desativar um usuário que tenha coleção privada: o B1
- * (self-invocation do {@code @Transactional} em {@code deactivateUser}) deixa
- * {@code manga.getVolumes()} sem sessão e lança {@link LazyInitializationException}. O teste
- * {@code deactivationWithPrivateCollection_currentlyFailsDueToB1} captura fielmente esse crash;
- * a trilha vira verde (desativa + apaga coleção + GCS) só depois do fix do B1 em [5.3], quando
- * este teste é reescrito. Consertar B1/B2 e injetar o {@code Clock} são escopo de [5.3], não aqui.
+ * <h2>Limiares (EXCLUSIVOS na borda, ver {@code InactivityPolicy})</h2>
+ * <ul>
+ *   <li>inatividade &le; 75 dias &rarr; nada;</li>
+ *   <li>75 &lt; inatividade &le; 90 dias &rarr; aviso (usuário permanece {@code ACTIVE});</li>
+ *   <li>inatividade &gt; 90 dias &rarr; desativação + coleção privada apagada + limpeza GCS.</li>
+ * </ul>
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -95,6 +86,10 @@ class InactivityJobIntegrationTest {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16");
 
+    /** Instante fixo do relógio do use case, para bordas de limiar determinísticas. */
+    private static final Instant FIXED_INSTANT = Instant.parse("2026-07-04T02:00:00Z");
+    private static final OffsetDateTime FIXED_NOW = OffsetDateTime.ofInstant(FIXED_INSTANT, ZoneOffset.UTC);
+
     /** Hash BCrypt de teste (mesmo usado nas demais integrações); valor irrelevante para o job. */
     private static final String PASSWORD_HASH =
             "$2a$10$aGw6owR1pcMYQfdZvSWDTeglPDHItLt7DUt9cCmxHMyXCntVPdmRC";
@@ -104,7 +99,7 @@ class InactivityJobIntegrationTest {
     /** 500 MB — volume público, que NÃO deve contar no storage do dashboard. */
     private static final long PUBLIC_VOLUME_BYTES = 524_288_000L;
 
-    @Autowired InactivityJob inactivityJob;
+    @Autowired RunInactivityUseCase runInactivityUseCase;
     @Autowired UserRepository userRepository;
     @Autowired MangaRepository mangaRepository;
     @Autowired VolumeRepository volumeRepository;
@@ -115,8 +110,14 @@ class InactivityJobIntegrationTest {
     @MockBean EmailService emailService;
     @MockBean StorageClient storageClient;
 
+    /** Relógio fixo (ADR-36): torna as bordas 75/90 determinísticas. */
+    @MockBean Clock clock;
+
     @BeforeEach
     void setUp() {
+        when(clock.instant()).thenReturn(FIXED_INSTANT);
+        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+
         volumeRepository.deleteAllInBatch();
         mangaRepository.deleteAll();
         userRepository.deleteAllInBatch();
@@ -130,10 +131,10 @@ class InactivityJobIntegrationTest {
     class InactivityThresholds {
 
         @Test
-        void doesNothing_whenUserInactive74Days() {
-            User user = activeUser("keep@inactivity.test", "keepUser", 74);
+        void doesNothing_whenInactiveExactly75Days() {
+            User user = activeUser("keep@inactivity.test", "keepUser", 75);
 
-            inactivityJob.runJob();
+            runInactivityUseCase.run();
 
             assertThat(reload(user).getStatus()).isEqualTo(UserStatus.ACTIVE);
             verifyNoInteractions(emailService);
@@ -141,10 +142,25 @@ class InactivityJobIntegrationTest {
         }
 
         @Test
-        void sendsWarning_staysActive_whenUserInactive76Days() {
+        void doesNothing_whenNeverLoggedInButRecentlyCreated() {
+            // last_access_at nulo com created_at recente: não cruzou o limiar → fora da seleção.
+            User user = User.register(Email.of("fresh@inactivity.test"), Username.of("freshUser"),
+                    PASSWORD_HASH, "test", Quota.of(new BigDecimal("2.00")));
+            user.changeStatus(UserStatus.ACTIVE);
+            userRepository.save(user);
+
+            runInactivityUseCase.run();
+
+            assertThat(reload(user).getStatus()).isEqualTo(UserStatus.ACTIVE);
+            verifyNoInteractions(emailService);
+            verifyNoInteractions(storageClient);
+        }
+
+        @Test
+        void sendsWarning_staysActive_whenInactive76Days() {
             User user = activeUser("warn76@inactivity.test", "warn76User", 76);
 
-            inactivityJob.runJob();
+            runInactivityUseCase.run();
 
             assertThat(reload(user).getStatus()).isEqualTo(UserStatus.ACTIVE);
             verify(emailService, times(1))
@@ -153,58 +169,122 @@ class InactivityJobIntegrationTest {
         }
 
         @Test
-        void sendsWarning_staysActive_whenUserInactive89Days() {
-            User user = activeUser("warn89@inactivity.test", "warn89User", 89);
+        void sendsWarning_staysActive_whenInactiveExactly90Days() {
+            // Borda exata: 90 dias ainda é aviso; só passa a desativação ACIMA de 90.
+            User user = activeUser("warn90@inactivity.test", "warn90User", 90);
 
-            inactivityJob.runJob();
+            runInactivityUseCase.run();
 
             assertThat(reload(user).getStatus()).isEqualTo(UserStatus.ACTIVE);
             verify(emailService, times(1))
-                    .sendInactivityWarning("warn89@inactivity.test", "warn89User");
+                    .sendInactivityWarning("warn90@inactivity.test", "warn90User");
             verifyNoInteractions(storageClient);
         }
 
         @Test
-        void deactivatesCleanly_whenUserInactive91Days_withoutPrivateCollection() {
+        void deactivates_whenInactiveJustPast90Days() {
+            // Um segundo além de 90 dias já cai na desativação — a borda ficou exata com o Clock.
+            User user = activeUserAt("edge@inactivity.test", "edgeUser",
+                    FIXED_NOW.minusDays(90).minusSeconds(1));
+
+            runInactivityUseCase.run();
+
+            assertThat(reload(user).getStatus()).isEqualTo(UserStatus.INACTIVE);
+            verify(emailService, never()).sendInactivityWarning(user.getEmail(), user.getUsername());
+        }
+
+        @Test
+        void deactivatesCleanly_whenInactive91Days_withoutPrivateCollection() {
             User user = activeUser("gone91@inactivity.test", "gone91User", 91);
 
-            inactivityJob.runJob();
+            runInactivityUseCase.run();
 
-            // Sem coleção privada, a desativação não toca lazy collections: passa hoje.
+            // Sem coleção privada, a desativação não toca GCS.
             assertThat(reload(user).getStatus()).isEqualTo(UserStatus.INACTIVE);
             verify(emailService, never()).sendInactivityWarning(user.getEmail(), user.getUsername());
             verifyNoInteractions(storageClient);
         }
 
         /**
-         * PIN do bug B1: HOJE, desativar um usuário que TEM coleção privada quebra.
+         * B1 CORRIGIDO: desativar um usuário COM coleção privada agora funciona.
          *
-         * <p>{@code deactivateUser} é {@code @Transactional}, mas {@code runJob()} o chama por
-         * self-invocation (B1) — o proxy AOP não aplica a transação. Com {@code open-in-view=false}
-         * e {@code Manga.volumes} LAZY, {@code manga.getVolumes().forEach(...)} roda sem sessão
-         * Hibernate e lança {@link LazyInitializationException}. O job aborta: o usuário permanece
-         * {@code ACTIVE}, a coleção intacta e o GCS não é tocado.
-         *
-         * <p>Esta é a captura fiel do comportamento atual, NÃO o desejado. O [5.3] corrige o B1
-         * (transação por usuário via bean/proxy válido) e esta trilha passa a desativar o usuário
-         * e apagar a coleção — momento em que este teste é reescrito para o verde. Consertar o B1
-         * aqui está fora do escopo do [5.1].
+         * <p>Antes de [5.3], {@code deactivateUser} era {@code @Transactional} mas chamado por
+         * self-invocation, então {@code manga.getVolumes()} rodava sem sessão e lançava
+         * {@code LazyInitializationException} — o usuário permanecia {@code ACTIVE}. Agora a
+         * coleção privada é apagada por {@code DeletePrivateCollectionForUserUseCase} (transação
+         * própria de {@code manga}, proxy AOP válido): os volumes são lidos dentro dessa tx, o
+         * usuário é desativado e os arquivos são removidos do GCS depois (best-effort).
          */
         @Test
-        void deactivationWithPrivateCollection_currentlyFailsDueToB1() {
-            User user = activeUser("crash91@inactivity.test", "crash91User", 91);
-            Manga privateManga = privateMangaWith(user, "crash-cover", "crash-vol-1");
+        void deactivatesAndDeletesCollection_whenInactive91Days_withPrivateCollection() {
+            User user = activeUser("wipe91@inactivity.test", "wipe91User", 91);
+            Manga privateManga = privateMangaWith(user, "wipe-cover", "wipe-vol-1");
             UUID mangaId = privateManga.getId();
 
-            assertThatThrownBy(() -> inactivityJob.runJob())
-                    .isInstanceOf(LazyInitializationException.class);
+            runInactivityUseCase.run();
 
-            // O job abortou antes de mutar qualquer coisa: nada mudou.
-            assertThat(reload(user).getStatus()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(mangaRepository.findById(mangaId)).isPresent();
-            assertThat(volumeRepository.findByMangaId(mangaId)).hasSize(1);
-            verifyNoInteractions(storageClient);
-            verifyNoInteractions(emailService);
+            assertThat(reload(user).getStatus()).isEqualTo(UserStatus.INACTIVE);
+            // Coleção privada apagada do banco (mangá + volumes via cascade do agregado).
+            assertThat(mangaRepository.findById(mangaId)).isEmpty();
+            assertThat(volumeRepository.findByMangaId(mangaId)).isEmpty();
+            // GCS limpo com os object names retornados pelo use case de manga (capa + volume).
+            verify(storageClient, times(1)).delete("wipe-cover");
+            verify(storageClient, times(1)).delete("wipe-vol-1");
+            verify(emailService, never()).sendInactivityWarning(user.getEmail(), user.getUsername());
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Regressão do B2 — paginação sobre conjunto mutável pulava usuários
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    class Batch {
+
+        /**
+         * B2 CORRIGIDO: um lote grande (acima do antigo tamanho de página de 50) em que TODOS
+         * são desativados. A versão antiga paginava por offset sobre o conjunto {@code ACTIVE};
+         * ao desativar a primeira página, os usuários saíam do conjunto e os offsets seguintes
+         * pulavam o restante. Aqui provamos que NENHUM usuário elegível é pulado.
+         */
+        @Test
+        void deactivatesEveryEligibleUser_withoutSkipping_inLargeBatch() {
+            int total = 55; // > 50 (tamanho da página antiga) para expor o pulo do B2
+            List<UUID> ids = new ArrayList<>();
+            for (int i = 0; i < total; i++) {
+                User user = activeUser("batch" + i + "@inactivity.test", "batchUser" + i, 91);
+                ids.add(user.getId());
+            }
+            // Alguns com coleção privada, para exercitar o fix do B1 em escala no mesmo lote.
+            privateMangaWith(userRepository.findById(ids.get(0)).orElseThrow(),
+                    "batch-cover-0", "batch-vol-0");
+            privateMangaWith(userRepository.findById(ids.get(total - 1)).orElseThrow(),
+                    "batch-cover-last", "batch-vol-last");
+
+            runInactivityUseCase.run();
+
+            long stillActive = ids.stream()
+                    .filter(id -> userRepository.findById(id).orElseThrow().getStatus() == UserStatus.ACTIVE)
+                    .count();
+            assertThat(stillActive).as("nenhum usuário elegível pode ser pulado").isZero();
+        }
+
+        /**
+         * Lote misto: alguns são avisados e outros desativados numa única execução, provando
+         * que ambos os caminhos coexistem sem interferência.
+         */
+        @Test
+        void warnsAndDeactivates_inSingleRun() {
+            User toWarn = activeUser("mixWarn@inactivity.test", "mixWarn", 80);
+            User toDeactivate = activeUser("mixGone@inactivity.test", "mixGone", 95);
+
+            runInactivityUseCase.run();
+
+            assertThat(reload(toWarn).getStatus()).isEqualTo(UserStatus.ACTIVE);
+            verify(emailService, times(1)).sendInactivityWarning("mixWarn@inactivity.test", "mixWarn");
+            assertThat(reload(toDeactivate).getStatus()).isEqualTo(UserStatus.INACTIVE);
+            verify(emailService, never())
+                    .sendInactivityWarning("mixGone@inactivity.test", "mixGone");
         }
     }
 
@@ -277,12 +357,17 @@ class InactivityJobIntegrationTest {
 
     // ── Helpers ────────────────────────────────────────────────────────────────
 
-    /** Cria e persiste um usuário ACTIVE cujo último acesso foi há {@code daysAgo} dias. */
+    /** Cria e persiste um usuário ACTIVE cujo último acesso foi há {@code daysAgo} dias (relativo ao Clock fixo). */
     private User activeUser(String email, String username, int daysAgo) {
+        return activeUserAt(email, username, FIXED_NOW.minusDays(daysAgo));
+    }
+
+    /** Cria e persiste um usuário ACTIVE com {@code last_access_at} exato. */
+    private User activeUserAt(String email, String username, OffsetDateTime lastAccess) {
         User user = User.register(Email.of(email), Username.of(username),
                 PASSWORD_HASH, "test", Quota.of(new BigDecimal("2.00")));
         user.changeStatus(UserStatus.ACTIVE);
-        user.recordLogin(OffsetDateTime.now().minusDays(daysAgo));
+        user.recordLogin(lastAccess);
         return userRepository.save(user);
     }
 
@@ -291,7 +376,7 @@ class InactivityJobIntegrationTest {
                 PASSWORD_HASH, "test", Quota.of(new BigDecimal("2.00")));
         user.changeRole(Role.ADMIN);
         user.changeStatus(UserStatus.ACTIVE);
-        user.recordLogin(OffsetDateTime.now().minusDays(1));
+        user.recordLogin(FIXED_NOW.minusDays(1));
         return userRepository.save(user);
     }
 
