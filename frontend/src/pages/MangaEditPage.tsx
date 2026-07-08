@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {useParams, useNavigate} from "react-router-dom";
-import api from "@/lib/axios";
+import {finalizeVolumeUpload, getManga, getVolumeUploadUrl, updateManga, deleteVolume as deleteVolumeApi} from "@/api/mangaApi";
+import type {MangaDetail, MangaRequest, Volume} from "@/types/manga";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
@@ -38,44 +39,6 @@ const CONTENT_WARNING_OPTIONS = [
     {value: "GATILHO_TRAUMA", label: "Gatilho: Trauma"},
 ];
 
-interface MangaRequest {
-    title: string;
-    alternativeTitles: string[];
-    synopsis?: string | null;
-    coverBase64?: string;
-    format: string;
-    originCountry?: string | null;
-    statusOrigin: string;
-    statusSite: string;
-    year?: number | null;
-    contentWarnings: string[];
-    tagIds: string[];
-}
-
-interface Volume {
-    id: string;
-    volumeNumber: number;
-    fileSizeBytes: number;
-    createdAt: string;
-}
-
-interface MangaDetail {
-    id: string;
-    slug: string;
-    title: string;
-    alternativeTitles: string[];
-    synopsis: string | null;
-    coverUrl: string | null;
-    format: string;
-    originCountry: string | null;
-    statusOrigin: string;
-    statusSite: string;
-    year: number | null;
-    contentWarnings: string[];
-    tags: {id: string; name: string; slug: string; category: {id: string; name: string}}[];
-    volumes: Volume[];
-}
-
 function formatBytes(bytes: number): string {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -109,8 +72,8 @@ export function MangaEditPage() {
 
     useEffect(() => {
         if (!id) return;
-        api.get<MangaDetail>(`/mangas/${id}`)
-            .then(({data}) => populateForm(data))
+        getManga(id)
+            .then((data) => populateForm(data))
             .catch(() => {
                 toast.error("Mangá não encontrado.");
                 navigate("/biblioteca");
@@ -184,7 +147,7 @@ export function MangaEditPage() {
             };
             if (coverBase64) payload.coverBase64 = coverBase64;
 
-            const {data} = await api.put(`/mangas/${manga.id}`, payload);
+            const data = await updateManga(manga.id, payload);
             toast.success("Mangá atualizado");
             navigate(`/biblioteca/${data.slug}`);
         } catch (e) {
@@ -198,20 +161,14 @@ export function MangaEditPage() {
         if (!manga || !volumeFile) return;
         setUploadingVolume(true);
         try {
-            const {data: {uploadUrl, objectName}} = await api.post(
-                `/mangas/${manga.id}/volumes/upload-url`,
-                {volumeNumber: parseInt(volumeNumber)}
-            );
+            const {uploadUrl, objectName} = await getVolumeUploadUrl(manga.id, parseInt(volumeNumber));
             const uploadRes = await fetch(uploadUrl, {
                 method: "PUT",
                 headers: {"Content-Type": "application/pdf"},
                 body: volumeFile,
             });
             if (!uploadRes.ok) throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
-            const {data} = await api.post(`/mangas/${manga.id}/volumes/finalize`, {
-                objectName,
-                volumeNumber: parseInt(volumeNumber),
-            });
+            const data = await finalizeVolumeUpload(manga.id, objectName, parseInt(volumeNumber));
             toast.success(`Volume ${volumeNumber} enviado!`);
             setVolumes((prev) => [...prev, data].sort((a, b) => a.volumeNumber - b.volumeNumber));
             setVolumeNumber(String(Number(volumeNumber) + 1));
@@ -231,7 +188,7 @@ export function MangaEditPage() {
         if (!window.confirm(`Remover Volume ${vol.volumeNumber}?`)) return;
         setDeletingVolumeId(vol.id);
         try {
-            await api.delete(`/mangas/${manga.id}/volumes/${vol.id}`);
+            await deleteVolumeApi(manga.id, vol.id);
             toast.success(`Volume ${vol.volumeNumber} removido`);
             setVolumes((prev) => prev.filter((v) => v.id !== vol.id));
         } catch (e) {

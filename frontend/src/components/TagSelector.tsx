@@ -1,19 +1,8 @@
 import {useEffect, useState} from "react";
-import api from "@/lib/axios";
+import {listTagCategories, listTags} from "@/api/mangaApi";
+import type {Tag, TagCategory} from "@/types/manga";
 import {Badge} from "@/components/ui/badge";
 import {X} from "lucide-react";
-
-interface TagCategory {
-    id: string;
-    name: string;
-}
-
-interface Tag {
-    id: string;
-    name: string;
-    slug: string;
-    category: TagCategory;
-}
 
 interface TagSelectorProps {
     selectedIds: string[];
@@ -27,11 +16,11 @@ export function TagSelector({selectedIds, onChange, excludeCategories = []}: Tag
 
     useEffect(() => {
         Promise.all([
-            api.get<TagCategory[]>("/tag-categories"),
-            api.get<Tag[]>("/tags"),
-        ]).then(([catRes, tagRes]) => {
-            setCategories(catRes.data);
-            setTags(tagRes.data);
+            listTagCategories(),
+            listTags(),
+        ]).then(([cats, tagList]) => {
+            setCategories(cats);
+            setTags(tagList);
         });
     }, []);
 

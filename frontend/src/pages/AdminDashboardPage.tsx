@@ -1,20 +1,8 @@
 import {useEffect, useState} from "react";
-import api from "@/lib/axios";
+import {getDashboard} from "@/api/adminApi";
+import type {DashboardData} from "@/types/admin";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {Users, HardDrive, Database} from "lucide-react";
-
-interface UserStorage {
-    userId: string;
-    username: string;
-    usedGb: number;
-    quotaGb: number;
-}
-
-interface DashboardData {
-    activeUsers: number;
-    totalStorageUsedGb: number;
-    storageByUser: UserStorage[];
-}
 
 export function AdminDashboardPage() {
     const [data, setData] = useState<DashboardData | null>(null);
@@ -22,8 +10,8 @@ export function AdminDashboardPage() {
     const [error, setError] = useState(false);
 
     useEffect(() => {
-        api.get<DashboardData>("/admin/dashboard")
-            .then(({data}) => setData(data))
+        getDashboard()
+            .then((data) => setData(data))
             .catch(() => setError(true))
             .finally(() => setLoading(false));
     }, []);

@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {Link} from "react-router-dom";
 import {toast} from "sonner";
-import api from "@/lib/axios";
+import {forgotPassword} from "@/api/identityApi";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
@@ -16,7 +16,7 @@ export function ForgotPasswordPage() {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post("/auth/password/forgot", {email});
+            await forgotPassword(email);
             setSent(true);
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Erro ao enviar e-mail");

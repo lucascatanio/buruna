@@ -1,18 +1,10 @@
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
-import api from "@/lib/axios";
+import {approveSubmission, listPendingSubmissions, rejectSubmission} from "@/api/adminApi";
+import type {PendingSubmission} from "@/types/manga";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-
-interface PendingSubmission {
-    id: string;
-    title: string;
-    coverUrl: string | null;
-    submitterUsername: string;
-    submitterEmail: string;
-    submittedAt: string;
-}
 
 export function PendingSubmissionsPage() {
     const [submissions, setSubmissions] = useState<PendingSubmission[]>([]);
@@ -21,7 +13,7 @@ export function PendingSubmissionsPage() {
 
     async function fetchPending() {
         try {
-            const {data} = await api.get("/admin/submissions?size=50&sort=submittedAt,asc");
+            const data = await listPendingSubmissions();
             setSubmissions(data.content);
         } catch {
             toast.error("Falha ao carregar submissões pendentes");
@@ -38,7 +30,7 @@ export function PendingSubmissionsPage() {
         if (!confirm("Aprovar esta publicação? O mangá ficará visível na biblioteca pública.")) return;
         setActionLoading(id + "-approve");
         try {
-            await api.post(`/admin/submissions/${id}/approve`);
+            await approveSubmission(id);
             toast.success("Mangá publicado na biblioteca!");
             setSubmissions((prev) => prev.filter((s) => s.id !== id));
         } catch (err: any) {
@@ -54,7 +46,7 @@ export function PendingSubmissionsPage() {
 
         setActionLoading(id + "-reject");
         try {
-            await api.post(`/admin/submissions/${id}/reject`, {rejectionReason: reason || null});
+            await rejectSubmission(id, reason || null);
             toast.success("Submissão rejeitada");
             setSubmissions((prev) => prev.filter((s) => s.id !== id));
         } catch (err: any) {

@@ -1,6 +1,6 @@
 import {useState} from "react";
 import {useNavigate} from "react-router-dom";
-import api from "@/lib/axios";
+import {createMyManga, finalizeMyVolumeUpload, getMyVolumeUploadUrl} from "@/api/privateMangaApi";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
@@ -41,10 +41,7 @@ export function PrivateMangaUploadPage() {
     }
 
     async function uploadVolumeViaSignedUrl(mangaId: string, file: File, volNum: string) {
-        const {data: {uploadUrl, objectName}} = await api.post(
-            `/my/mangas/${mangaId}/volumes/upload-url`,
-            {volumeNumber: parseInt(volNum)}
-        );
+        const {uploadUrl, objectName} = await getMyVolumeUploadUrl(mangaId, parseInt(volNum));
 
         const uploadRes = await fetch(uploadUrl, {
             method: "PUT",
@@ -56,10 +53,7 @@ export function PrivateMangaUploadPage() {
             throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
         }
 
-        await api.post(`/my/mangas/${mangaId}/volumes/finalize`, {
-            objectName,
-            volumeNumber: parseInt(volNum),
-        });
+        await finalizeMyVolumeUpload(mangaId, objectName, parseInt(volNum));
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -70,7 +64,7 @@ export function PrivateMangaUploadPage() {
         }
         setSubmitting(true);
         try {
-            const {data} = await api.post("/my/mangas", {
+            const data = await createMyManga({
                 title: title.trim(),
                 synopsis: synopsis.trim() || null,
                 coverBase64: coverBase64 || null,

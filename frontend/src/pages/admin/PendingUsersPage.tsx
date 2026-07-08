@@ -1,17 +1,10 @@
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
-import api from "@/lib/axios";
+import {approveUser, listPendingUsers, rejectUser} from "@/api/adminApi";
+import type {PendingUser} from "@/types/admin";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-
-interface PendingUser {
-    id: string;
-    email: string;
-    username: string;
-    presentationMessage: string;
-    createdAt: string;
-}
 
 export function PendingUsersPage() {
     const [users, setUsers] = useState<PendingUser[]>([]);
@@ -20,7 +13,7 @@ export function PendingUsersPage() {
 
     async function fetchPending() {
         try {
-            const {data} = await api.get("/admin/users/pending?size=50&sort=createdAt,asc");
+            const data = await listPendingUsers();
             setUsers(data.content);
         } catch {
             toast.error("Falha ao carregar solicitações pendentes");
@@ -36,7 +29,7 @@ export function PendingUsersPage() {
     async function handleApprove(id: string) {
         setActionLoading(id + "-approve");
         try {
-            await api.post(`/admin/users/${id}/approve`, {});
+            await approveUser(id);
             toast.success("Usuário aprovado");
             setUsers((prev) => prev.filter((u) => u.id !== id));
         } catch (err: any) {
@@ -52,7 +45,7 @@ export function PendingUsersPage() {
 
         setActionLoading(id + "-reject");
         try {
-            await api.post(`/admin/users/${id}/reject`, {reason});
+            await rejectUser(id, reason);
             toast.success("Usuário rejeitado");
             setUsers((prev) => prev.filter((u) => u.id !== id));
         } catch (err: any) {
