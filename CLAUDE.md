@@ -95,12 +95,21 @@ As credenciais/nome do banco vêm do `.env` na raiz (`DB_NAME`/`DB_USER`/`DB_PAS
 lidos pelo `docker compose` automaticamente).
 
 ### Rodar o backend local
-`application.yml` faz bind eager de `app.*` (record `AppProperties`) — mesmo variáveis
-não usadas fora do profile `!local` (GCS) precisam estar setadas para o contexto Spring
-subir. Variáveis sem default (leitura de `application.yml`): `DB_URL`, `DB_USER`,
-`DB_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL`, `GCS_BUCKET_NAME`, `GCS_CREDENTIALS_PATH`
-(as duas últimas podem ser qualquer valor no profile `local` — `GcsConfig` é
-`@Profile("!local")`, então o bean real de GCS não sobe).
+Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 7:
+`DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `GCS_BUCKET_NAME`,
+`GCS_CREDENTIALS_PATH`, `ADMIN_EMAIL`.
+
+- `GCS_BUCKET_NAME`/`GCS_CREDENTIALS_PATH` **não são usados** no profile `local`
+  (`GcsConfig` é `@Profile("!local")`, o bean real de GCS não sobe) — mas precisam de
+  **qualquer valor** (ex.: `dummy`) porque `AppProperties` (`@ConfigurationProperties`)
+  faz bind **eager** de todo `app.*`, inclusive o que não é usado no profile ativo.
+- Demais variáveis de `application.yml` têm default e são **opcionais** para rodar
+  local: `JWT_EXPIRATION`, `REFRESH_TOKEN_EXPIRATION`, `MAX_FILE_SIZE_MB`,
+  `RATE_LIMIT_REGISTER_PER_HOUR`/`LOGIN_PER_HOUR`/`FEEDBACK_PER_HOUR`/`FORGOT_PASSWORD_PER_HOUR`,
+  `RESEND_API_KEY`, `APP_FRONTEND_URL`, `APP_CORS_ALLOWED_ORIGIN`, `APP_JOBS_SECRET`,
+  `APP_MAIL_FROM`, `SWAGGER_ENABLED`, `PORT`.
+- `HCAPTCHA_SECRET` também tem default vazio → captcha desligado local
+  (`CaptchaService` pula a verificação quando `app.hcaptcha.secret` está vazio).
 
 O profile `local` ativa `LocalStorageClient` (`LocalStorageConfig`, `@Profile("local")`),
 que exige `app.storage.local.path`. O default em `application-local.yml`
@@ -133,8 +142,6 @@ npm install && npm run dev
 - Frontend: `npm run build` (typecheck + build via `tsc -b && vite build`).
 
 ### Notas de dev local
-- Captcha desligado quando `app.hcaptcha.secret` está vazio (sem `HCAPTCHA_SECRET`
-  setado) — `CaptchaService` pula a verificação (`@Value("${app.hcaptcha.secret:}")`).
 - E-mail é `@Async` (`EmailService`); sem `RESEND_API_KEY`, `ResendEmailSender` só loga
   `[EMAIL SKIP]` e retorna — não bloqueia o fluxo (registro, aprovação, reset de senha).
 - Upload de volume depende de storage: `GcsStorageClient` em prod, `LocalStorageClient`
