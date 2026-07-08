@@ -27,8 +27,6 @@ public interface MangaRepository extends JpaRepository<Manga, UUID>, JpaSpecific
 
     boolean existsBySlug(String slug);
 
-    boolean existsByTitleIgnoreCase(String title);
-
     boolean existsByTitleIgnoreCaseAndIsPublicTrue(String title);
 
     @EntityGraph(attributePaths = {"tags", "tags.category"})

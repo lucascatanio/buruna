@@ -1,7 +1,6 @@
 package com.buruna.identity.application.authentication;
 
 import dev.samstevens.totp.code.*;
-import dev.samstevens.totp.exceptions.QrGenerationException;
 import dev.samstevens.totp.qr.QrData;
 import dev.samstevens.totp.secret.DefaultSecretGenerator;
 import dev.samstevens.totp.secret.SecretGenerator;

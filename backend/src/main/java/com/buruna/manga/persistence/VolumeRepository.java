@@ -13,8 +13,6 @@ public interface VolumeRepository extends JpaRepository<Volume, UUID> {
 
     boolean existsByMangaIdAndVolumeNumber(UUID mangaId, Integer volumeNumber);
 
-    boolean existsByFileHash(String fileHash);
-
     Optional<Volume> findByIdAndMangaId(UUID id, UUID mangaId);
 
     List<Volume> findByMangaId(UUID mangaId);
