@@ -341,6 +341,19 @@ Após o deploy de cada um destes, **pare e teste manualmente em produção** ant
 - **Ordem inegociável:** rede de segurança (`.1` de cada epic) **antes** da refatoração; remoção do bash **depois** da cobertura automatizada.
 - **Fase 4** (documentação viva: `CLAUDE.md`, `docs/arquitetura.md`, `docs/convencoes.md`, `docs/glossario-dominio.md`, `CONTRIBUTING.md` + `README.md` reescrito + templates `.github/`) entra **após** a execução estabilizar o padrão — idealmente os docs são atualizados incrementalmente a cada epic, e consolidados ao final.
 
+### Backlog (achados durante o Epic 6, fora do escopo — não fazer sem issue própria)
+
+- **Rename pendente `controller/`→`web/`, `service/`→`application/`:** `manga/controller/` (MangaController,
+  PrivateMangaController, VolumeController) convive com `manga/web/` (só TagController); `admin/controller/`+
+  `admin/service/` nunca foram renomeados. Investigado no [6.3]: sem duplicação de rota, tudo vivo e chamado
+  pelo frontend/testes — é inconsistência de nomenclatura de migração incompleta, não código morto. Vale uma
+  issue de rename puro quando o padrão `web/`+`application/` for revisitado.
+- **Logout não revoga refresh token no servidor:** `POST /auth/logout` e `DELETE /auth/account` existem e têm
+  teste no backend, mas o botão de logout do frontend (`AppLayout.tsx`, `AdminLayout.tsx`) só chama
+  `clearAuth()` local — nunca chama `/auth/logout`. Refresh token permanece válido no servidor após logout.
+  Também não há UI para deletar conta. Achado no [6.3], investigação read-only; precisa de issue de segurança
+  própria (ligar o botão ao endpoint existente, avaliar revogação de todos os refresh tokens do usuário).
+
 ---
 
 **➡️ Próximo passo:** aguardando sua validação do roadmap. Aprovado, posso (a) iniciar a execução pela issue **[0.1]**, ou (b) já gerar os entregáveis da **Fase 4** (documentação viva) — me diga a preferência. Recomendo começar pela execução do Epic 0 + Epic 1 (piloto) e só então escrever a Fase 4 com o padrão já validado na prática.
