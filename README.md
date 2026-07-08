@@ -141,8 +141,6 @@ buruna/
 ├── docs/
 │   ├── buruna_architecture.md   referência técnica completa
 │   └── buruna_roadmap_mvp.md    progresso e backlog
-├── scripts/
-│   └── test-phase8.sh     smoke tests do painel admin
 ├── gcs-cors.json          configuração de CORS do bucket GCS
 ├── docker-compose.yml     ambiente local
 ├── .env.example
