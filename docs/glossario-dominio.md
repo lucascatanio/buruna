@@ -47,7 +47,8 @@
 | **Owner** | Usuário dono de um `Manga` privado (referenciado por UUID — nunca a entidade `User`, ADR-35/ADR-39). |
 | **Promote** | `COLLABORATOR`+ move o **próprio** `Manga` privado direto para público via `promoteToPublic()` — caminho direto, sem revisão. |
 | **Submission** | Qualquer usuário `ACTIVE` pede publicação via `submitForApproval()`; um `ADMIN` decide com `approve()`/`reject()`. Dois caminhos (promote × submit→approve) coexistem por decisão de domínio. |
-| **MangaSubmissionStatus** (enum) | `PENDING` (aguardando revisão), `REJECTED` (recusado, com motivo). Ausência de valor = não submetido/já resolvido. |
+| **MangaSubmissionStatus** (enum) | Exatamente **dois** valores no código: `PENDING` (aguardando revisão) e `REJECTED` (recusado, com `rejectionReason`). **Não existe `APPROVED`.** `null` cobre dois casos distintos: nunca submetido, **ou** aprovado (ver nota abaixo). |
+| ⚠️ **Assimetria aprovação × rejeição** | `Manga.reject(reviewerId, reason)` **grava estado** (`submissionStatus = REJECTED`). `Manga.approve(reviewerId)` **não grava estado de submissão** — apenas `isPublic = true; submissionStatus = null` (`Manga.java:228-236`). Ou seja: aprovar não é um status persistido, é a **promoção do mangá a público**, que sai do fluxo de submissão por completo. Rejeitado fica rastreável (`REJECTED` + motivo); aprovado só é rastreável indiretamente via `reviewedById`/`reviewedAt` + `isPublic=true`, sem estado `APPROVED` dedicado. Assimetria conhecida — issue registrada em `docs/refactor/03-roadmap-refatoracao.md` §10 para tornar o enum simétrico (`{PENDING, APPROVED, REJECTED}`). |
 | **MangaStatusOrigin** (enum) | Status da obra na fonte original: `ONGOING`, `COMPLETED`, `HIATUS`, `CANCELLED`. |
 | **MangaStatusSite** (enum) | Status da publicação **no Burūna**: `COMPLETE` (todos os volumes disponíveis), `INCOMPLETE`. |
 | **MangaFormat** (enum) | `MANGA`, `MANHWA`, `MANHUA`, `WEBTOON`, `ONESHOT`, `LIVRO`. |
