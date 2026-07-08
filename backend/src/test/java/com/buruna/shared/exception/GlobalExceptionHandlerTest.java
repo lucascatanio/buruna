@@ -11,8 +11,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * Teste unitário puro (sem contexto Spring): o handler é instanciado com `new` e
- * a request é mockada. Prova que a base pura DomainException e a legada coexistem
- * e resolvem para o status HTTP correto (ADR-33).
+ * a request é mockada. Prova que DomainException resolve para o status HTTP
+ * correto via DomainErrorType (ADR-33).
  */
 class GlobalExceptionHandlerTest {
 
@@ -38,17 +38,5 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().status()).isEqualTo(409);
         assertThat(response.getBody().message()).isEqualTo("recurso já existe");
         assertThat(response.getBody().path()).isEqualTo("/mangas");
-    }
-
-    @Test
-    void shouldUseProvidedStatus_whenLegacyDomainExceptionThrown() {
-        when(request.getRequestURI()).thenReturn("/x");
-
-        ResponseEntity<ErrorResponse> response = handler.handleDomain(
-                new LegacyHttpDomainException(HttpStatus.NOT_FOUND, "sumiu"), request);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().message()).isEqualTo("sumiu");
     }
 }

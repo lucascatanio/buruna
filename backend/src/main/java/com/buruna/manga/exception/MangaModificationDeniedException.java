@@ -6,7 +6,7 @@ import com.buruna.shared.exception.DomainException;
 /**
  * O ator não é dono do mangá nem ADMIN. Exceção de domínio pura (ADR-33):
  * {@link DomainErrorType#FORBIDDEN} → HTTP 403. Substitui a checagem de posse inline
- * (LegacyHttpDomainException) de MangaService/VolumeService (ADR-35).
+ * que vivia em MangaService/VolumeService (ADR-35).
  */
 public final class MangaModificationDeniedException extends DomainException {
 

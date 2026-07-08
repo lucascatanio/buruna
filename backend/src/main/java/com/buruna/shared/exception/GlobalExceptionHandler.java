@@ -53,13 +53,6 @@ public class GlobalExceptionHandler {
         return buildResponse(status, status.getReasonPhrase(), ex.getMessage(), request);
     }
 
-    // Legado: a exceção já traz o status. Removido quando nenhum contexto mais usar (ver ADR-33).
-    @ExceptionHandler(LegacyHttpDomainException.class)
-    public ResponseEntity<ErrorResponse> handleDomain(
-            LegacyHttpDomainException ex, HttpServletRequest request) {
-        return buildResponse(ex.getStatus(), ex.getStatus().getReasonPhrase(), ex.getMessage(), request);
-    }
-
     private static HttpStatus statusFor(DomainErrorType type) {
         return switch (type) {
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
