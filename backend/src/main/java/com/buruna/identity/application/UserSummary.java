@@ -1,5 +1,6 @@
 package com.buruna.identity.application;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -7,5 +8,5 @@ import java.util.UUID;
  * use case (ADR-39). Evita que contextos externos importem a entidade {@code User} ou o
  * {@code UserRepository} de identity.
  */
-public record UserSummary(UUID id, String username, String email) {
+public record UserSummary(UUID id, String username, String email, BigDecimal quotaGb) {
 }

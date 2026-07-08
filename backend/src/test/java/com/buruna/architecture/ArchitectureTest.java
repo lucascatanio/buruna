@@ -67,6 +67,29 @@ class ArchitectureTest {
     }
 
     /**
+     * Guard específico para o contexto admin (casca, ADR-35 §2.3): como admin não tem
+     * domain/application próprios, o guard genérico acima não o protege. admin.service
+     * só pode ler outros contextos via application (use case público) — nunca domain/
+     * persistence direto. admin.controller fica de fora porque @AuthenticationPrincipal
+     * User é um padrão aceito na camada web (mesma exceção do guard genérico).
+     */
+    @Test
+    void adminServiceLayer_shouldOnlyUseApplicationLayerOfOtherContexts() {
+        ArchRule rule = noClasses()
+                .that().resideInAPackage(BASE + ".admin.service..")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        BASE + ".identity.domain..", BASE + ".identity.persistence..",
+                        BASE + ".manga.domain..", BASE + ".manga.persistence..",
+                        BASE + ".reading.domain..", BASE + ".reading.persistence..",
+                        BASE + ".engagement.domain..", BASE + ".engagement.persistence..")
+                .because("admin é casca: acesso a outros contextos só via application " +
+                         "(use case público) (ADR-35 §2.3)");
+
+        rule.check(classes);
+    }
+
+    /**
      * Guard parcial para ADR-39: detecta @Query(nativeQuery=true) nas camadas persistence
      * de contextos migrados. Native SQL escapa à análise de imports Java, então esse guard
      * captura o vetor de violação mais provável (repositório de um contexto fazendo SQL

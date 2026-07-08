@@ -36,6 +36,6 @@ public class GetUserSummaryUseCase {
     }
 
     private static UserSummary toSummary(User user) {
-        return new UserSummary(user.getId(), user.getUsername(), user.getEmail());
+        return new UserSummary(user.getId(), user.getUsername(), user.getEmail(), user.getQuotaGb());
     }
 }

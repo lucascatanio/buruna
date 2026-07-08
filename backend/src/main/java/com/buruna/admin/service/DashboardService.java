@@ -2,19 +2,19 @@ package com.buruna.admin.service;
 
 import com.buruna.admin.dto.DashboardResponse;
 import com.buruna.admin.dto.UserStorageResponse;
-import com.buruna.manga.persistence.VolumeStorageProjection;
-import com.buruna.manga.persistence.VolumeRepository;
-import com.buruna.identity.domain.User;
-import com.buruna.identity.domain.UserStatus;
-import com.buruna.identity.persistence.UserRepository;
+import com.buruna.identity.application.GetUserSummaryUseCase;
+import com.buruna.identity.application.UserSummary;
+import com.buruna.identity.application.admin.CountActiveUsersUseCase;
+import com.buruna.manga.application.admin.GetStorageByOwnerUseCase;
+import com.buruna.manga.application.admin.OwnerStorageUsage;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -22,44 +22,40 @@ public class DashboardService {
 
     private static final BigDecimal BYTES_PER_GB = BigDecimal.valueOf(1_073_741_824L);
 
-    private final UserRepository userRepository;
-    private final VolumeRepository volumeRepository;
+    private final CountActiveUsersUseCase countActiveUsers;
+    private final GetStorageByOwnerUseCase getStorageByOwner;
+    private final GetUserSummaryUseCase getUserSummary;
 
-    public DashboardService(UserRepository userRepository,
-                            VolumeRepository volumeRepository) {
-        this.userRepository = userRepository;
-        this.volumeRepository = volumeRepository;
+    public DashboardService(CountActiveUsersUseCase countActiveUsers,
+                            GetStorageByOwnerUseCase getStorageByOwner,
+                            GetUserSummaryUseCase getUserSummary) {
+        this.countActiveUsers = countActiveUsers;
+        this.getStorageByOwner = getStorageByOwner;
+        this.getUserSummary = getUserSummary;
     }
 
-    @Transactional(readOnly = true)
     public DashboardResponse getDashboard() {
-        long activeUsers = userRepository.countByStatus(UserStatus.ACTIVE);
+        long activeUsers = countActiveUsers.handle();
 
-        List<VolumeStorageProjection> storageRows = volumeRepository.findStorageByOwner();
+        List<OwnerStorageUsage> storageRows = getStorageByOwner.handle();
 
-        long totalBytes = storageRows.stream()
-                .mapToLong(r -> r.getTotalBytes() != null ? r.getTotalBytes() : 0L)
-                .sum();
+        long totalBytes = storageRows.stream().mapToLong(OwnerStorageUsage::totalBytes).sum();
         BigDecimal totalGb = bytesToGb(totalBytes);
 
-        List<UUID> ownerIds = storageRows.stream()
-                .map(VolumeStorageProjection::getOwnerId)
-                .distinct()
-                .toList();
+        List<UUID> ownerIds = storageRows.stream().map(OwnerStorageUsage::ownerId).distinct().toList();
 
-        Map<UUID, User> userMap = userRepository.findAllById(ownerIds)
-                .stream()
-                .collect(Collectors.toMap(User::getId, u -> u));
+        Map<UUID, UserSummary> userMap = getUserSummary.findAllById(ownerIds).stream()
+                .collect(Collectors.toMap(UserSummary::id, Function.identity()));
 
         List<UserStorageResponse> storageByUser = storageRows.stream()
                 .map(r -> {
-                    User user = userMap.get(r.getOwnerId());
-                    String username = user != null ? user.getUsername() : "—";
-                    BigDecimal quotaGb = user != null ? user.getQuotaGb() : BigDecimal.ZERO;
+                    UserSummary user = userMap.get(r.ownerId());
+                    String username = user != null ? user.username() : "—";
+                    BigDecimal quotaGb = user != null ? user.quotaGb() : BigDecimal.ZERO;
                     return new UserStorageResponse(
-                            r.getOwnerId(),
+                            r.ownerId(),
                             username,
-                            bytesToGb(r.getTotalBytes() != null ? r.getTotalBytes() : 0L),
+                            bytesToGb(r.totalBytes()),
                             quotaGb
                     );
                 })
