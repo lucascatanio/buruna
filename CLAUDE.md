@@ -16,8 +16,13 @@ comunidade.
 
 ## Stacks
 
-Backend: Java 21, Spring Boot 3.x, PostgreSQL, Flyway, JWT+Refresh, BCrypt, GCS,
-Testcontainers, ArchUnit. Frontend: React 18 + TypeScript, shadcn/ui, Tailwind, Axios.
+Backend: Java 21, Spring Boot 3.4.3, PostgreSQL 16, Flyway, JWT + Refresh Token,
+BCrypt, 2FA TOTP, Google Cloud Storage, Testcontainers e ArchUnit.
+
+Frontend: React 19, TypeScript 5.9, Vite, shadcn/ui, Tailwind CSS, Axios e Zustand.
+
+Infra/Deploy: Docker, GitHub Actions, Google Cloud Run, Google Cloud Storage,
+Secret Manager e Cloud Scheduler.
 
 ## Arquitetura
 

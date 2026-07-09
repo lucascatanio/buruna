@@ -6,7 +6,7 @@
 
 ## Pré-requisitos
 
-- Java 21, Docker (Docker Compose), Node 20+.
+- Java 21, Docker (Docker Compose), Node 22+.
 
 ## Subir o Postgres
 
