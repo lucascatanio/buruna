@@ -67,7 +67,7 @@ jobs:
       - name: Build and push frontend
         run: |
           docker build \
-            --build-arg VITE_HCAPTCHA_SITE_KEY=1cb85d3c-d270-49aa-99c2-edd027727150 \
+            --build-arg VITE_HCAPTCHA_SITE_KEY=${{ vars.VITE_HCAPTCHA_SITE_KEY }} \
             -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-frontend:latest \
             ./frontend
           docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-frontend:latest
