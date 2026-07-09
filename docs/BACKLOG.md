@@ -31,3 +31,25 @@ na Fase 4 (docs vivas), investigação read-only — precisa de issue própria. 
 simétrico: enum `{PENDING, APPROVED, REJECTED}` + migration (nova coluna/valor) +
 ajuste em `ReviewSubmissionUseCase`/`Manga.approve` + teste de regressão. Prioridade:
 clareza de domínio.
+
+## Deploy: frontend não espera o backend
+
+Os jobs `deploy-backend` e `deploy-frontend` em `.github/workflows/deploy.yml` rodam
+em paralelo. Durante o rollout existe uma janela com frontend novo falando com backend
+velho. Inofensivo enquanto o contrato de API não muda, mas quebra num deploy que altere
+endpoints. Adicionar `needs: deploy-backend` no job do frontend.
+
+- [ ] Upload direto GCS: lifecycle rule de 24h pra excluir arquivos órfãos (upload sem finalize)
+- [ ] Compressão de PDF no upload
+- [ ] Testes de integração nos fluxos críticos (GitHub Actions @SpringBootTest)
+- [ ] Notificações de novos volumes (e-mail + sino no site)
+- [ ] Login social com Google (OAuth)
+- [ ] Suporte a CBZ/CBR
+- [ ] Integração com MyAnimeList / Anilist - em estudo
+- [ ] Suporte a tablet
+- [ ] Signed URL não revogada imediatamente - limitação conhecida
+- [ ] Mahoraga Design - em estudo
+- [ ] Trocar volumes por capitulo (vou analisar se criamos uma tabela de capitulo vinculada ao volume, ou se usamos a tabela de volumes como se fosse capitulo). Finalmente entendi porque sites de mangá usam capítulos ao invés de volumes.
+- [ ] Adicionar git/linkedin na tela de login
+- [ ] Exibir de alguma forma uma lista com as últimas atualizações na tela principal
+- [ ] Após criar um mangá publico, a tela de adicionar volumes não funciona, retorna 500.
