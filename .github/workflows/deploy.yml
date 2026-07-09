@@ -45,6 +45,7 @@ jobs:
             --quiet
 
   deploy-frontend:
+    needs: deploy-backend
     runs-on: ubuntu-latest
     permissions:
       contents: read
