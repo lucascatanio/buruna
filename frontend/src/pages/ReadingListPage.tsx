@@ -1,22 +1,12 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
-import api from "@/lib/axios";
+import {getReadingList, removeFromReadingList} from "@/api/engagementApi";
+import type {ReadingListEntry, ReadingStatus} from "@/types/engagement";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Card, CardContent} from "@/components/ui/card";
 import {toast} from "sonner";
 import {BookOpen, ArrowLeft, X} from "lucide-react";
-
-type ReadingStatus = "WANT_TO_READ" | "READING" | "COMPLETED" | "DROPPED";
-
-interface ReadingListEntry {
-    mangaId: string;
-    mangaSlug: string;
-    mangaTitle: string;
-    mangaCoverUrl: string | null;
-    status: ReadingStatus;
-    updatedAt: string;
-}
 
 const STATUS_LABELS: Record<ReadingStatus, string> = {
     WANT_TO_READ: "Quero ler",
@@ -41,8 +31,8 @@ export function ReadingListPage() {
     const [removing, setRemoving] = useState<string | null>(null);
 
     useEffect(() => {
-        api.get<ReadingListEntry[]>("/reading-list")
-            .then(({data}) => setEntries(data))
+        getReadingList()
+            .then((data) => setEntries(data))
             .catch(() => toast.error("Erro ao carregar lista de leitura"))
             .finally(() => setLoading(false));
     }, []);
@@ -51,7 +41,7 @@ export function ReadingListPage() {
         if (!window.confirm(`Remover "${title}" da lista?`)) return;
         setRemoving(mangaId);
         try {
-            await api.delete(`/reading-list/${mangaId}`);
+            await removeFromReadingList(mangaId);
             setEntries(prev => prev.filter(e => e.mangaId !== mangaId));
             toast.success("Removido da lista");
         } catch {

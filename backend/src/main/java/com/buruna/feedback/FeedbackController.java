@@ -1,10 +1,10 @@
 package com.buruna.feedback;
 
-import com.buruna.infra.notification.EmailService;
-import com.buruna.user.domain.Role;
-import com.buruna.user.domain.User;
-import com.buruna.user.domain.UserStatus;
-import com.buruna.user.repository.UserRepository;
+import com.buruna.shared.notification.EmailService;
+import com.buruna.identity.domain.Role;
+import com.buruna.identity.domain.User;
+import com.buruna.identity.domain.UserStatus;
+import com.buruna.identity.persistence.UserRepository;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

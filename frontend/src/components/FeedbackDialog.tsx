@@ -3,7 +3,7 @@ import {Dialog} from "radix-ui";
 import {Button} from "@/components/ui/button";
 import {Textarea} from "@/components/ui/textarea";
 import {MessageSquare, X} from "lucide-react";
-import api from "@/lib/axios";
+import {sendFeedback} from "@/api/feedbackApi";
 import {toast} from "sonner";
 
 const MAX_LENGTH = 2000;
@@ -19,7 +19,7 @@ export function FeedbackButton() {
 
         setLoading(true);
         try {
-            await api.post("/feedback", {message});
+            await sendFeedback(message);
             toast.success("Feedback enviado! Obrigado pela sua mensagem.");
             setMessage("");
             setOpen(false);

@@ -1,26 +1,11 @@
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
-import api from "@/lib/axios";
+import {getHistory} from "@/api/readingApi";
+import type {HistoryEntry} from "@/types/reading";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent} from "@/components/ui/card";
 import {toast} from "sonner";
 import {BookOpen, ArrowLeft, ChevronRight} from "lucide-react";
-
-interface HistoryEntry {
-    volumeId: string;
-    volumeNumber: number;
-    mangaId: string;
-    mangaTitle: string;
-    mangaCoverUrl: string | null;
-    readAt: string;
-}
-
-interface Page<T> {
-    content: T[];
-    totalElements: number;
-    totalPages: number;
-    number: number;
-}
 
 function formatDate(iso: string): string {
     const d = new Date(iso);
@@ -48,9 +33,7 @@ export function ReadingHistoryPage() {
     async function fetchPage(pageNum: number, append = false) {
         if (pageNum === 0) setLoading(true); else setLoadingMore(true);
         try {
-            const {data} = await api.get<Page<HistoryEntry>>(
-                `/reader/history?page=${pageNum}&size=20`
-            );
+            const data = await getHistory(pageNum, 20);
             setEntries(prev => append ? [...prev, ...data.content] : data.content);
             setTotalPages(data.totalPages);
             setPage(data.number);

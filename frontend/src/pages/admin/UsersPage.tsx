@@ -1,27 +1,13 @@
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
-import api from "@/lib/axios";
+import {listUsers, updateUserQuota, updateUserRole, updateUserStatus} from "@/api/adminApi";
+import type {AdminUser} from "@/types/admin";
+import type {Page} from "@/types/common";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Card, CardContent} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-
-interface User {
-    id: string;
-    email: string;
-    username: string;
-    role: string;
-    status: string;
-    quotaGb: number;
-    createdAt: string;
-}
-
-interface Page<T> {
-    content: T[];
-    totalPages: number;
-    number: number;
-}
 
 const ROLE_OPTIONS = ["READER", "COLLABORATOR", "ADMIN"];
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "PENDING"];
@@ -45,15 +31,15 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 };
 
 export function UsersPage() {
-    const [page, setPage] = useState<Page<User>>({content: [], totalPages: 0, number: 0});
+    const [page, setPage] = useState<Page<AdminUser>>({content: [], totalElements: 0, totalPages: 0, number: 0});
     const [loading, setLoading] = useState(true);
-    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [editForm, setEditForm] = useState({role: "", status: "", quotaGb: ""});
 
     async function fetchUsers(pageNumber = 0) {
         setLoading(true);
         try {
-            const {data} = await api.get(`/admin/users?page=${pageNumber}&size=20&sort=createdAt,desc`);
+            const data = await listUsers(pageNumber);
             setPage(data);
         } catch {
             toast.error("Falha ao carregar usuários");
@@ -66,7 +52,7 @@ export function UsersPage() {
         fetchUsers();
     }, []);
 
-    function openEdit(user: User) {
+    function openEdit(user: AdminUser) {
         setEditingUser(user);
         setEditForm({role: user.role, status: user.status, quotaGb: String(user.quotaGb)});
     }
@@ -76,11 +62,11 @@ export function UsersPage() {
         try {
             const requests = [];
             if (editForm.role !== editingUser.role)
-                requests.push(api.patch(`/admin/users/${editingUser.id}/role`, {role: editForm.role}));
+                requests.push(updateUserRole(editingUser.id, editForm.role));
             if (editForm.status !== editingUser.status)
-                requests.push(api.patch(`/admin/users/${editingUser.id}/status`, {status: editForm.status}));
+                requests.push(updateUserStatus(editingUser.id, editForm.status));
             if (Number(editForm.quotaGb) !== editingUser.quotaGb)
-                requests.push(api.patch(`/admin/users/${editingUser.id}/quota`, {quotaGb: Number(editForm.quotaGb)}));
+                requests.push(updateUserQuota(editingUser.id, Number(editForm.quotaGb)));
 
             await Promise.all(requests);
             toast.success("Usuário atualizado");

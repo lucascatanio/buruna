@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {useNavigate, Link} from "react-router-dom";
 import {toast} from "sonner";
-import api from "@/lib/axios";
+import {register} from "@/api/identityApi";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
@@ -63,7 +63,7 @@ export function RegisterPage() {
         }
         setLoading(true);
         try {
-            await api.post("/auth/register", {...form, captchaToken});
+            await register({...form, captchaToken});
             toast.success("Solicitação enviada! Aguarde a aprovação do admin.");
             navigate("/login");
         } catch (err: any) {

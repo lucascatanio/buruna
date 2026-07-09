@@ -1,39 +1,11 @@
 import {useEffect, useState, useCallback} from "react";
 import {useNavigate} from "react-router-dom";
-import api from "@/lib/axios";
+import {deleteMyManga, getMyQuota, listMyMangas} from "@/api/privateMangaApi";
+import type {PrivateManga, QuotaInfo} from "@/types/manga";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent} from "@/components/ui/card";
 import {toast} from "sonner";
 import {Plus, BookOpen, HardDrive, ChevronRight, Trash2, Upload} from "lucide-react";
-
-interface Volume {
-    id: string;
-    volumeNumber: number;
-    fileSizeBytes: number;
-    createdAt: string;
-}
-
-interface PrivateManga {
-    id: string;
-    title: string;
-    synopsis: string | null;
-    coverUrl: string | null;
-    volumes: Volume[];
-    createdAt: string;
-    updatedAt: string;
-}
-
-interface QuotaInfo {
-    usedBytes: number;
-    quotaBytes: number;
-}
-
-interface Page<T> {
-    content: T[];
-    totalElements: number;
-    totalPages: number;
-    number: number;
-}
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return "0 B";
@@ -54,11 +26,11 @@ export function MyCollectionPage() {
         setLoading(true);
         try {
             const [mangasRes, quotaRes] = await Promise.all([
-                api.get<Page<PrivateManga>>("/my/mangas?size=50"),
-                api.get<QuotaInfo>("/my/mangas/quota"),
+                listMyMangas(50),
+                getMyQuota(),
             ]);
-            setMangas(mangasRes.data.content);
-            setQuota(quotaRes.data);
+            setMangas(mangasRes.content);
+            setQuota(quotaRes);
         } catch {
             toast.error("Erro ao carregar coleção");
         } finally {
@@ -74,11 +46,11 @@ export function MyCollectionPage() {
         if (!confirm(`Deletar "${manga.title}"? Esta ação não pode ser desfeita.`)) return;
         setDeletingId(manga.id);
         try {
-            await api.delete(`/my/mangas/${manga.id}`);
+            await deleteMyManga(manga.id);
             toast.success("Mangá removido");
             setMangas((prev) => prev.filter((m) => m.id !== manga.id));
             // atualiza quota
-            const {data} = await api.get<QuotaInfo>("/my/mangas/quota");
+            const data = await getMyQuota();
             setQuota(data);
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Erro ao deletar");

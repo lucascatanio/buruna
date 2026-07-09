@@ -1,6 +1,7 @@
 import {useState, useEffect} from "react";
 import {toast} from "sonner";
-import api from "@/lib/axios";
+import {disable2FA, get2FAStatus, setup2FA, verify2FA} from "@/api/identityApi";
+import type {TotpSetupResponse} from "@/types/identity";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
@@ -9,14 +10,14 @@ import {ShieldCheck, ShieldOff} from "lucide-react";
 
 export function SecuritySettingsPage() {
     const [totpEnabled, setTotpEnabled] = useState(false);
-    const [setupData, setSetupData] = useState<{ secret: string; qrUri: string } | null>(null);
+    const [setupData, setSetupData] = useState<TotpSetupResponse | null>(null);
     const [code, setCode] = useState("");
     const [disableCode, setDisableCode] = useState("");
     const [loading, setLoading] = useState(false);
     const [showDisable, setShowDisable] = useState(false);
 
     useEffect(() => {
-        api.get("/auth/2fa/status").then(({data}) => {
+        get2FAStatus().then((data) => {
             setTotpEnabled(data.totpEnabled);
         }).catch(() => {});
     }, []);
@@ -24,7 +25,7 @@ export function SecuritySettingsPage() {
     async function handleSetup() {
         setLoading(true);
         try {
-            const {data} = await api.post("/auth/2fa/setup");
+            const data = await setup2FA();
             setSetupData(data);
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Erro ao gerar QR code");
@@ -37,7 +38,7 @@ export function SecuritySettingsPage() {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post("/auth/2fa/verify", {code});
+            await verify2FA(code);
             setTotpEnabled(true);
             setSetupData(null);
             setCode("");
@@ -53,7 +54,7 @@ export function SecuritySettingsPage() {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.post("/auth/2fa/disable", {code: disableCode});
+            await disable2FA(disableCode);
             setTotpEnabled(false);
             setDisableCode("");
             setShowDisable(false);

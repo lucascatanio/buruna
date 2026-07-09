@@ -1,6 +1,6 @@
 package com.buruna.admin.controller;
 
-import com.buruna.user.service.InactivityJob;
+import com.buruna.identity.application.admin.RunInactivityUseCase;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,12 +10,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/admin/jobs")
 public class JobController {
 
-    private final InactivityJob inactivityJob;
+    private final RunInactivityUseCase runInactivityUseCase;
     private final String jobSecret;
 
-    public JobController(InactivityJob inactivityJob,
+    public JobController(RunInactivityUseCase runInactivityUseCase,
                          @Value("${app.jobs.secret}") String jobSecret) {
-        this.inactivityJob = inactivityJob;
+        this.runInactivityUseCase = runInactivityUseCase;
         this.jobSecret = jobSecret;
     }
 
@@ -25,7 +25,7 @@ public class JobController {
         if (!jobSecret.equals(secret)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
-        inactivityJob.runJob();
+        runInactivityUseCase.run();
         return ResponseEntity.ok("Job executado");
     }
 }

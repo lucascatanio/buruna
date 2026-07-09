@@ -1,7 +1,7 @@
 import {useState, useEffect} from "react";
 import {useSearchParams, useNavigate, Link} from "react-router-dom";
 import {toast} from "sonner";
-import api from "@/lib/axios";
+import {getResetInfo, resetPassword} from "@/api/identityApi";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
@@ -23,8 +23,8 @@ export function ResetPasswordPage() {
             setCheckingToken(false);
             return;
         }
-        api.get("/auth/password/reset-info", {params: {token}})
-            .then(({data}) => setTotpRequired(data.totpRequired))
+        getResetInfo(token)
+            .then((data) => setTotpRequired(data.totpRequired))
             .catch(() => {})
             .finally(() => setCheckingToken(false));
     }, [token]);
@@ -37,7 +37,7 @@ export function ResetPasswordPage() {
         }
         setLoading(true);
         try {
-            await api.post("/auth/password/reset", {
+            await resetPassword({
                 token,
                 newPassword,
                 totpCode: totpRequired ? totpCode : undefined,

@@ -3,14 +3,14 @@ package com.buruna.manga.domain;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "tags")
-@Getter @Setter @NoArgsConstructor
+@Getter
+@NoArgsConstructor
 public class Tag {
 
     @Id
@@ -33,8 +33,24 @@ public class Tag {
     @Column(name = "deleted_at")
     private OffsetDateTime deletedAt;
 
+    public Tag(String name, String slug, TagCategory category) {
+        this.name = name;
+        this.slug = slug;
+        this.category = category;
+    }
+
     public boolean isActive() {
         return deletedAt == null;
+    }
+
+    public void rename(String name, String slug, TagCategory category) {
+        this.name = name;
+        this.slug = slug;
+        this.category = category;
+    }
+
+    public void softDelete() {
+        this.deletedAt = OffsetDateTime.now();
     }
 
     @PrePersist

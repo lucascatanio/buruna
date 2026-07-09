@@ -1,6 +1,18 @@
 import {useEffect, useRef, useState} from "react";
 import {useParams, useNavigate} from "react-router-dom";
-import api from "@/lib/axios";
+import {deleteManga, finalizeVolumeUpload, getManga, getVolumeUploadUrl} from "@/api/mangaApi";
+import {getBatchProgress, getVolumeUrl} from "@/api/readingApi";
+import {
+    createRating,
+    deleteRating,
+    getMyRating,
+    getReadingList,
+    removeFromReadingList,
+    setReadingStatus as setReadingStatusApi,
+    updateRating,
+} from "@/api/engagementApi";
+import type {MangaDetail, Tag, Volume} from "@/types/manga";
+import type {ReadingStatus} from "@/types/engagement";
 import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
@@ -10,43 +22,6 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {toast} from "sonner";
 import {ArrowLeft, BookOpen, Pencil, Trash2, Upload, X, Star, BookMarked, ChevronDown} from "lucide-react";
-
-interface Tag {
-    id: string;
-    name: string;
-    slug: string;
-    category: { id: string; name: string };
-}
-
-interface Volume {
-    id: string;
-    volumeNumber: number;
-    fileSizeBytes: number;
-    createdAt: string;
-}
-
-interface MangaDetail {
-    id: string;
-    slug: string;
-    title: string;
-    alternativeTitles: string[];
-    synopsis: string | null;
-    coverUrl: string | null;
-    format: string;
-    originCountry: string | null;
-    statusOrigin: string;
-    statusSite: string;
-    year: number | null;
-    contentWarnings: string[];
-    avgRating: number;
-    ratingCount: number;
-    viewCount: number;
-    isPublic: boolean;
-    ownerId: string;
-    tags: Tag[];
-    volumes: Volume[];
-    createdAt: string;
-}
 
 const FORMAT_LABELS: Record<string, string> = {
     MANGA: "Mangá", MANHWA: "Manhwa", MANHUA: "Manhua",
@@ -64,9 +39,6 @@ const CONTENT_WARNING_LABELS: Record<string, string> = {
     GATILHO_ABUSO: "Gatilho: Abuso",
     GATILHO_TRAUMA: "Gatilho: Trauma",
 };
-
-
-type ReadingStatus = "WANT_TO_READ" | "READING" | "COMPLETED" | "DROPPED";
 
 const READING_STATUS_LABELS: Record<ReadingStatus, string> = {
     WANT_TO_READ: "Quero ler",
@@ -115,15 +87,15 @@ export function MangaDetailPage() {
 
     useEffect(() => {
         if (!slug) return;
-        api.get<MangaDetail>(`/mangas/${slug}`)
-            .then(({data}) => {
+        getManga(slug)
+            .then((data) => {
                 setManga(data);
                 const sorted = [...data.volumes].sort((a, b) => a.volumeNumber - b.volumeNumber);
                 setVolumes(sorted);
                 if (sorted.length > 0) {
-                    const ids = sorted.map((v) => v.id).join(",");
-                    api.get<Record<string, number>>(`/reader/progress/batch?volumeIds=${ids}`)
-                        .then(({data: prog}) => setVolumeProgress(prog))
+                    const ids = sorted.map((v) => v.id);
+                    getBatchProgress(ids)
+                        .then((prog) => setVolumeProgress(prog))
                         .catch((e) => console.warn("[MangaDetailPage] falha ao carregar progresso de volumes:", e));
                 }
             })
@@ -134,18 +106,18 @@ export function MangaDetailPage() {
     useEffect(() => {
         if (!manga) return;
 
-        api.get<{mangaId: string; status: ReadingStatus}[]>("/reading-list")
-            .then(({data}) => {
+        getReadingList()
+            .then((data) => {
                 const entry = data.find(e => e.mangaId === manga.id);
                 if (entry) setReadingStatus(entry.status);
             })
             .catch((e) => console.warn("[MangaDetailPage] falha ao carregar lista de leitura:", e));
 
-        api.get(`/mangas/${manga.id}/rating`)
-            .then(({data}) => {
+        getMyRating(manga.id)
+            .then((data) => {
                 if (data?.score) setUserRating(data.score);
             })
-            .catch((e) => console.warn("[MangaDetailPage] falha ao carregar avaliação do usuário:", e)); // 204 = nunca avaliou, ignora
+            .catch((e) => console.warn("[MangaDetailPage] falha ao carregar avaliação do usuário:", e));
 
         setRatingCount(manga.ratingCount);
         setAvgRating(Number(manga.avgRating));
@@ -156,8 +128,8 @@ export function MangaDetailPage() {
         if (volumes.length === 0) return;
         const target = volumes.find(v => volumeProgress[v.id] !== undefined) ?? volumes[0];
         if (getSignedUrl(target.id)) return;
-        api.get(`/reader/${target.id}/url`)
-            .then(({data}) => setSignedUrl(target.id, data.url))
+        getVolumeUrl(target.id)
+            .then((data) => setSignedUrl(target.id, data.url))
             .catch(() => {});
     }, [volumes, volumeProgress]);
 
@@ -165,7 +137,7 @@ export function MangaDetailPage() {
         if (!manga) return;
         setSavingStatus(true);
         try {
-            await api.put(`/reading-list/${manga.id}`, {status});
+            await setReadingStatusApi(manga.id, status);
             setReadingStatus(status);
             setShowStatusMenu(false);
         } catch {
@@ -179,7 +151,7 @@ export function MangaDetailPage() {
         if (!manga || !readingStatus) return;
         setSavingStatus(true);
         try {
-            await api.delete(`/reading-list/${manga.id}`);
+            await removeFromReadingList(manga.id);
             setReadingStatus(null);
             setShowStatusMenu(false);
         } catch {
@@ -193,17 +165,12 @@ export function MangaDetailPage() {
         if (!manga || savingRating) return;
         setSavingRating(true);
         try {
-            if (userRating !== null) {
-                const {data} = await api.put(`/mangas/${manga.id}/rating`, {score});
-                setUserRating(score);
-                setAvgRating(Number(data.avgRating));
-                setRatingCount(data.ratingCount);
-            } else {
-                const {data} = await api.post(`/mangas/${manga.id}/rating`, {score});
-                setUserRating(score);
-                setAvgRating(Number(data.avgRating));
-                setRatingCount(data.ratingCount);
-            }
+            const data = userRating !== null
+                ? await updateRating(manga.id, score)
+                : await createRating(manga.id, score);
+            setUserRating(score);
+            setAvgRating(Number(data.avgRating));
+            setRatingCount(data.ratingCount);
         } catch {
             toast.error("Erro ao salvar avaliação");
         } finally {
@@ -215,10 +182,10 @@ export function MangaDetailPage() {
         if (!manga || userRating === null || savingRating) return;
         setSavingRating(true);
         try {
-            await api.delete(`/mangas/${manga.id}/rating`);
+            await deleteRating(manga.id);
             setUserRating(null);
             // busca avg/count atualizado
-            const {data} = await api.get(`/mangas/${manga.slug}`);
+            const data = await getManga(manga.slug);
             setAvgRating(Number(data.avgRating));
             setRatingCount(data.ratingCount);
         } catch {
@@ -248,10 +215,7 @@ export function MangaDetailPage() {
         if (!manga || !volumeFile) return;
         setUploading(true);
         try {
-            const {data: {uploadUrl, objectName}} = await api.post(
-                `/mangas/${manga.id}/volumes/upload-url`,
-                {volumeNumber: parseInt(volumeNumber)}
-            );
+            const {uploadUrl, objectName} = await getVolumeUploadUrl(manga.id, parseInt(volumeNumber));
 
             const uploadRes = await fetch(uploadUrl, {
                 method: "PUT",
@@ -263,10 +227,7 @@ export function MangaDetailPage() {
                 throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
             }
 
-            const {data} = await api.post(
-                `/mangas/${manga.id}/volumes/finalize`,
-                {objectName, volumeNumber: parseInt(volumeNumber)}
-            );
+            const data = await finalizeVolumeUpload(manga.id, objectName, parseInt(volumeNumber));
 
             toast.success(`Volume ${volumeNumber} adicionado!`);
             setVolumes((prev) =>
@@ -286,7 +247,7 @@ export function MangaDetailPage() {
         if (!window.confirm(`Deletar "${manga.title}"? Esta ação não pode ser desfeita.`)) return;
         setDeleting(true);
         try {
-            await api.delete(`/mangas/${manga.id}`);
+            await deleteManga(manga.id);
             toast.success("Mangá removido");
             navigate("/biblioteca");
         } catch (e) {

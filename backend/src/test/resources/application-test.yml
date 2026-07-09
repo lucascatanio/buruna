@@ -1,0 +1,23 @@
+# Propriedades para os testes de integração (@SpringBootTest).
+# Ativado junto com o profile "local" (que seleciona LocalStorageClient e exclui GcsConfig),
+# fornecendo valores dummy para os placeholders que o runtime normalmente recebe via env.
+# O datasource é injetado pelo Testcontainers via @ServiceConnection — não é definido aqui.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate   # Flyway cria o schema; Hibernate valida as entidades contra ele.
+    show-sql: false
+
+app:
+  jwt:
+    secret: test-secret-please-change-32bytes-minimum-0123456789abcdef
+    expiration: 3600
+    refresh-token-expiration: 604800
+  gcs:
+    bucket-name: test-bucket
+    credentials-path: ""
+  admin-email: admin@test.local
+  storage:
+    local:
+      path: ${java.io.tmpdir}/buruna-test-storage
+      base-url: http://localhost

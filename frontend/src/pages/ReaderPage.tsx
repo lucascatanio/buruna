@@ -2,7 +2,8 @@ import {useEffect, useRef, useState, useCallback} from "react";
 import {useParams, useNavigate, useLocation} from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import type {PDFDocumentProxy, RenderTask} from "pdfjs-dist";
-import api from "@/lib/axios";
+import {getManga} from "@/api/mangaApi";
+import {getVolumeProgress, getVolumeUrl, saveProgress as saveProgressApi} from "@/api/readingApi";
 import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
 import {
     ArrowLeft,
@@ -34,7 +35,7 @@ let progressTimer: ReturnType<typeof setTimeout> | null = null;
 function saveProgress(volumeId: string, page: number) {
     if (progressTimer) clearTimeout(progressTimer);
     progressTimer = setTimeout(() => {
-        api.post(`/reader/${volumeId}/progress`, {currentPage: page})
+        saveProgressApi(volumeId, page)
             .catch((e) => console.warn("Failed to save progress:", e));
     }, 1500);
 }
@@ -366,8 +367,8 @@ function CompletionOverlay({state}: CompletionOverlayProps) {
             setNextVol(null);
             return;
         }
-        api.get(`/mangas/${state.mangaSlug}`)
-            .then(({data}) => {
+        getManga(state.mangaSlug)
+            .then((data) => {
                 const vols: {id: string; volumeNumber: number}[] = data.volumes ?? [];
                 const sorted = [...vols].sort((a, b) => a.volumeNumber - b.volumeNumber);
                 const next = sorted.find(v => v.volumeNumber > (state.volumeNumber ?? 0)) ?? null;
@@ -463,8 +464,8 @@ export function ReaderPage() {
             try {
                 const cached = getSignedUrl(volumeId!);
                 const [urlRes, progressRes] = await Promise.allSettled([
-                    cached ? Promise.resolve(cached) : api.get(`/reader/${volumeId}/url`).then(r => r.data.url),
-                    api.get(`/reader/${volumeId}/progress`),
+                    cached ? Promise.resolve(cached) : getVolumeUrl(volumeId!).then(r => r.url),
+                    getVolumeProgress(volumeId!),
                 ]);
 
                 if (urlRes.status === "rejected") {
@@ -477,8 +478,8 @@ export function ReaderPage() {
                 if (!cached) setSignedUrl(volumeId!, signedUrl);
 
                 let startPage = 1;
-                if (progressRes.status === "fulfilled" && progressRes.value?.status === 200) {
-                    startPage = progressRes.value.data.currentPage ?? 1;
+                if (progressRes.status === "fulfilled" && progressRes.value) {
+                    startPage = progressRes.value.currentPage ?? 1;
                 }
                 setInitialPage(startPage);
                 setCurrentPage(startPage);
@@ -522,7 +523,7 @@ export function ReaderPage() {
     function handleBack() {
         if (progressTimer) {
             clearTimeout(progressTimer);
-            api.post(`/reader/${volumeId}/progress`, {currentPage})
+            saveProgressApi(volumeId!, currentPage)
                 .catch((e) => console.warn("Failed to save progress:", e));
         }
         navigate(state.backUrl ?? -1 as any);
@@ -534,7 +535,7 @@ export function ReaderPage() {
             progressTimer = null;
         }
         setShowCompletion(true);
-        api.post(`/reader/${volumeId}/progress`, {currentPage: 1})
+        saveProgressApi(volumeId!, 1)
             .catch((e) => console.warn("Failed to reset progress:", e));
     }
 

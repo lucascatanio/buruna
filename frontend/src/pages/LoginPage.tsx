@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {useNavigate, Link} from "react-router-dom";
 import {toast} from "sonner";
-import api from "@/lib/axios";
+import {authenticate2FA, login} from "@/api/identityApi";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
@@ -26,12 +26,12 @@ export function LoginPage() {
         e.preventDefault();
         setLoading(true);
         try {
-            const {data} = await api.post("/auth/login", {email, password});
+            const data = await login(email, password);
             if (data.requires2FA) {
                 setRequires2FA(true);
-                setTempToken(data.tempToken);
+                setTempToken(data.tempToken!);
             } else {
-                setTokens(data.accessToken, data.refreshToken);
+                setTokens(data.accessToken!, data.refreshToken!);
                 navigate("/");
             }
         } catch (err: any) {
@@ -45,8 +45,8 @@ export function LoginPage() {
         e.preventDefault();
         setLoading(true);
         try {
-            const {data} = await api.post("/auth/2fa/authenticate", {tempToken, totpCode});
-            setTokens(data.accessToken, data.refreshToken);
+            const data = await authenticate2FA(tempToken, totpCode);
+            setTokens(data.accessToken!, data.refreshToken!);
             navigate("/");
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Código inválido");
