@@ -1,11 +1,10 @@
 # CLAUDE.md — Burūna
 
-> Contexto de trabalho para o Claude Code. Este projeto está em refatoração de
-> monolito modular para Clean Architecture + DDD. A arquitetura ABAIXO é a atual
-> e correta. Os arquivos docs/buruna_architecture.md e docs/buruna_roadmap_mvp.md
-> descrevem o estado ANTIGO (pré-refatoração) — são histórico, NÃO a verdade atual.
-> A verdade atual vive em docs/refactor/ (01-analise, 02-arquitetura-alvo, 03-roadmap,
-> ADR-31..39).
+> Contexto de trabalho para o Claude Code. A refatoração de monolito modular para
+> Clean Architecture + DDD (Epics 0-6) está **concluída**. A arquitetura abaixo é o
+> estado atual. Documentação completa em `docs/` — este arquivo é um resumo acionável,
+> não a fonte única; aponta para os docs em vez de duplicar. `docs/legacy/` e os
+> documentos de processo em `docs/refactor/` são histórico, não a verdade atual.
 
 ## Acordo de trabalho
 
@@ -20,22 +19,18 @@ comunidade.
 Backend: Java 21, Spring Boot 3.x, PostgreSQL, Flyway, JWT+Refresh, BCrypt, GCS,
 Testcontainers, ArchUnit. Frontend: React 18 + TypeScript, shadcn/ui, Tailwind, Axios.
 
-## Arquitetura — Clean Architecture por bounded context
+## Arquitetura
 
-Contextos: identity (auth+user fundidos), manga (catálogo+coleção+volumes+tags),
-reading (leitor+progresso+histórico), engagement (ratings+reading-list), admin (casca).
+Clean Architecture por bounded context: `identity` (auth+user fundidos), `manga`
+(catálogo+coleção+volumes+tags), `reading` (leitor+progresso+histórico), `engagement`
+(ratings+reading-list), `admin` (casca). Cada contexto segue
+`domain/ → application/ → persistence/ → web/`. NÃO existe mais o padrão antigo
+`controller/service/repository`. Não crie `service/`, não use `repository/` como nome
+de pacote (é `persistence/`), não faça entidade anêmica.
 
-Cada contexto:
-
-    contexto/
-    ├── domain/         Agregados ricos (invariantes em métodos, SEM setter público),
-    │                   Value Objects, exceções de domínio puras (sem HttpStatus)
-    ├── application/    Use cases focados (um por intenção) + DTOs
-    ├── persistence/    Interfaces Spring Data JPA
-    └── web/            Controllers — extraem actorId/@PreAuthorize e delegam ao use case
-
-NÃO existe mais o padrão antigo controller/service/repository. Não crie `service/`,
-não use `repository/` como nome de pacote (é `persistence/`), não faça entidade anêmica.
+Camadas, fluxos de usuário atualizados e diagrama completo:
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Decisões e tradeoffs de cada escolha:
+[docs/adr/](docs/adr/) (ADR-01 a ADR-39).
 
 ## Regra de dependência (guardada por ArchUnit em ArchitectureTest)
 
@@ -67,19 +62,18 @@ com JPA na mesma classe (ADR-32) — sem separar entidade-de-domínio de entidad
 
 ## Testes
 
-- Domínio testável em JUnit puro, sem subir Spring.
-- Integração com @SpringBootTest + Testcontainers; StorageClient/EmailSender fake.
-- @DataJpaTest para queries; @WebMvcTest para controllers.
-- AAA; nomenclatura should[Resultado]_when[Condicao].
-- Rede de segurança (portar o bash equivalente) ANTES de refatorar cada contexto;
-  remover o bash só depois da cobertura automatizada.
+Pirâmide (domínio JUnit puro / @DataJpaTest / @WebMvcTest / integração
+@SpringBootTest+Testcontainers com StorageClient/EmailSender fake), AAA, nomenclatura
+`should[Resultado]_when[Condicao]`. Rede de segurança (portar o bash equivalente) ANTES
+de refatorar cada contexto; remover o bash só depois da cobertura automatizada.
+Detalhes: [docs/TESTING.md](docs/TESTING.md).
 
 ## Padrões do projeto
 
-- IDs UUID; created_at/updated_at; soft delete deleted_at onde aplicável.
-- Paginação Pageable (offset/page). Enums em inglês. Migrations V{n}__{desc}.sql.
-- Erro padronizado {status,error,message,path,timestamp} (ErrorResponse).
-- Arquivos no GCS com nome ofuscado (UUID).
+IDs UUID; created_at/updated_at; soft delete deleted_at onde aplicável. Paginação
+Pageable (offset/page). Enums em inglês. Migrations V{n}__{desc}.sql. Erro
+padronizado {status,error,message,path,timestamp} (ErrorResponse). Arquivos no GCS com
+nome ofuscado (UUID). Modelo de dados completo: [docs/DATABASE.md](docs/DATABASE.md).
 
 ## Setup local e comandos
 
