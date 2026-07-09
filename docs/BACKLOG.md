@@ -1,55 +1,79 @@
 # Backlog
 
-Achados durante a refatoração (Epics 0-6), fora do escopo das issues executadas —
-não fazer sem issue própria.
+Itens fora do escopo das issues já executadas. Nada aqui deve ser feito sem issue própria.
 
-## Rename pendente `controller/` → `web/`, `service/` → `application/`
+## Bugs
 
-`manga/controller/` (MangaController, PrivateMangaController, VolumeController) convive
-com `manga/web/` (só TagController); `admin/controller/` + `admin/service/` nunca foram
-renomeados. Investigado no [6.3]: sem duplicação de rota, tudo vivo e chamado pelo
-frontend/testes — é inconsistência de nomenclatura de migração incompleta, não código
-morto. Vale uma issue de rename puro quando o padrão `web/` + `application/` for
-revisitado.
+### Adicionar volume a mangá público recém-criado retorna 500
 
-## Logout não revoga refresh token no servidor
+Reportado antes da refatoração. **Verificar se ainda ocorre.** O Epic 4 corrigiu um 500 nesse
+mesmo caminho: a `InsufficientStorageQuotaException` devolvia 500 porque o
+`GlobalExceptionHandler` ignorava o `@ResponseStatus`. Hoje devolve 422. Pode ter sido o mesmo
+bug. Se ainda reproduzir, o fluxo agora tem cobertura de integração em `MangaIntegrationTest`,
+o que facilita o diagnóstico.
 
-`POST /auth/logout` e `DELETE /auth/account` existem e têm teste no backend, mas o
-botão de logout do frontend (`AppLayout.tsx`, `AdminLayout.tsx`) só chama `clearAuth()`
-local — nunca chama `/auth/logout`. Refresh token permanece válido no servidor após
-logout. Também não há UI para deletar conta. Achado no [6.3], investigação read-only;
-precisa de issue de segurança própria (ligar o botão ao endpoint existente, avaliar
-revogação de todos os refresh tokens do usuário).
+### Logout não revoga refresh token no servidor
 
-## Adicionar `MangaSubmissionStatus.APPROVED`
+`POST /auth/logout` e `DELETE /auth/account` existem e têm teste no backend, mas o botão de
+logout do frontend (`AppLayout.tsx`, `AdminLayout.tsx`) só chama `clearAuth()` local. O refresh
+token permanece válido no servidor depois do logout. Também não há UI para deletar conta.
+Achado no [6.3], investigação read-only.
 
-O fluxo de submissão é assimétrico — `REJECTED` é um estado persistido
-(`Manga.reject`), mas a aprovação não tem estado próprio: `Manga.approve` só marca
-`isPublic=true` e zera `submissionStatus`, saindo do fluxo de submissão sem deixar
-rastro no enum. Confunde quem lê o domínio (ver `docs/glossario-dominio.md` §3). Achado
-na Fase 4 (docs vivas), investigação read-only — precisa de issue própria. Tornar
-simétrico: enum `{PENDING, APPROVED, REJECTED}` + migration (nova coluna/valor) +
-ajuste em `ReviewSubmissionUseCase`/`Manga.approve` + teste de regressão. Prioridade:
-clareza de domínio.
+Escopo: ligar o botão ao endpoint existente e avaliar revogação de todos os refresh tokens do
+usuário. É o item de maior prioridade do backlog, por ser segurança de sessão.
 
-## Deploy: frontend não espera o backend
+## Dívida técnica
 
-Os jobs `deploy-backend` e `deploy-frontend` em `.github/workflows/deploy.yml` rodam
-em paralelo. Durante o rollout existe uma janela com frontend novo falando com backend
-velho. Inofensivo enquanto o contrato de API não muda, mas quebra num deploy que altere
-endpoints. Adicionar `needs: deploy-backend` no job do frontend.
+### Lifecycle rule de 24h no bucket GCS para arquivos órfãos
 
-- [ ] Upload direto GCS: lifecycle rule de 24h pra excluir arquivos órfãos (upload sem finalize)
+Duas fontes de órfãos hoje. A primeira é upload iniciado e nunca finalizado (signed URL usada
+sem chamar `finalize`). A segunda apareceu no Epic 5: o `DeletePrivateCollectionForUserUseCase`
+apaga as linhas do banco dentro da transação e deleta os arquivos do GCS depois, fora dela, em
+best effort (ADR-24). Se a deleção no GCS falhar, o banco não reverte e o arquivo fica.
+
+A lifecycle rule é a rede que segura essa decisão de design.
+
+### Adicionar `MangaSubmissionStatus.APPROVED`
+
+O fluxo de submissão é assimétrico. `REJECTED` é estado persistido (`Manga.reject`), mas a
+aprovação não tem estado próprio: `Manga.approve` marca `isPublic=true` e zera
+`submissionStatus`, saindo do fluxo sem deixar rastro no enum. Confunde quem lê o domínio
+(ver `docs/glossario-dominio.md`). Achado na Fase 4, investigação read-only.
+
+Escopo: enum `{PENDING, APPROVED, REJECTED}`, migration, ajuste em `ReviewSubmissionUseCase` e
+`Manga.approve`, teste de regressão.
+
+### Rename `controller/` para `web/` e `service/` para `application/`
+
+`manga/controller/` (MangaController, PrivateMangaController, VolumeController) convive com
+`manga/web/` (só TagController). `admin/controller/` e `admin/service/` nunca foram renomeados.
+Investigado no [6.3]: sem duplicação de rota, tudo vivo e chamado pelo frontend e pelos testes.
+É inconsistência de nomenclatura de migração incompleta, não código morto.
+
+Escopo: rename puro, sem mudança de comportamento.
+
+### Signed URL não é revogada imediatamente
+
+Limitação conhecida do GCS. A URL assinada continua válida até expirar, mesmo que o acesso do
+usuário seja revogado antes disso.
+
+## Features
+
+- [ ] Trocar volumes por capítulos. Decidir entre criar tabela de capítulo vinculada ao volume,
+  ou usar a tabela de volumes como se fosse capítulo. Muda a modelagem do contexto `manga`.
+- [ ] Suporte a CBZ e CBR
 - [ ] Compressão de PDF no upload
-- [ ] Testes de integração nos fluxos críticos (GitHub Actions @SpringBootTest)
-- [ ] Notificações de novos volumes (e-mail + sino no site)
+- [ ] Notificações de novos volumes (e-mail e sino no site)
 - [ ] Login social com Google (OAuth)
-- [ ] Suporte a CBZ/CBR
-- [ ] Integração com MyAnimeList / Anilist - em estudo
+- [ ] Lista de últimas atualizações na tela principal
+- [ ] Links de GitHub e LinkedIn na tela de login
 - [ ] Suporte a tablet
-- [ ] Signed URL não revogada imediatamente - limitação conhecida
-- [ ] Mahoraga Design - em estudo
-- [ ] Trocar volumes por capitulo (vou analisar se criamos uma tabela de capitulo vinculada ao volume, ou se usamos a tabela de volumes como se fosse capitulo). Finalmente entendi porque sites de mangá usam capítulos ao invés de volumes.
-- [ ] Adicionar git/linkedin na tela de login
-- [ ] Exibir de alguma forma uma lista com as últimas atualizações na tela principal
-- [ ] Após criar um mangá publico, a tela de adicionar volumes não funciona, retorna 500.
+- [ ] Integração com MyAnimeList e Anilist (em estudo)
+- [ ] Identidade visual Mahoraga (em estudo)
+
+## Concluído
+
+- [x] Testes de integração nos fluxos críticos, com `@SpringBootTest` e Testcontainers, rodando
+  no GitHub Actions em cada PR e push. Entregue nos Epics 0 a 6: 289 testes.
+- [x] Deploy: frontend espera o backend. `needs: deploy-backend` no job do frontend em
+  `.github/workflows/deploy.yml` (commit `c1411f9`).
