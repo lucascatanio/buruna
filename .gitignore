@@ -2,7 +2,7 @@
 gcs-credentials.json
 
 backend/target/
-backend/.mvn/
+backend/.mvn/wrapper/maven-wrapper.jar
 *.class
 *.jar
 *.war

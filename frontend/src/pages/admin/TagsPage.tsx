@@ -1,23 +1,12 @@
 import {useEffect, useState} from "react";
-import api from "@/lib/axios";
+import {createTag, createTagCategory, deleteTag, listTagCategories, listTags, updateTag} from "@/api/mangaApi";
+import type {Tag, TagCategory} from "@/types/manga";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {toast} from "sonner";
 import {Pencil, Trash2, Plus, X, Check} from "lucide-react";
-
-interface TagCategory {
-    id: string;
-    name: string;
-}
-
-interface Tag {
-    id: string;
-    name: string;
-    slug: string;
-    category: TagCategory;
-}
 
 export function TagsPage() {
     const [categories, setCategories] = useState<TagCategory[]>([]);
@@ -29,12 +18,12 @@ export function TagsPage() {
     const [loading, setLoading] = useState(false);
 
     const fetchData = async () => {
-        const [catRes, tagRes] = await Promise.all([
-            api.get<TagCategory[]>("/tag-categories"),
-            api.get<Tag[]>("/tags"),
+        const [cats, tagList] = await Promise.all([
+            listTagCategories(),
+            listTags(),
         ]);
-        setCategories(catRes.data);
-        setTags(tagRes.data);
+        setCategories(cats);
+        setTags(tagList);
     };
 
     useEffect(() => {
@@ -49,7 +38,7 @@ export function TagsPage() {
         if (!newCategoryName.trim()) return;
         setLoading(true);
         try {
-            await api.post("/tag-categories", {name: newCategoryName.trim()});
+            await createTagCategory(newCategoryName.trim());
             toast.success("Categoria criada!");
             setNewCategoryName("");
             await fetchData();
@@ -64,7 +53,7 @@ export function TagsPage() {
         if (!newTag.name.trim() || !newTag.slug.trim() || !newTag.categoryId) return;
         setLoading(true);
         try {
-            await api.post("/tags", newTag);
+            await createTag(newTag);
             toast.success("Tag criada!");
             setNewTag({name: "", slug: "", categoryId: ""});
             await fetchData();
@@ -79,7 +68,7 @@ export function TagsPage() {
         if (!editingTag) return;
         setLoading(true);
         try {
-            await api.put(`/tags/${editingTag.id}`, editForm);
+            await updateTag(editingTag.id, editForm);
             toast.success("Tag atualizada!");
             setEditingTag(null);
             await fetchData();
@@ -93,7 +82,7 @@ export function TagsPage() {
     const handleDeleteTag = async (tag: Tag) => {
         if (!confirm(`Deletar a tag "${tag.name}"?`)) return;
         try {
-            await api.delete(`/tags/${tag.id}`);
+            await deleteTag(tag.id);
             toast.success("Tag removida!");
             await fetchData();
         } catch (e: any) {

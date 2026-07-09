@@ -1,6 +1,15 @@
 import {useEffect, useState} from "react";
 import {useNavigate, useParams} from "react-router-dom";
-import api from "@/lib/axios";
+import {
+    deleteMyVolume,
+    finalizeMyVolumeUpload,
+    getMyManga,
+    getMyVolumeUploadUrl,
+    promoteManga,
+    submitForApproval,
+    updateMyManga,
+} from "@/api/privateMangaApi";
+import type {PrivateManga, Volume} from "@/types/manga";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
@@ -8,25 +17,6 @@ import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {toast} from "sonner";
 import {ArrowLeft, Upload, Trash2, Pencil, Check, X, Globe, BookOpen, Send, AlertCircle, Clock} from "lucide-react";
-
-interface Volume {
-    id: string;
-    volumeNumber: number;
-    fileSizeBytes: number;
-    createdAt: string;
-}
-
-interface PrivateManga {
-    id: string;
-    title: string;
-    synopsis: string | null;
-    coverUrl: string | null;
-    volumes: Volume[];
-    createdAt: string;
-    updatedAt: string;
-    submissionStatus: string | null;
-    rejectionReason: string | null;
-}
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return "0 B";
@@ -62,8 +52,8 @@ export function PrivateMangaDetailPage() {
 
     useEffect(() => {
         if (!id) return;
-        api.get<PrivateManga>(`/my/mangas/${id}`)
-            .then(({data}) => {
+        getMyManga(id)
+            .then((data) => {
                 setManga(data);
                 setEditTitle(data.title);
                 setEditSynopsis(data.synopsis ?? "");
@@ -81,7 +71,7 @@ export function PrivateMangaDetailPage() {
         if (!manga) return;
         setSaving(true);
         try {
-            const {data} = await api.put<PrivateManga>(`/my/mangas/${manga.id}`, {
+            const data = await updateMyManga(manga.id, {
                 title: editTitle.trim(),
                 synopsis: editSynopsis.trim() || null,
             });
@@ -99,10 +89,7 @@ export function PrivateMangaDetailPage() {
         if (!manga || !volumeFile) return;
         setUploadingVolume(true);
         try {
-            const {data: {uploadUrl, objectName}} = await api.post(
-                `/my/mangas/${manga.id}/volumes/upload-url`,
-                {volumeNumber: parseInt(volumeNumber)}
-            );
+            const {uploadUrl, objectName} = await getMyVolumeUploadUrl(manga.id, parseInt(volumeNumber));
 
             const uploadRes = await fetch(uploadUrl, {
                 method: "PUT",
@@ -114,10 +101,7 @@ export function PrivateMangaDetailPage() {
                 throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
             }
 
-            const {data} = await api.post<PrivateManga>(
-                `/my/mangas/${manga.id}/volumes/finalize`,
-                {objectName, volumeNumber: parseInt(volumeNumber)}
-            );
+            const data = await finalizeMyVolumeUpload(manga.id, objectName, parseInt(volumeNumber));
 
             setManga(data);
             const maxVol = data.volumes.reduce((max, v) => Math.max(max, v.volumeNumber), 0);
@@ -138,7 +122,7 @@ export function PrivateMangaDetailPage() {
         if (!confirm(`Deletar Volume ${volume.volumeNumber}?`)) return;
         setDeletingVolumeId(volume.id);
         try {
-            const {data} = await api.delete<PrivateManga>(`/my/mangas/${manga.id}/volumes/${volume.id}`);
+            const data = await deleteMyVolume(manga.id, volume.id);
             setManga(data);
             toast.success(`Volume ${volume.volumeNumber} removido`);
         } catch (err: any) {
@@ -153,7 +137,7 @@ export function PrivateMangaDetailPage() {
         if (!confirm(`Enviar "${manga.title}" para aprovação? Um administrador precisará aceitá-la antes de ficar pública.`)) return;
         setSubmitting(true);
         try {
-            const {data} = await api.post<PrivateManga>(`/my/mangas/${manga.id}/submit`);
+            const data = await submitForApproval(manga.id);
             setManga(data);
             toast.success("Solicitação enviada! Aguarde a aprovação de um administrador.");
         } catch (err: any) {
@@ -168,7 +152,7 @@ export function PrivateMangaDetailPage() {
         if (!confirm(`Promover "${manga.title}" para a biblioteca pública? Ele ficará visível para todos os usuários.`)) return;
         setPromoting(true);
         try {
-            await api.post(`/my/mangas/${manga.id}/promote`);
+            await promoteManga(manga.id);
             toast.success("Mangá publicado na biblioteca!");
             navigate("/colecao");
         } catch (err: any) {

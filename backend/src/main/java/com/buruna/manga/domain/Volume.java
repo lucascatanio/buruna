@@ -1,21 +1,24 @@
 package com.buruna.manga.domain;
 
-import com.buruna.user.domain.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+/**
+ * Volume de um mangá — entidade interna ao agregado {@link Manga}. Criado via
+ * {@link Manga#addVolume}; não tem setters públicos. A referência ao usuário que
+ * fez o upload é por id primitivo ({@code uploadedById}), sem entidade User de
+ * outro contexto no domínio de manga (ADR-35).
+ */
 @Entity
 @Table(
         name = "volumes",
         uniqueConstraints = @UniqueConstraint(columnNames = {"manga_id", "volume_number"})
 )
 @Getter
-@Setter
 @NoArgsConstructor
 public class Volume {
 
@@ -39,12 +42,21 @@ public class Volume {
     @Column(name = "file_size_bytes", nullable = false)
     private Long fileSizeBytes;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "uploaded_by", nullable = false)
-    private User uploadedBy;
+    @Column(name = "uploaded_by", nullable = false)
+    private UUID uploadedById;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
+
+    public Volume(Manga manga, int volumeNumber, String fileUrl, String fileHash,
+                  long fileSizeBytes, UUID uploadedById) {
+        this.manga = manga;
+        this.volumeNumber = volumeNumber;
+        this.fileUrl = fileUrl;
+        this.fileHash = fileHash;
+        this.fileSizeBytes = fileSizeBytes;
+        this.uploadedById = uploadedById;
+    }
 
     @PrePersist
     protected void onCreate() {

@@ -1,6 +1,7 @@
 import {useState} from "react";
 import {useNavigate} from "react-router-dom";
-import api from "@/lib/axios";
+import {createManga, finalizeVolumeUpload, getVolumeUploadUrl} from "@/api/mangaApi";
+import type {CreatedManga, MangaRequest} from "@/types/manga";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
@@ -37,26 +38,6 @@ const CONTENT_WARNING_OPTIONS = [
     {value: "GATILHO_ABUSO", label: "Gatilho: Abuso"},
     {value: "GATILHO_TRAUMA", label: "Gatilho: Trauma"},
 ];
-
-interface MangaRequest {
-    title: string;
-    alternativeTitles: string[];
-    synopsis?: string | null;
-    coverBase64?: string;
-    format: string;
-    originCountry?: string | null;
-    statusOrigin: string;
-    statusSite: string;
-    year?: number | null;
-    contentWarnings: string[];
-    tagIds: string[];
-}
-
-interface CreatedManga {
-    id: string;
-    slug: string;
-    title: string;
-}
 
 export function MangaUploadPage() {
     const navigate = useNavigate();
@@ -131,7 +112,7 @@ export function MangaUploadPage() {
             };
             if (coverBase64) payload.coverBase64 = coverBase64;
 
-            const {data} = await api.post("/mangas", payload);
+            const data = await createManga(payload);
             setCreatedManga({id: data.id, slug: data.slug, title: data.title});
             toast.success("Mangá criado! Agora você pode adicionar volumes.");
         } catch (e) {
@@ -146,20 +127,14 @@ export function MangaUploadPage() {
         if (!createdManga || !volumeFile) return;
         setUploadingVolume(true);
         try {
-            const {data: {uploadUrl, objectName}} = await api.post(
-                `/mangas/${createdManga.id}/volumes/upload-url`,
-                {volumeNumber: parseInt(volumeNumber)}
-            );
+            const {uploadUrl, objectName} = await getVolumeUploadUrl(createdManga.id, parseInt(volumeNumber));
             const uploadRes = await fetch(uploadUrl, {
                 method: "PUT",
                 headers: {"Content-Type": "application/pdf"},
                 body: volumeFile,
             });
             if (!uploadRes.ok) throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
-            await api.post(`/mangas/${createdManga.id}/volumes/finalize`, {
-                objectName,
-                volumeNumber: parseInt(volumeNumber),
-            });
+            await finalizeVolumeUpload(createdManga.id, objectName, parseInt(volumeNumber));
             toast.success(`Volume ${volumeNumber} enviado!`);
             setUploadedVolumes((prev) => [...prev, Number(volumeNumber)]);
             setVolumeNumber(String(Number(volumeNumber) + 1));

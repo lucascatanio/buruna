@@ -1,6 +1,8 @@
 import {useEffect, useState, useCallback} from "react";
 import {useNavigate} from "react-router-dom";
-import api from "@/lib/axios";
+import {listMangas} from "@/api/mangaApi";
+import type {Page} from "@/types/common";
+import type {MangaCard} from "@/types/manga";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Badge} from "@/components/ui/badge";
@@ -8,25 +10,6 @@ import {Card, CardContent} from "@/components/ui/card";
 import {TagSelector} from "@/components/TagSelector";
 import {Search, SlidersHorizontal, X, BookOpen, Plus} from "lucide-react";
 import {useAuthStore} from "@/store/authStore";
-
-interface MangaCard {
-    id: string;
-    slug: string;
-    title: string;
-    coverUrl: string | null;
-    format: string;
-    statusOrigin: string;
-    year: number | null;
-    avgRating: number;
-    ratingCount: number;
-}
-
-interface PageResponse {
-    content: MangaCard[];
-    totalPages: number;
-    totalElements: number;
-    number: number;
-}
 
 const FORMAT_OPTIONS = [
     {value: "", label: "Todos os formatos"},
@@ -56,7 +39,7 @@ export function LibraryPage() {
     const navigate = useNavigate();
     const user = useAuthStore((s) => s.user);
     const isCollab = user?.role === "COLLABORATOR" || user?.role === "ADMIN";
-    const [data, setData] = useState<PageResponse | null>(null);
+    const [data, setData] = useState<Page<MangaCard> | null>(null);
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
 
@@ -72,15 +55,7 @@ export function LibraryPage() {
     const fetchMangas = useCallback(async (pageNum: number) => {
         setLoading(true);
         try {
-            const params = new URLSearchParams();
-            params.set("page", String(pageNum));
-            params.set("size", "24");
-            if (title) params.set("title", title);
-            if (format) params.set("format", format);
-            if (statusOrigin) params.set("statusOrigin", statusOrigin);
-            if (tagIds.length > 0) params.set("tagIds", tagIds.join(","));
-
-            const {data: res} = await api.get(`/mangas?${params}`);
+            const res = await listMangas({page: pageNum, size: 24, title, format, statusOrigin, tagIds});
             setData(res);
         } finally {
             setLoading(false);
