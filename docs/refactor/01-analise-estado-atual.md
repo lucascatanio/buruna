@@ -1,5 +1,11 @@
 # Fase 1 — Análise do Estado Atual (Burūna)
 
+> 📋 **Documento de processo — diário da migração, não documentação viva.** Registra o
+> diagnóstico do estado do código no momento em que a refatoração começou (2026-06-01).
+> As referências a `docs/buruna_architecture.md` abaixo apontavam para o caminho antigo
+> na época; o arquivo foi movido para [`docs/legacy/buruna_architecture.md`](../legacy/buruna_architecture.md).
+> Para o estado atual do projeto, ver [CLAUDE.md](../../CLAUDE.md) e [`docs/`](../).
+
 > **Tipo:** Diagnóstico (somente leitura — nenhum código foi alterado).
 > **Data:** 2026-06-01
 > **Fonte da verdade:** o código (`backend/src/main/java`, `frontend/src`, migrations Flyway). A documentação em `docs/buruna_architecture.md` é tratada como histórico e está parcialmente desatualizada (ver §2).

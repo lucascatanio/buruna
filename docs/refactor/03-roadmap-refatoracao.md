@@ -1,5 +1,10 @@
 # Fase 3 — Roadmap de refatoração (Burūna)
 
+> 📋 **Documento de processo — diário da migração, não documentação viva.** Registra o
+> plano de execução (issues por epic) da refatoração, hoje concluída. Para o estado
+> atual, ver [CLAUDE.md](../../CLAUDE.md) e [`docs/`](../). O backlog de achados fora
+> de escopo foi migrado para [`docs/BACKLOG.md`](../BACKLOG.md).
+
 > **Base:** `01-analise-estado-atual.md` (diagnóstico) + `02-arquitetura-alvo.md` + ADR-31…38, ambos aprovados.
 > **Natureza:** plano de execução. Nenhum código foi alterado. Cada item abaixo é uma **issue acionável**, formatada para colar direto no GitHub Issues/Projects.
 > **Regra de ouro:** produção é sagrada. Cada issue é um PR pequeno; o sistema compila, sobe e passa nos testes **antes e depois** de cada uma.

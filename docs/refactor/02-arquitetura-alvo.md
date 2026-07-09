@@ -1,5 +1,9 @@
 # Fase 2 — Arquitetura-alvo (Burūna)
 
+> 📋 **Documento de processo — diário da migração, não documentação viva.** Registra o
+> design da arquitetura-alvo decidido durante a refatoração. Para o estado atual e já
+> implementado, ver [docs/ARCHITECTURE.md](../ARCHITECTURE.md) e [CLAUDE.md](../../CLAUDE.md).
+
 > **Base:** diagnóstico aprovado em `01-analise-estado-atual.md`.
 > **Decisões já travadas (Fase 1):** (a) `Manga` = **um agregado, dois casos de uso** (público × privado); (b) bugs B1/B2 do `InactivityJob` corrigidos **durante** a refatoração do contexto, com teste antes; (c) **DDD pragmático** — domínio testável + abstrações sob demanda; (d) **contribuições da comunidade são objetivo de primeira classe** — legibilidade e baixa barreira de entrada pesam como critério explícito.
 > **Natureza:** documento de design. Nenhum código foi alterado. As ADRs novas estão em `docs/adr/` (ADR-31…ADR-38), no mesmo estilo das ADRs existentes.

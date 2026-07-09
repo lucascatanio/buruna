@@ -1,5 +1,13 @@
 # Burūna — Arquitetura e Fluxogramas
 
+> ⚠️ **HISTÓRICO — pré-refatoração, não reflete o estado atual.** Este documento
+> descreve a arquitetura do monolito modular **antes** da migração para Clean
+> Architecture + DDD (Epics 0-6). As ADRs originais (ADR-01 a ADR-30) foram extraídas
+> para [`docs/adr/`](../adr/) e preservadas; o restante (fluxos de usuário, infra,
+> modelo de dados, segurança) está desatualizado — por exemplo, as migrations aqui
+> mostram V1-V18, mas o código atual tem V1-V20. **Verdade atual:**
+> [CLAUDE.md](../../CLAUDE.md) e [`docs/`](../).
+>
 > Documento de referência para quem vai trabalhar no projeto sem contexto prévio.
 > Cobre a infraestrutura GCP, os fluxos de usuário, o modelo de dados,
 > segurança e as decisões de arquitetura que foram tomadas até aqui.

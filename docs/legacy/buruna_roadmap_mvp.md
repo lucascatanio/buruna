@@ -1,5 +1,9 @@
 # Burūna — Roadmap MVP (v1.0)
 
+> ⚠️ **HISTÓRICO — pré-refatoração, não reflete o estado atual.** Registro do progresso
+> do MVP original, anterior à migração para Clean Architecture + DDD (Epics 0-6).
+> **Verdade atual:** [CLAUDE.md](../../CLAUDE.md) e [`docs/`](../).
+
 ---
 
 ## Fase 0 — Setup e fundação (0% → 5%)
