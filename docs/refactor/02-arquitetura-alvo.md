@@ -2,7 +2,7 @@
 
 > **Base:** diagnóstico aprovado em `01-analise-estado-atual.md`.
 > **Decisões já travadas (Fase 1):** (a) `Manga` = **um agregado, dois casos de uso** (público × privado); (b) bugs B1/B2 do `InactivityJob` corrigidos **durante** a refatoração do contexto, com teste antes; (c) **DDD pragmático** — domínio testável + abstrações sob demanda; (d) **contribuições da comunidade são objetivo de primeira classe** — legibilidade e baixa barreira de entrada pesam como critério explícito.
-> **Natureza:** documento de design. Nenhum código foi alterado. As ADRs novas estão em `docs/refactor/adr/` (ADR-31…ADR-38), no mesmo estilo das ADRs existentes.
+> **Natureza:** documento de design. Nenhum código foi alterado. As ADRs novas estão em `docs/adr/` (ADR-31…ADR-38), no mesmo estilo das ADRs existentes.
 
 ---
 
@@ -312,7 +312,7 @@ Critérios: **valor da regra de negócio**, **risco em produção** e **legibili
 
 ---
 
-## 9. ADRs desta fase (`docs/refactor/adr/`)
+## 9. ADRs desta fase (`docs/adr/`)
 
 Numeração continua de onde a doc atual parou (ADR-30 → ADR-31+), mesmo estilo (Contexto / Decisão / Por quê / Tradeoff).
 
