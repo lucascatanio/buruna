@@ -8,6 +8,17 @@
 
 - Java 21, Docker (Docker Compose), Node 22+.
 
+O backend exige **Java 21** (`<java.version>21</java.version>` no `pom.xml`), e não há
+toolchain configurado: o Maven usa o `java` que estiver no `PATH`. Se o seu for outro,
+o build falha com `error: release version 21 not supported` e é preciso apontar o
+`JAVA_HOME` explicitamente:
+
+```
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./mvnw clean test
+```
+
+(o caminho varia por distribuição — confira com `ls /usr/lib/jvm/`.)
+
 ## Subir o Postgres
 
 ```
