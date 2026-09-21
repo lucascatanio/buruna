@@ -36,8 +36,8 @@ Resumo — detalhes completos e exemplos em [docs/ARCHITECTURE.md](docs/ARCHITEC
   agregado (`manga.promoteToPublic()`, `user.approve()`), não um setter chamado de
   fora.
 - **Exceções de domínio são puras** (sem `HttpStatus`) — tradução para HTTP só no
-  `GlobalExceptionHandler`. `LegacyHttpDomainException` é legado em remoção; não crie
-  novos usos dela.
+  `GlobalExceptionHandler`. Estenda `DomainException` com um `DomainErrorType`; nenhuma
+  exceção do projeto carrega `HttpStatus`.
 - **RBAC na borda** (`@PreAuthorize` no controller); **ownership** é verificada na
   `application` via `actorId`, nunca no domínio de outro contexto.
 - **Proibido** `@Query(nativeQuery = true)` cross-contexto e `JOIN` entre tabelas de
