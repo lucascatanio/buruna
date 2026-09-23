@@ -1,5 +1,6 @@
 import {Outlet, useNavigate, useLocation} from "react-router-dom";
 import {useAuthStore} from "@/store/authStore";
+import {performLogout} from "@/lib/logout";
 import {Button} from "@/components/ui/button";
 import {FeedbackButton} from "@/components/FeedbackDialog";
 import {BookOpen, Library, Settings, LogOut, History, BookMarked, Shield} from "lucide-react";
@@ -8,10 +9,9 @@ export function AppLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const user = useAuthStore((s) => s.user);
-    const clearAuth = useAuthStore((s) => s.clearAuth);
 
-    function handleLogout() {
-        clearAuth();
+    async function handleLogout() {
+        await performLogout();
         navigate("/login");
     }
 

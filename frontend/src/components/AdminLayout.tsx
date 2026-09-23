@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {Outlet, useNavigate, useLocation} from "react-router-dom";
 import {Button} from "@/components/ui/button";
-import {useAuthStore} from "@/store/authStore";
+import {performLogout} from "@/lib/logout";
 import {Menu, X, BookOpen} from "lucide-react";
 
 const NAV_ITEMS = [
@@ -15,11 +15,10 @@ const NAV_ITEMS = [
 export function AdminLayout() {
     const navigate = useNavigate();
     const location = useLocation();
-    const clearAuth = useAuthStore((s) => s.clearAuth);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-    function handleLogout() {
-        clearAuth();
+    async function handleLogout() {
+        await performLogout();
         navigate("/login");
     }
 

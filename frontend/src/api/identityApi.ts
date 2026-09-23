@@ -47,3 +47,7 @@ export function verify2FA(code: string): Promise<void> {
 export function disable2FA(code: string): Promise<void> {
     return api.post("/auth/2fa/disable", {code}).then(() => undefined);
 }
+
+export function logout(refreshToken: string): Promise<void> {
+    return api.post("/auth/logout", {refreshToken}).then(() => undefined);
+}
