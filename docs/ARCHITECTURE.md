@@ -88,8 +88,9 @@ Fronteiras de agregado (`Manga` raiz com `Volume`, um agregado por caso público
 
 Exceções de domínio são puras (`DomainErrorType`, sem `HttpStatus`); a tradução para
 resposta HTTP acontece só no `GlobalExceptionHandler` (`shared/exception/`), retornando
-`ErrorResponse {status, error, message, path, timestamp}`. `LegacyHttpDomainException`
-é legado em remoção — não crie novos usos. Ver [ADR-33](adr/ADR-33-excecoes-dominio-sem-httpstatus.md).
+`ErrorResponse {status, error, message, path, timestamp}`. A `LegacyHttpDomainException`
+do padrão antigo já foi removida por completo no Epic 6 — nenhuma exceção carrega
+`HttpStatus` hoje. Ver [ADR-33](adr/ADR-33-excecoes-dominio-sem-httpstatus.md).
 
 ## 4. ArchUnit como guarda de arquitetura
 
@@ -104,6 +105,12 @@ falha o build (`./mvnw clean test`) se a fronteira for violada. Três regras:
    consumir `application` de outros contextos.
 3. **`persistenceLayer_shouldNotUseNativeQueries`** — detecta `@Query(nativeQuery=true)`
    nas camadas `persistence` de contextos migrados.
+
+A camada `web/` fica **deliberadamente de fora** das três regras: um controller recebe
+`identity.domain.User` via `@AuthenticationPrincipal` e extrai `user.getId()` antes de
+delegar (ex.: `engagement.web.RatingController`). Esse import cross-contexto na `web/` é
+o padrão aceito, não uma violação — o guard genérico e o de `admin` isentam a camada
+pelo mesmo motivo.
 
 O que nenhum guard cobre (JPQL referenciando entidade de outro contexto por nome de
 string) é review-only — ver a seção "Guard de arquitetura" em
