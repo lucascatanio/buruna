@@ -586,6 +586,20 @@ class IdentityIntegrationTest {
     }
 
     @Test
+    void twoFA_tempToken_cannotBeUsedAsAccessToken_returns401() throws Exception {
+        enableTotp(activeUser);
+
+        MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
+        String tempToken = body(loginResult).get("tempToken").asText();
+
+        // FIND-001: o tempToken (purpose=2fa) tem que ser recusado como Bearer de
+        // um endpoint autenticado comum — senão a 2FA fica inútil.
+        mockMvc.perform(get("/auth/2fa/status")
+                        .header("Authorization", "Bearer " + tempToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void twoFA_disable_validCode_disables2FA() throws Exception {
         String secret = enableTotp(activeUser);
 

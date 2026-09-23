@@ -37,6 +37,7 @@ public class TokenService {
         return Jwts.builder()
                 .subject(user.getId().toString())
                 .claim("role", user.getRole().name())
+                .claim("typ", "access")
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + appProperties.jwt().expiration() * 1000))
                 .signWith(secretKey)
@@ -88,6 +89,9 @@ public class TokenService {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
+            if (!"access".equals(claims.get("typ", String.class))) {
+                throw new InvalidTokenException();
+            }
             return UUID.fromString(claims.getSubject());
         } catch (JwtException e) {
             throw new InvalidTokenException();
