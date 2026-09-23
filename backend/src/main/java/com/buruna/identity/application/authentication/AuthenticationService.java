@@ -31,6 +31,12 @@ public class AuthenticationService {
     private final TotpService totpService;
     private final PasswordEncoder passwordEncoder;
     private final AppProperties appProperties;
+    /**
+     * Hash fictício gerado uma vez, usado quando o e-mail não existe. Mantém o custo do
+     * BCrypt igual ao de um login real e evita que a diferença de tempo de resposta
+     * revele se um e-mail está cadastrado (enumeração de e-mails).
+     */
+    private final String dummyPasswordHash;
 
     public AuthenticationService(UserRepository userRepository, TokenService tokenService,
                                  TotpService totpService, PasswordEncoder passwordEncoder,
@@ -40,12 +46,17 @@ public class AuthenticationService {
         this.totpService = totpService;
         this.passwordEncoder = passwordEncoder;
         this.appProperties = appProperties;
+        this.dummyPasswordHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+        User user = userRepository.findByEmail(request.email()).orElse(null);
+
+        if (user == null) {
+            passwordEncoder.matches(request.password(), dummyPasswordHash);
+            throw new BadCredentialsException("Invalid credentials");
+        }
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid credentials");
