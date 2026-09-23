@@ -123,6 +123,11 @@ public class User {
 
     // ── Outras mutações de negócio ──────────────────────────────────────────
 
+    /** Só usuários {@code ACTIVE} podem autenticar (usado pelo {@code JwtFilter}). */
+    public boolean canAuthenticate() {
+        return status == UserStatus.ACTIVE;
+    }
+
     public void changeRole(Role newRole) {
         this.role = newRole;
     }

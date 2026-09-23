@@ -136,4 +136,27 @@ class UserTest {
         user.recordLogin(now);
         assertThat(user.getLastAccessAt()).isEqualTo(now);
     }
+
+    // ── canAuthenticate ──────────────────────────────────────────────────────
+
+    @Test
+    void canAuthenticate_whenPending_returnsFalse() {
+        User user = newPendingUser();
+        assertThat(user.canAuthenticate()).isFalse();
+    }
+
+    @Test
+    void canAuthenticate_whenActive_returnsTrue() {
+        User user = newPendingUser();
+        user.approve();
+        assertThat(user.canAuthenticate()).isTrue();
+    }
+
+    @Test
+    void canAuthenticate_whenInactive_returnsFalse() {
+        User user = newPendingUser();
+        user.approve();
+        user.deactivate();
+        assertThat(user.canAuthenticate()).isFalse();
+    }
 }

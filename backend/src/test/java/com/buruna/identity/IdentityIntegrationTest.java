@@ -348,6 +348,31 @@ class IdentityIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    //  Autorização — JwtFilter com Bearer real (sem o postprocessor `auth()`)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void accessToken_deactivatedUser_returns401_onNextRequest() throws Exception {
+        MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
+        String accessToken = body(loginResult).get("accessToken").asText();
+
+        // O access token ainda é válido e autentica normalmente.
+        mockMvc.perform(get("/auth/2fa/status")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        User persisted = userRepository.findById(activeUser.getId()).orElseThrow();
+        persisted.deactivate();
+        userRepository.save(persisted);
+
+        // BAIXA-1: usuário desativado não pode mais autenticar, mesmo com o
+        // access token ainda dentro da validade.
+        mockMvc.perform(get("/auth/2fa/status")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     //  Logout — POST /auth/logout
     // ══════════════════════════════════════════════════════════════════════════
 

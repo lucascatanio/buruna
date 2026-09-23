@@ -1,6 +1,7 @@
 package com.buruna.shared.security;
 
 import com.buruna.identity.domain.InvalidTokenException;
+import com.buruna.identity.domain.User;
 import com.buruna.identity.application.authentication.TokenService;
 import com.buruna.identity.persistence.UserRepository;
 import jakarta.servlet.FilterChain;
@@ -46,14 +47,16 @@ public class JwtFilter extends OncePerRequestFilter {
             UUID userId = tokenService.validateAccessTokenAndGetUserId(authHeader.substring(7));
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                userRepository.findById(userId).ifPresent(user -> {
-                    var auth = new UsernamePasswordAuthenticationToken(
-                            user, null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-                    );
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                });
+                userRepository.findById(userId)
+                        .filter(User::canAuthenticate)
+                        .ifPresent(user -> {
+                            var auth = new UsernamePasswordAuthenticationToken(
+                                    user, null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+                            );
+                            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            SecurityContextHolder.getContext().setAuthentication(auth);
+                        });
             }
         } catch (InvalidTokenException ignored) {
             // Token inválido — segue o filter chain sem autenticação
