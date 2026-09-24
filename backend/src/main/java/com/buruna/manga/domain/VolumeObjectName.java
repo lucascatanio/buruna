@@ -5,7 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Nome do objeto de um volume no storage, vinculado ao mangá dono (ADR-40, FIND-002).
+ * Nome do objeto de um volume no storage, vinculado ao mangá dono (ADR-40).
  *
  * <p>Fase 1 (upload): {@link #pendingFor(UUID)} gera um caminho em {@code pending/},
  * namespaced pelo {@code mangaId} — {@code pending/volumes/{mangaId}/{uuid}.pdf}.

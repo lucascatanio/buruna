@@ -62,7 +62,7 @@ public class User {
     @Column(name = "totp_enabled", nullable = false)
     private boolean totpEnabled;
 
-    /** Último passo de tempo (janela de 30s) aceito, para rejeitar replay (FIND-004). */
+    /** Último passo de tempo (janela de 30s) aceito, para rejeitar replay. */
     @Column(name = "totp_last_used_step")
     private Long totpLastUsedStep;
 
@@ -186,7 +186,7 @@ public class User {
         resetTotpFailures();
     }
 
-    // ── 2FA (TOTP) — controle de força bruta e replay (FIND-004) ─────────────
+    // ── 2FA (TOTP) — controle de força bruta e replay ────────────────────────
 
     /**
      * Lança {@link TotpLockedException} se o usuário estiver bloqueado por

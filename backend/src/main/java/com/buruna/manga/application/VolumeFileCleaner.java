@@ -6,8 +6,8 @@ import com.buruna.shared.storage.StorageClient;
 import org.springframework.stereotype.Component;
 
 /**
- * Ponto único que decide se o arquivo de um volume pode ser apagado do storage
- * (FIND-002). Antes da validação de {@link com.buruna.manga.domain.VolumeObjectName}
+ * Ponto único que decide se o arquivo de um volume pode ser apagado do storage.
+ * Antes da validação de {@link com.buruna.manga.domain.VolumeObjectName}
  * (ADR-40), o finalize aceitava qualquer {@code objectName} vindo do cliente — nada
  * impedia dois volumes (de mangás diferentes) de apontarem para o mesmo objeto físico
  * no bucket. Para dados já criados sob esse comportamento, apagar um dos volumes não

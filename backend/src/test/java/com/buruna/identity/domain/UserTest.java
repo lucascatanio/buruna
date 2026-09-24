@@ -162,7 +162,7 @@ class UserTest {
         assertThat(user.canAuthenticate()).isFalse();
     }
 
-    // ── TOTP: bloqueio por força bruta e replay (FIND-004) ────────────────────
+    // ── TOTP: bloqueio por força bruta e replay ───────────────────────────────
 
     @Test
     void registerTotpFailure_locksUser_onFifthConsecutiveFailure() {

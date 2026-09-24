@@ -27,7 +27,7 @@ import java.util.UUID;
  * públicos permanecem intactos.
  *
  * <p>O arquivo de um volume só entra na lista devolvida se nenhum OUTRO volume ainda
- * o referenciar (FIND-002, ver {@link VolumeFileCleaner}) — checado aqui, dentro da
+ * o referenciar (ver {@link VolumeFileCleaner}) — checado aqui, dentro da
  * transação, antes do {@code deleteAll} remover as linhas. A capa não entra nessa
  * regra.
  */

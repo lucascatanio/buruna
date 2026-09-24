@@ -22,7 +22,7 @@ public class CaptchaService {
     private final String secret;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    // FIND-006: sem segredo, o captcha só pode ser pulado com o profile "local"
+    // Sem segredo, o captcha só pode ser pulado com o profile "local"
     // ativo (dev). Em qualquer outro profile (inclusive produção sem a variável
     // definida), falha no startup em vez de aceitar qualquer captcha.
     public CaptchaService(@Value("${app.hcaptcha.secret:}") String secret, Environment environment) {

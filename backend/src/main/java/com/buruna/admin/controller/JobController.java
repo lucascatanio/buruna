@@ -25,7 +25,7 @@ public class JobController {
     @PostMapping("/inactivity")
     public ResponseEntity<String> triggerInactivity(
             @RequestHeader("X-Job-Secret") String secret) {
-        // FIND-005: comparação em tempo constante (MessageDigest.isEqual) em vez de
+        // Comparação em tempo constante (MessageDigest.isEqual) em vez de
         // String.equals, que sai mais cedo no primeiro byte diferente e pode vazar
         // o segredo por timing.
         if (!MessageDigest.isEqual(jobSecret, secret.getBytes(StandardCharsets.UTF_8))) {

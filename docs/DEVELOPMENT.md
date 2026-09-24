@@ -38,8 +38,8 @@ Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
   (`GcsConfig` é `@Profile("!local")`, o bean real de GCS não sobe) — mas precisam de
   **qualquer valor** (ex.: `dummy`) porque `AppProperties` (`@ConfigurationProperties`)
   faz bind **eager** de todo `app.*`, inclusive o que não é usado no profile ativo.
-- `APP_JOBS_SECRET` não tem mais default (`dev-secret-change-me` foi removido —
-  FIND-005): sem ele o `/admin/jobs/inactivity` seria disparável por qualquer um em
+- `APP_JOBS_SECRET` não tem mais default (`dev-secret-change-me` foi removido):
+  sem ele o `/admin/jobs/inactivity` seria disparável por qualquer um em
   produção. Local, qualquer valor serve (ex.: `dev-secret`).
 - Demais variáveis de `application.yml` têm default e são **opcionais** para rodar
   local: `JWT_EXPIRATION`, `REFRESH_TOKEN_EXPIRATION`, `MAX_FILE_SIZE_MB`,
@@ -53,7 +53,7 @@ Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
   `application-local.yml` já sobrescreve para `false`, então não precisa mexer nela
   rodando local, mesmo fora do Docker), `PORT`.
 - `HCAPTCHA_SECRET` tem default vazio, mas o bypass só é aceito com o profile `local`
-  ativo (`CaptchaService` falha no startup fora dele — FIND-006). Local, deixe vazio
+  ativo (`CaptchaService` falha no startup fora dele). Local, deixe vazio
   para captcha desligado.
 
 O profile `local` ativa `LocalStorageClient` (`LocalStorageConfig`, `@Profile("local")`),

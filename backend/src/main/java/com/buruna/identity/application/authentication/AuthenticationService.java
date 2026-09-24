@@ -76,7 +76,7 @@ public class AuthenticationService {
         return issueTokens(user);
     }
 
-    // FIND-004: noRollbackFor evita que o rollback padrão de BadCredentialsException
+    // noRollbackFor evita que o rollback padrão de BadCredentialsException
     // desfaça o incremento do contador de falhas de TOTP no agregado.
     @Transactional(noRollbackFor = BadCredentialsException.class)
     public LoginResponse authenticate2FA(TotpAuthenticateRequest request) {

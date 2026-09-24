@@ -886,7 +886,7 @@ class MangaIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  4.5. FIND-002 — objectName vinculado ao mangá (ADR-40)
+    //  4.5. objectName vinculado ao mangá (ADR-40)
     // ══════════════════════════════════════════════════════════════════════════
 
     @Nested

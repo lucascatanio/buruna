@@ -1,6 +1,6 @@
 # ADR-40 — objectName do volume vinculado ao mangá + prefixo pending/
 
-**Status:** Aceita (correção FIND-002/FIND-007 da revisão de segurança de 2026-09-23)
+**Status:** Aceita (correção da revisão de segurança de 2026-09-23)
 
 **Contexto:** O upload de volume em duas fases (ADR-24) gerava, na fase 1, um
 `objectName` sem nenhuma relação com o mangá — `volumes/{uuid}.pdf`, com um UUID
@@ -8,7 +8,7 @@ aleatório solto. A fase 2 (`FinalizeVolumeUseCase`/`FinalizePublicVolumeUseCase
 aceitava esse `objectName` **do jeito que veio no corpo da requisição**, sem validar
 que ele correspondia a um upload feito para aquele mangá.
 
-Isso abria um vetor de ataque (FIND-002) explorável por qualquer usuário cadastrado:
+Isso abria um vetor de ataque explorável por qualquer usuário cadastrado:
 
 1. Abrir um volume público via `GET /reader/{id}/url` expõe, na URL assinada, o
    `objectName` real do arquivo (`volumes/<uuid>.pdf`).
@@ -20,7 +20,7 @@ Isso abria um vetor de ataque (FIND-002) explorável por qualquer usuário cadas
    volume público real**, que nada tinha a ver com o mangá privado do atacante.
 
 O mesmo valia no sentido público→público via `FinalizePublicVolumeUseCase`. Um
-achado relacionado, de severidade média (FIND-007), é que a Signed URL de upload não
+achado relacionado, de severidade média, é que a Signed URL de upload não
 limitava tamanho nem tinha prazo de limpeza garantido para uploads nunca finalizados
 — o risco de órfão no bucket já registrado no ADR-24 sem uma mitigação implementada.
 
@@ -39,14 +39,14 @@ limitava tamanho nem tinha prazo de limpeza garantido para uploads nunca finaliz
    fazem `parsePending` → `getFileMetadata` → quota/dedup (inalterados) →
    `storageClient.move(pending, final)` → `manga.addVolume(final, ...)`.
 3. **Defesa para dados legados:** antes da correção, nada impedia que dois volumes
-   (de mangás diferentes) apontassem para o mesmo `file_url` — quem explorou o
-   FIND-002 antes do deploy pode ter deixado dados assim. `manga.application.VolumeFileCleaner`
+   (de mangás diferentes) apontassem para o mesmo `file_url` — quem explorou essa
+   falha antes do deploy pode ter deixado dados assim. `manga.application.VolumeFileCleaner`
    centraliza a regra "só apaga o arquivo se nenhum OUTRO volume ainda o
    referencia" e é usado por todo ponto que apaga arquivo de volume
    (`DeleteVolumeUseCase`, `DeletePublicVolumeUseCase`, `DeleteMangaUseCase`,
    `DeletePrivateMangaUseCase`, `DeletePrivateCollectionForUserUseCase`). Capa e
    avatar não usam `objectName` vindo do cliente e ficam fora dessa regra.
-4. **FIND-007 — limite de tamanho e limpeza de órfãos:**
+4. **Limite de tamanho e limpeza de órfãos:**
    `StorageClient.generateUploadSignedUrl` passa a devolver
    `SignedUpload(URL url, Map<String,String> requiredHeaders)`. A implementação GCS
    assina a extension header `x-goog-content-length-range: 0,{maxBytes}`

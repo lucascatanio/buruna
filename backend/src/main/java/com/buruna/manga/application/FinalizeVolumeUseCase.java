@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /**
  * Finaliza o upload de um volume (fase 2): valida que o {@code objectName} é um
- * pendente do PRÓPRIO mangá (ADR-40, fecha o FIND-002), lê o metadado do objeto no
+ * pendente do PRÓPRIO mangá (ADR-40), lê o metadado do objeto no
  * storage, valida a cota, move o objeto de {@code pending/} para o nome definitivo e
  * adiciona o volume ao agregado. O limite de cota ({@code quotaGb}) chega como
  * primitivo da borda (ADR-35).

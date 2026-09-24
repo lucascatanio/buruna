@@ -1,8 +1,8 @@
 /**
  * PUT do arquivo de volume direto na URL assinada (upload em 2 fases, ADR-24/ADR-40).
  * Único ponto que faz esse PUT — usado pelas páginas de upload de volume público e
- * privado — para não duplicar o envio dos headers exigidos pela assinatura (FIND-007:
- * o GCS assina `x-goog-content-length-range`, limitando o tamanho aceito pelo PUT).
+ * privado — para não duplicar o envio dos headers exigidos pela assinatura (o GCS
+ * assina `x-goog-content-length-range`, limitando o tamanho aceito pelo PUT).
  */
 export async function uploadVolumeFile(
     uploadUrl: string,

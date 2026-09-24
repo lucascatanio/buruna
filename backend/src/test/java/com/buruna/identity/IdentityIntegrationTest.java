@@ -370,7 +370,7 @@ class IdentityIntegrationTest {
 
     @Test
     void refreshToken_persistedValue_differsFromCookieValue() throws Exception {
-        // BAIXA (hash): um vazamento do banco não pode dar acesso à sessão — a
+        // Um vazamento do banco não pode dar acesso à sessão — a
         // coluna guarda o SHA-256 do valor que o navegador de fato tem no cookie.
         String rawRefreshToken = loginAndGetRefreshToken("active@id.test");
 
@@ -671,7 +671,7 @@ class IdentityIntegrationTest {
 
     @Test
     void twoFA_authenticate_reusingAcceptedCode_returns401() throws Exception {
-        // FIND-004: o tempToken continua válido por 5 minutos (não é consumido no
+        // O tempToken continua válido por 5 minutos (não é consumido no
         // uso), então sem controle de replay o MESMO código correto autenticaria
         // de novo dentro da mesma janela de 30s.
         String secret = enableTotp(activeUser);
@@ -706,7 +706,7 @@ class IdentityIntegrationTest {
                     .andExpect(status().isUnauthorized());
         }
 
-        // FIND-004: bloqueado por 15 minutos — nem o código CORRETO passa agora.
+        // Bloqueado por 15 minutos — nem o código CORRETO passa agora.
         mockMvc.perform(post("/auth/2fa/authenticate")
                         .contentType(JSON)
                         .content("""
@@ -726,7 +726,7 @@ class IdentityIntegrationTest {
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
         String tempToken = body(loginResult).get("tempToken").asText();
 
-        // FIND-001: o tempToken (purpose=2fa) tem que ser recusado como Bearer de
+        // O tempToken (purpose=2fa) tem que ser recusado como Bearer de
         // um endpoint autenticado comum — senão a 2FA fica inútil.
         mockMvc.perform(get("/auth/2fa/status")
                         .header("Authorization", "Bearer " + tempToken))
@@ -761,7 +761,7 @@ class IdentityIntegrationTest {
 
         List<PasswordResetToken> tokens = passwordResetTokenRepository.findAll();
         assertThat(tokens).hasSize(1);
-        // BAIXA (hash): o e-mail (mockado) recebe o valor em claro; o banco só vê
+        // O e-mail (mockado) recebe o valor em claro; o banco só vê
         // o SHA-256 dele (64 chars hex), nunca o token usável.
         assertThat(tokens.get(0).getToken()).matches("[0-9a-f]{64}");
     }

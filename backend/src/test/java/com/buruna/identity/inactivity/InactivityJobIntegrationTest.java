@@ -357,7 +357,7 @@ class InactivityJobIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  Gatilho do job — POST /admin/jobs/inactivity (FIND-005)
+    //  Gatilho do job — POST /admin/jobs/inactivity
     // ══════════════════════════════════════════════════════════════════════════
 
     @Nested

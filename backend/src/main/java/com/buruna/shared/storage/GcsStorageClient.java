@@ -82,7 +82,7 @@ public class GcsStorageClient implements StorageClient {
                 .setContentType("application/pdf")
                 .build();
         // x-goog-content-length-range faz parte da assinatura: o GCS recusa o PUT se o
-        // Content-Length do corpo estiver fora de [0, maxUploadBytes] (FIND-007) — sem
+        // Content-Length do corpo estiver fora de [0, maxUploadBytes] — sem
         // isso, um upload sem finalize nunca é limitado em tamanho.
         Map<String, String> requiredHeaders =
                 Map.of("x-goog-content-length-range", "0," + maxUploadBytes);

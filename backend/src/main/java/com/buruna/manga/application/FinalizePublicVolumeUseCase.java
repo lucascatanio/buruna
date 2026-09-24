@@ -20,7 +20,7 @@ import java.util.UUID;
  * Finaliza o upload (fase 2) de um volume de mangá público. Posse "dono OU ADMIN" (ADR-35);
  * mangá precisa ser público. Dedup por hash atravessa agregados (outros públicos) e fica na
  * application; dedup por número é invariante do agregado ({@code Manga.addVolume}).
- * {@code objectName} precisa ser um pendente do PRÓPRIO mangá (ADR-40, fecha o FIND-002).
+ * {@code objectName} precisa ser um pendente do PRÓPRIO mangá (ADR-40).
  *
  * <p>RISCO residual (ADR-24, mitigado pelo ADR-40): objeto pendente órfão se o finalize
  * falhar após o upload; lifecycle rule do bucket apaga {@code pending/} após 1 dia.

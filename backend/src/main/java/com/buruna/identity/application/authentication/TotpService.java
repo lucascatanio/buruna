@@ -18,7 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.OptionalLong;
 
 /**
- * {@link #verify(User, String)} é o ponto único de verificação (FIND-004):
+ * {@link #verify(User, String)} é o ponto único de verificação:
  * recusa se o usuário estiver bloqueado por força bruta, casa o código contra
  * os passos de tempo -1/0/+1 e então aceita (rejeitando replay do mesmo passo)
  * ou registra a falha no agregado. Usado por autenticação de 2FA, verify/disable
@@ -78,7 +78,7 @@ public class TotpService {
     }
 
     /**
-     * Ponto único de verificação de TOTP (FIND-004). Quem chama precisa rodar
+     * Ponto único de verificação de TOTP. Quem chama precisa rodar
      * dentro de uma transação com {@code noRollbackFor = BadCredentialsException.class}:
      * a falha lança essa exceção, e sem a anotação o rollback padrão desfaria o
      * incremento do contador de tentativas no agregado.

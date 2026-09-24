@@ -138,7 +138,7 @@ public class AccountService {
         return new TotpSetupResponse(secret, qrUri);
     }
 
-    // FIND-004: noRollbackFor evita que o rollback padrão de BadCredentialsException
+    // noRollbackFor evita que o rollback padrão de BadCredentialsException
     // desfaça o incremento do contador de falhas de TOTP no agregado.
     @Transactional(noRollbackFor = BadCredentialsException.class)
     public void verify2FA(UUID userId, String code) {
@@ -201,7 +201,7 @@ public class AccountService {
         return resetToken.getUser().isTotpEnabled();
     }
 
-    // FIND-004: noRollbackFor evita que o rollback padrão de BadCredentialsException
+    // noRollbackFor evita que o rollback padrão de BadCredentialsException
     // desfaça o incremento do contador de falhas de TOTP no agregado. A verificação
     // do TOTP acontece ANTES de marcar o token como usado ou trocar a senha, então
     // um código errado não consome o token nem muda a senha.

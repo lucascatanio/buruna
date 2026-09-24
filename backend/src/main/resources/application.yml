@@ -53,7 +53,7 @@ app:
     forgot-password-per-hour: ${RATE_LIMIT_FORGOT_PASSWORD_PER_HOUR:3}
   hcaptcha:
     # Default vazio só é aceito com o profile "local" ativo (CaptchaService falha
-    # no startup fora dele — FIND-006).
+    # no startup fora dele).
     secret: ${HCAPTCHA_SECRET:}
   mail:
     from: ${APP_MAIL_FROM:Burūna <noreply@buruna.com.br>}
@@ -61,7 +61,7 @@ app:
     max-file-size-mb: ${MAX_FILE_SIZE_MB:500}
   security:
     # Quantos saltos de proxy confiável (infra própria) precedem a entrada do
-    # cliente no X-Forwarded-For (FIND-003). Ver docs/DEPLOYMENT.md.
+    # cliente no X-Forwarded-For. Ver docs/DEPLOYMENT.md.
     trusted-proxy-hops: ${APP_TRUSTED_PROXY_HOPS:1}
   auth:
     # Atributo Secure do cookie httpOnly de refresh token. false só em

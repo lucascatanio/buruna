@@ -11,7 +11,7 @@ public interface StorageClient {
 
     /**
      * URL assinada de upload e os headers que o cliente PUT precisa enviar para a
-     * assinatura bater (FIND-007) — ex.: {@code x-goog-content-length-range} no GCS,
+     * assinatura bater — ex.: {@code x-goog-content-length-range} no GCS,
      * limitando o tamanho aceito pelo PUT sem o backend tocar o arquivo.
      */
     record SignedUpload(URL url, Map<String, String> requiredHeaders) {}

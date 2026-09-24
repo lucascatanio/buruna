@@ -47,7 +47,7 @@ class VolumeObjectNameTest {
     @Test
     void parsePending_alreadyFinalizedObjectName_throws() {
         // objectName de um volume público já finalizado (formato "volumes/...", sem "pending/")
-        // é o outro vetor do FIND-002: reaproveitar o objectName exposto na URL de leitura.
+        // é o vetor de ataque original: reaproveitar o objectName exposto na URL de leitura.
         String finalized = "volumes/" + MANGA_ID + "/" + UUID.randomUUID() + ".pdf";
 
         assertThatThrownBy(() -> VolumeObjectName.parsePending(finalized, MANGA_ID))

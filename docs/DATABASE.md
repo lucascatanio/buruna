@@ -43,7 +43,7 @@ User ──< PasswordResetToken
 | users                 | totp_secret, totp_enabled                      | V17 — colunas para 2FA TOTP          |
 | password_reset_tokens | UNIQUE(token), INDEX(user_id), INDEX(token)    | V18 — tokens de reset de senha       |
 | mangas                | submission_status, rejection_reason, submitted_at, reviewed_by, reviewed_at | V20 — fluxo de submissão/revisão |
-| users                 | totp_last_used_step, totp_failed_attempts, totp_locked_until | V21 — força bruta e replay de TOTP (FIND-004) |
+| users                 | totp_last_used_step, totp_failed_attempts, totp_locked_until | V21 — força bruta e replay de TOTP |
 | refresh_tokens        | token VARCHAR(64)                              | V22 — SHA-256 hex do token, não mais o valor em claro |
 
 Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-indices-seletivos-banco.md).
