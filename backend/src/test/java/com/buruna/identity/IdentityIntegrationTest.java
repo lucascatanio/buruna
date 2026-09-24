@@ -76,7 +76,7 @@ class IdentityIntegrationTest {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16");
 
-    /** Emails são @Async e externos: substituídos por um no-op para hermeticidade. */
+    /** Emails são externos: substituídos por um no-op para hermeticidade. */
     @TestConfiguration
     static class TestConfig {
         @Bean

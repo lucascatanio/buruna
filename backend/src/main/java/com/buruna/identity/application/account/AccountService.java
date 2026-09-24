@@ -96,18 +96,12 @@ public class AccountService {
 
         userRepository.save(user);
 
-        List<User> admins = userRepository.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE);
-        if (admins.isEmpty()) {
-            emailService.sendNewRegistrationNotification(
-                    appProperties.adminEmail(), user.getUsername(), user.getEmail()
-            );
-        } else {
-            for (User admin : admins) {
-                emailService.sendNewRegistrationNotification(
-                        admin.getEmail(), user.getUsername(), user.getEmail()
-                );
-            }
-        }
+        List<String> adminEmails = userRepository.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)
+                .stream().map(User::getEmail).toList();
+        emailService.sendNewRegistrationNotification(
+                adminEmails.isEmpty() ? List.of(appProperties.adminEmail()) : adminEmails,
+                user.getUsername(), user.getEmail()
+        );
     }
 
     @Transactional
