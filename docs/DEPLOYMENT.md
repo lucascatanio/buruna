@@ -47,11 +47,23 @@
                                                  GET  → leitura de PDF
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  Cloud Scheduler (us-east1) — Cron: "0 0 2 * * *" (diário às 02:00)          │
-│  POST /admin/jobs/inactivity, header: X-Job-Secret: <APP_JOBS_SECRET>       │
+│  Cloud Scheduler (us-east1) — job "buruna-inactivity"                       │
+│  Cron: "0 0 2 * * *" (02:00 UTC)                                            │
+│  POST /api/admin/jobs/inactivity, header: X-Job-Secret: <APP_JOBS_SECRET>   │
 └───────────────────────────────┬──────────────────────────────────────────────┘
                                 ▼
-                    buruna-backend → RunInactivityUseCase
+                    buruna-backend → RunInactivityUseCase (ADR-03)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Pub/Sub (us-east1) — tópico "password-reset-requests"                      │
+│  Publicado por buruna-backend (PubSubPublisher, REST, dentro da requisição)  │
+│  Subscription push "password-reset-push" — OIDC:                            │
+│    pubsub-push-invoker@buruna.iam.gserviceaccount.com                       │
+│  → POST https://buruna-backend-922749062176.us-east1.run.app                │
+│         /api/internal/pubsub/password-reset                                 │
+│    ack deadline: 30s · retenção de mensagem: 1h                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+                    buruna-backend → ProcessPasswordResetRequestUseCase (ADR-42)
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  GitHub Actions (push → main)                                                │
@@ -64,7 +76,9 @@
 │  Secret Manager (us-east1) — injeta env vars no Cloud Run no deploy:         │
 │  DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET, GCS_BUCKET_NAME,                 │
 │  RESEND_API_KEY, APP_JOBS_SECRET, HCAPTCHA_SECRET,                          │
-│  APP_TRUSTED_PROXY_HOPS, APP_CORS_ALLOWED_ORIGIN, …                         │
+│  APP_TRUSTED_PROXY_HOPS, APP_CORS_ALLOWED_ORIGIN,                          │
+│  APP_PUBSUB_PASSWORD_RESET_TOPIC, APP_PUBSUB_PUSH_AUDIENCE,                │
+│  APP_PUBSUB_PUSH_SERVICE_ACCOUNT, …                                        │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -76,7 +90,8 @@
 | Frontend SPA        | Cloud Run                            | us-east1           | nginx + build estático React        |
 | Banco de dados      | GCE e2-micro + Docker (PostgreSQL 16)| us-east1-b         | Free tier permanente                |
 | Arquivos PDF/capas  | GCS `buruna-files-catanio`           | southamerica-east1 | Latência baixa para usuários BR     |
-| Jobs agendados      | Cloud Scheduler                      | us-east1           | Trigger diário de `RunInactivityUseCase` |
+| Jobs agendados      | Cloud Scheduler                      | us-east1           | Job `buruna-inactivity`: trigger diário de `RunInactivityUseCase` (ADR-03) |
+| Mensageria          | Pub/Sub                              | us-east1           | Tópico `password-reset-requests` + push subscription `password-reset-push` (ADR-42) |
 | Imagens Docker      | Artifact Registry                    | us-east1           | Pipeline de CI/deploy               |
 | Secrets             | Secret Manager                       | us-east1           | Injetados no Cloud Run              |
 | CI/CD               | GitHub Actions                       | —                  | Deploy automático no push para main |
@@ -90,7 +105,10 @@ Decisões e tradeoffs por trás de cada escolha de infra: Cloud Run separado por
 ([ADR-23](adr/ADR-23-postgresql-gce-e2-micro-docker.md)), bucket em
 southamerica-east1 x Cloud Run em us-east1 ([ADR-26](adr/ADR-26-gcs-southamerica-cloudrun-useast1.md)),
 UptimeRobot ([ADR-08](adr/ADR-08-uptimerobot-monitoramento.md)), nginx como reverse
-proxy ([ADR-04](adr/ADR-04-nginx-reverse-proxy-frontend.md)).
+proxy ([ADR-04](adr/ADR-04-nginx-reverse-proxy-frontend.md)), `@Async`/`@Scheduled` internos
+e a migração do job de inatividade para o Cloud Scheduler
+([ADR-03](adr/ADR-03-async-e-scheduled-internos.md)), forgot password via Pub/Sub push
+([ADR-42](adr/ADR-42-forgot-password-via-pubsub.md)).
 
 ## 3. URLs assinadas do GCS (V4)
 
@@ -195,6 +213,26 @@ acima é só para reproduzir manualmente em caso de incidente com o pipeline.
      de usuários e só deve ficar ligado durante a calibração.
 - `SWAGGER_ENABLED` tem default `false`; defina `true` explicitamente se quiser
   expor `/api/swagger-ui.html` em algum ambiente.
+- `APP_PUBSUB_PASSWORD_RESET_TOPIC`, `APP_PUBSUB_PUSH_AUDIENCE` e
+  `APP_PUBSUB_PUSH_SERVICE_ACCOUNT` são **obrigatórios** fora do profile `local`
+  (`PubSubPasswordResetRequests` e `PubSubPushAuthenticator` falham no startup sem eles) —
+  ver [ADR-42](adr/ADR-42-forgot-password-via-pubsub.md):
+  - `APP_PUBSUB_PASSWORD_RESET_TOPIC`: o tópico no formato
+    `projects/<projeto>/topics/password-reset-requests`, para onde `POST /auth/password/forgot`
+    publica.
+  - Subscription push `password-reset-push`, associada a esse tópico: entrega para
+    `https://buruna-backend-922749062176.us-east1.run.app/api/internal/pubsub/password-reset`,
+    autenticação OIDC com a conta de serviço
+    `pubsub-push-invoker@buruna.iam.gserviceaccount.com`, ack deadline de 30 s e retenção
+    de mensagem de 1 h (consistente com a expiração do token de reset).
+  - `APP_PUBSUB_PUSH_AUDIENCE`: a audience esperada no token OIDC (normalmente a própria
+    URL do endpoint de push). `APP_PUBSUB_PUSH_SERVICE_ACCOUNT`: o e-mail da conta de
+    serviço acima — `PubSubPushAuthenticator` recusa qualquer token assinado por outra
+    conta.
+- Job do Cloud Scheduler `buruna-inactivity`: cron `0 0 2 * * *` (02:00 UTC),
+  `POST /api/admin/jobs/inactivity`, header `X-Job-Secret: <APP_JOBS_SECRET>`. Substituiu o
+  `@Scheduled` interno de `RunInactivityUseCase` — ver atualização de 2026-09-24 em
+  [ADR-03](adr/ADR-03-async-e-scheduled-internos.md).
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).

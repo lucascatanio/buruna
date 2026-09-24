@@ -55,6 +55,12 @@ Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
 - `HCAPTCHA_SECRET` tem default vazio, mas o bypass só é aceito com o profile `local`
   ativo (`CaptchaService` falha no startup fora dele). Local, deixe vazio
   para captcha desligado.
+- `APP_PUBSUB_PASSWORD_RESET_TOPIC`, `APP_PUBSUB_PUSH_AUDIENCE` e
+  `APP_PUBSUB_PUSH_SERVICE_ACCOUNT` também têm default vazio e, pelo mesmo motivo do
+  hCaptcha, só têm o bypass aceito com o profile `local` ativo: local não tem Pub/Sub, e
+  `POST /auth/password/forgot` processa o pedido na própria requisição
+  (`InlinePasswordResetRequests`, `@Profile("local")`) em vez de publicar — ver
+  [ADR-42](adr/ADR-42-forgot-password-via-pubsub.md).
 
 O profile `local` ativa `LocalStorageClient` (`LocalStorageConfig`, `@Profile("local")`),
 que exige `app.storage.local.path`. O default em `application-local.yml`
@@ -86,7 +92,7 @@ npm install && npm run dev
 ## Rodar os testes
 
 - Backend: `./mvnw clean test` (dentro de `backend/`; sobe Testcontainers/Postgres —
-  Docker precisa estar rodando). Estado atual: 289 testes verdes.
+  Docker precisa estar rodando). Estado atual: 352 testes verdes.
 - Frontend: `npm run build` (typecheck + build via `tsc -b && vite build`).
 
 Convenções de teste (pirâmide, AAA, nomenclatura): [TESTING.md](TESTING.md).
