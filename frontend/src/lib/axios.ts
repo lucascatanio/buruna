@@ -25,7 +25,10 @@ api.interceptors.response.use(
     async (error) => {
         const original = error.config;
 
-        if (error.response?.status !== 401 || original._retry) {
+        // Request anônima (login, 2FA, reset de senha) com 401 é erro de credencial, não
+        // sessão expirada: tentar refresh aqui redirecionaria para /login e a tela perderia
+        // a mensagem de erro.
+        if (error.response?.status !== 401 || original._retry || !original.headers?.Authorization) {
             return Promise.reject(error);
         }
 
