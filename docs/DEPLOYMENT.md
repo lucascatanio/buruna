@@ -63,8 +63,8 @@
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  Secret Manager (us-east1) — injeta env vars no Cloud Run no deploy:         │
 │  DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET, GCS_BUCKET_NAME,                 │
-│  RESEND_API_KEY, APP_JOBS_SECRET, APP_TRUSTED_PROXY_HOPS,                   │
-│  APP_CORS_ALLOWED_ORIGIN, …                                                 │
+│  RESEND_API_KEY, APP_JOBS_SECRET, HCAPTCHA_SECRET,                          │
+│  APP_TRUSTED_PROXY_HOPS, APP_CORS_ALLOWED_ORIGIN, …                         │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -155,6 +155,8 @@ acima é só para reproduzir manualmente em caso de incidente com o pipeline.
 - `APP_JOBS_SECRET` é **obrigatório** em produção (o backend não sobe sem ele —
   FIND-005). Sem essa variável, o job de inatividade (`/admin/jobs/inactivity`,
   `permitAll`) ficaria disparável por qualquer um.
+- `HCAPTCHA_SECRET` também é **obrigatório** fora do profile `local` (FIND-006):
+  sem ele o registro ficaria sem captcha algum.
 - `APP_TRUSTED_PROXY_HOPS` define quantos proxies confiáveis da própria infra (o
   nginx do `buruna-frontend`, e qualquer outro salto que o Cloud Run acrescente ao
   `X-Forwarded-For`) precedem o IP real do cliente. O `ClientIpResolver`

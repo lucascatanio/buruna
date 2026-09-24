@@ -48,8 +48,9 @@ Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
   `APP_MAIL_FROM`, `SWAGGER_ENABLED`, `APP_TRUSTED_PROXY_HOPS` (default `1` — quantos
   proxies confiáveis da própria infra precedem o IP do cliente no
   `X-Forwarded-For`, ver [DEPLOYMENT.md](DEPLOYMENT.md)), `PORT`.
-- `HCAPTCHA_SECRET` também tem default vazio → captcha desligado local
-  (`CaptchaService` pula a verificação quando `app.hcaptcha.secret` está vazio).
+- `HCAPTCHA_SECRET` tem default vazio, mas o bypass só é aceito com o profile `local`
+  ativo (`CaptchaService` falha no startup fora dele — FIND-006). Local, deixe vazio
+  para captcha desligado.
 
 O profile `local` ativa `LocalStorageClient` (`LocalStorageConfig`, `@Profile("local")`),
 que exige `app.storage.local.path`. O default em `application-local.yml`
