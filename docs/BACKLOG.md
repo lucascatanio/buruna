@@ -64,12 +64,6 @@ Escopo: ingress interno no backend e saída do frontend pela VPC. Atenção: o C
 precisa passar a chamar o job por um caminho permitido, e o `APP_TRUSTED_PROXY_HOPS` precisa
 ser recalibrado porque o caminho do header muda.
 
-### `POST /admin/jobs/inactivity` sem `X-Job-Secret` retorna 500
-
-O handler genérico `@ExceptionHandler(Exception.class)` do `GlobalExceptionHandler` captura a
-`MissingRequestHeaderException` antes do tratamento padrão do Spring. Deveria ser 400. Não é
-falha de segurança: sem o header o job não roda.
-
 ### Avisos de inatividade em lote
 
 Desde que o envio de e-mail passou a ser síncrono (PR #11), o job envia um aviso por usuário
@@ -119,6 +113,8 @@ máquina ou rede de desenvolvimento. Remover se não forem mais usados.
 - [x] E-mails falhando em produção (62 de 84 em 30 dias) por envio `@Async` com CPU cortada
   pelo Cloud Run. Envio síncrono e notificação de admins em lote (PR #11).
 - [x] Dependências do backend: Spring Boot 3.4.3 → 3.5.16, de 88 para 1 CVE no trivy (PR #13).
+- [x] Exceções do Spring MVC com status 4xx (rota inexistente, header ausente) viravam 500
+  no `GlobalExceptionHandler`; agora mantêm o status.
 - [x] Testes de integração nos fluxos críticos, com `@SpringBootTest` e Testcontainers, rodando
   no GitHub Actions em cada PR e push. Entregue nos Epics 0 a 6: 289 testes.
 - [x] Deploy: frontend espera o backend. `needs: deploy-backend` no job do frontend em

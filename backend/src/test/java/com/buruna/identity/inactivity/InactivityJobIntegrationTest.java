@@ -374,6 +374,12 @@ class InactivityJobIntegrationTest {
         }
 
         @Test
+        void triggerInactivity_missingSecretHeader_returns400() throws Exception {
+            mockMvc.perform(post("/admin/jobs/inactivity"))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
         void triggerInactivity_correctSecret_returns200_andRunsJob() throws Exception {
             User user = activeUser("job-trigger@inactivity.test", "jobTriggerUser", 91);
 
