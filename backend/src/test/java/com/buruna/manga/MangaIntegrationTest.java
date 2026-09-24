@@ -946,6 +946,21 @@ class MangaIntegrationTest {
         }
 
         @Test
+        void finalizeVolume_duplicateVolumeNumber_doesNotMoveObjectOutOfPending() throws Exception {
+            // se o agregado rejeitar o volume, o objeto tem que ficar em pending/ (limpo pela
+            // lifecycle rule) — movido para volumes/ ele viraria órfão permanente
+            String id = createPrivateManga("ITest FIND002 Duplicate", reader);
+            uploadVolume("/my/mangas", id, 1, reader);
+
+            String pendingObjectName = requestUploadUrl("/my/mangas", id, 2, reader);
+
+            finalizeVolume("/my/mangas", id, pendingObjectName, 1, reader)
+                    .andExpect(status().isConflict());
+
+            verify(storageClient, never()).move(eq(pendingObjectName), any());
+        }
+
+        @Test
         void deleteVolume_fileUrlSharedWithAnotherVolume_doesNotDeleteFile() throws Exception {
             // Simula dado legado (pré-ADR-40): dois volumes de mangás diferentes apontando
             // para o MESMO objeto físico, algo que só era possível quando o finalize

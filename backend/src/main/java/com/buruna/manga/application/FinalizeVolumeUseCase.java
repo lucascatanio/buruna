@@ -57,12 +57,14 @@ public class FinalizeVolumeUseCase {
 
         quotaService.assertCanFit(actorId, quotaGb, metadata.size());
 
+        // invariantes do agregado antes do move: se addVolume lançar, o objeto continua em
+        // pending/ (limpo pela lifecycle rule) em vez de virar órfão em volumes/
         String finalObjectName = pending.finalObjectName();
-        storageClient.move(request.objectName(), finalObjectName);
-
         Volume volume = manga.addVolume(
                 VolumeNumber.of(request.volumeNumber()), finalObjectName,
                 FileHash.of(metadata.md5()), metadata.size(), actorId);
+
+        storageClient.move(request.objectName(), finalObjectName);
         volumeRepository.save(volume);
 
         return mapper.toResponse(manga);
