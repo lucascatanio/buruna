@@ -19,14 +19,15 @@ Achado no [6.3], investigação read-only.
 
 ## Dívida técnica
 
-### Lifecycle rule de 24h no bucket GCS para arquivos órfãos
+### Arquivos órfãos em `volumes/` quando a deleção no GCS falha
 
-Duas fontes de órfãos hoje. A primeira é upload iniciado e nunca finalizado (signed URL usada
-sem chamar `finalize`). A segunda apareceu no Epic 5: o `DeletePrivateCollectionForUserUseCase`
-apaga as linhas do banco dentro da transação e deleta os arquivos do GCS depois, fora dela, em
-best effort (ADR-24). Se a deleção no GCS falhar, o banco não reverte e o arquivo fica.
+O `DeletePrivateCollectionForUserUseCase` (e os demais deletes de volume) apagam as linhas do
+banco dentro da transação e deletam os arquivos do GCS depois, fora dela, em best effort
+(ADR-24). Se a deleção no GCS falhar, o banco não reverte e o arquivo fica em `volumes/`.
 
-A lifecycle rule é a rede que segura essa decisão de design.
+A lifecycle rule aplicada em 2026-09-24 (`gcs-lifecycle.json`, ADR-40) só cobre `pending/`,
+os uploads que nunca chegaram ao finalize. Órfãos em `volumes/` precisam de outra rede, por
+exemplo um job que compare o bucket com a tabela `volumes`.
 
 ### Adicionar `MangaSubmissionStatus.APPROVED`
 
@@ -52,6 +53,49 @@ Escopo: rename puro, sem mudança de comportamento.
 Limitação conhecida do GCS. A URL assinada continua válida até expirar, mesmo que o acesso do
 usuário seja revogado antes disso.
 
+### Backend acessível direto pelo `run.app`
+
+O `buruna-backend` tem ingress `all` e `allUsers` como invoker, porque o nginx do frontend
+faz `proxy_pass` para a URL pública. Quem chama o `run.app` direto, sem passar pelo nginx,
+ainda influencia a entrada do `X-Forwarded-For` que o rate limit lê (`APP_TRUSTED_PROXY_HOPS`,
+ver DEPLOYMENT.md).
+
+Escopo: ingress interno no backend e saída do frontend pela VPC. Atenção: o Cloud Scheduler
+precisa passar a chamar o job por um caminho permitido, e o `APP_TRUSTED_PROXY_HOPS` precisa
+ser recalibrado porque o caminho do header muda.
+
+### `POST /admin/jobs/inactivity` sem `X-Job-Secret` retorna 500
+
+O handler genérico `@ExceptionHandler(Exception.class)` do `GlobalExceptionHandler` captura a
+`MissingRequestHeaderException` antes do tratamento padrão do Spring. Deveria ser 400. Não é
+falha de segurança: sem o header o job não roda.
+
+### Avisos de inatividade em lote
+
+Desde que o envio de e-mail passou a ser síncrono (PR #11), o job envia um aviso por usuário
+dentro da própria requisição. Com muitos inativos no mesmo dia, o job fica lento. A API de
+lote do Resend (já usada nas notificações de admin) aceita e-mails com conteúdo diferente
+por destinatário.
+
+### Overrides de versão no `pom.xml`
+
+O `pom.xml` sobrescreve versões gerenciadas pelo Spring Boot 3.5.16 (Tomcat, pgjdbc, Jackson,
+HttpComponents, commons-lang3, log4j-api) para pegar correções de CVE. Ao atualizar o Boot,
+remova cada override que ele já cobrir. Pendente: OpenTelemetry 1.49 → 1.62 (CVE média numa
+extensão não usada), deixado de fora porque só o cliente do GCS depende dele e os testes o
+mockam. Rodar `trivy fs backend/` depois de cada atualização.
+
+### `@MockBean` depreciado
+
+Os testes de integração usam `@MockBean`, depreciado desde o Spring Boot 3.4 e marcado para
+remoção. Troca mecânica por `@MockitoBean`.
+
+### Origins locais no CORS do bucket de produção
+
+O `gcs-cors.json` (espelho do bucket de produção) aceita `http://localhost` e
+`http://192.168.100.192`, que só servem para testar contra o bucket de produção a partir da
+máquina ou rede de desenvolvimento. Remover se não forem mais usados.
+
 ## Features
 
 - [ ] Trocar volumes por capítulos. Decidir entre criar tabela de capítulo vinculada ao volume,
@@ -68,6 +112,13 @@ usuário seja revogado antes disso.
 
 ## Concluído
 
+- [x] Revisão de segurança de 2026-09-23: bypass de 2FA, deleção de arquivos de outros
+  usuários, rate limit burlável, força bruta e replay de TOTP, segredos com default, captcha
+  desligado em produção, tokens em claro e em `localStorage` (PR #9, ADR-40, ADR-41).
+- [x] Lifecycle rule no bucket para uploads nunca finalizados (`pending/`, ADR-40).
+- [x] E-mails falhando em produção (62 de 84 em 30 dias) por envio `@Async` com CPU cortada
+  pelo Cloud Run. Envio síncrono e notificação de admins em lote (PR #11).
+- [x] Dependências do backend: Spring Boot 3.4.3 → 3.5.16, de 88 para 1 CVE no trivy (PR #13).
 - [x] Testes de integração nos fluxos críticos, com `@SpringBootTest` e Testcontainers, rodando
   no GitHub Actions em cada PR e push. Entregue nos Epics 0 a 6: 289 testes.
 - [x] Deploy: frontend espera o backend. `needs: deploy-backend` no job do frontend em

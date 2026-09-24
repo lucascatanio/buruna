@@ -93,8 +93,8 @@ Convenções de teste (pirâmide, AAA, nomenclatura): [TESTING.md](TESTING.md).
 
 ## Notas de dev local
 
-- E-mail é `@Async` (`EmailService`); sem `RESEND_API_KEY`, `ResendEmailSender` só loga
-  `[EMAIL SKIP]` e retorna — não bloqueia o fluxo (registro, aprovação, reset de senha).
+- E-mail sai dentro da própria requisição (`EmailService`, sem `@Async` — ver ADR-03); sem
+  `RESEND_API_KEY`, `ResendEmailSender` só loga `[EMAIL SKIP]` e retorna — não bloqueia o fluxo (registro, aprovação, reset de senha).
 - Upload de volume depende de storage: `GcsStorageClient` em prod, `LocalStorageClient`
   em `local` (arquivos servidos via `/local-storage/**`, `permitAll` só em dev). Pendência
   conhecida: smoke test local do fluxo de upload em 2 fases não foi verificado nesta sessão.

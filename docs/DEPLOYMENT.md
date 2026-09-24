@@ -18,9 +18,9 @@
 │            nginx (container Docker — imagem multi-stage)                     │
 │                                                                              │
 │  GET /*          → serve build estático do React (try_files + SPA)          │
-│  POST /api/*     → proxy_pass → buruna-backend (VPC connector)              │
+│  POST /api/*     → proxy_pass → buruna-backend (run.app público)            │
 └────────────────────────────────┬─────────────────────────────────────────────┘
-                                 │ HTTP interno via VPC connector
+                                 │ HTTPS pela URL pública do run.app (sem VPC)
                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │            Cloud Run: buruna-backend (us-east1)                              │
@@ -33,7 +33,7 @@
     ┌──────────────────────────┐   ┌────────────────────────────────────────────┐
     │  GCE e2-micro (us-east1-b│   │  GCS: buruna-files-catanio                │
     │  PostgreSQL 16 em Docker │   │  (southamerica-east1)                     │
-    │  Tabelas via Flyway      │   │  /uuid-do-volume.pdf   (PDF ofuscado)     │
+    │  Tabelas via Flyway      │   │  volumes/{mangaId}/{uuid}.pdf (ADR-40)    │
     └──────────────────────────┘   │  /uuid-da-capa.jpg     (capa ofuscada)    │
                                    │  URLs assinadas V4 (geradas pelo backend): │
                                    │    leitura de PDF:    30 min              │

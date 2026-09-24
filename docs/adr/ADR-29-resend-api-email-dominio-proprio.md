@@ -6,4 +6,4 @@
 
 **Justificativa:** O Resend tem free tier de 100 e-mails/dia (suficiente por anos no volume atual), API simples sem SDK pesado, e o setup de DNS garante que os e-mails não caiam em spam. A interface `EmailSender` existe porque agora há justificativa real para a abstração — se amanhã o Resend mudar pricing ou cair, trocar o provider é criar uma classe nova e trocar o `@Component`.
 
-**Tradeoff aceito:** Dependência de serviço externo para envio de e-mails. Se o Resend sair do ar, os e-mails ficam silenciosamente perdidos (o `@Async` não tem retry). Pro volume atual, isso é aceitável — nenhum e-mail do Burūna é crítico a ponto de exigir fila com dead letter.
+**Tradeoff aceito:** Dependência de serviço externo para envio de e-mails. Se o Resend sair do ar, os e-mails ficam silenciosamente perdidos (não há retry; o envio tem timeout de 5 s — ver a atualização do ADR-03). Pro volume atual, isso é aceitável — nenhum e-mail do Burūna é crítico a ponto de exigir fila com dead letter.
