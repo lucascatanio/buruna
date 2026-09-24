@@ -124,9 +124,10 @@ proxy ([ADR-04](adr/ADR-04-nginx-reverse-proxy-frontend.md)).
 |-------------------------------------------------------------|-----------------|---------|
 | `https://buruna.com.br`                                    | GET, PUT, HEAD | 3600s   |
 | `https://buruna-frontend-922749062176.us-east1.run.app`    | GET, PUT, HEAD | 3600s   |
+| `http://localhost`, `http://192.168.100.192` (teste local contra o bucket de prod) | GET, PUT, HEAD | 3600s   |
 
 PUT necessário para upload direto; GET/HEAD para leitura de PDF pelo browser.
-`responseHeader` inclui `x-goog-content-length-range`, que a Signed URL de upload
+`responseHeader` inclui `Range`/`Content-Range` (leitura parcial do PDF) e `x-goog-content-length-range`, que a Signed URL de upload
 assina para limitar o tamanho do PUT ([ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)).
 
 **GCS Bucket — lifecycle** (`gcs-lifecycle.json`): apaga objetos em `pending/` com

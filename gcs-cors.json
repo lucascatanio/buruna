@@ -2,10 +2,12 @@
   {
     "origin": [
       "https://buruna.com.br",
-      "https://buruna-frontend-922749062176.us-east1.run.app"
+      "https://buruna-frontend-922749062176.us-east1.run.app",
+      "http://localhost",
+      "http://192.168.100.192"
     ],
     "method": ["GET", "PUT", "HEAD"],
-    "responseHeader": ["Content-Type", "Content-Length", "Accept-Ranges", "x-goog-content-length-range"],
+    "responseHeader": ["Content-Type", "Content-Range", "Range", "Accept-Ranges", "Content-Length", "x-goog-content-length-range"],
     "maxAgeSeconds": 3600
   }
 ]
