@@ -1,5 +1,6 @@
 package com.buruna.identity;
 
+import com.buruna.identity.application.authentication.TokenHash;
 import com.buruna.identity.domain.PasswordResetToken;
 import com.buruna.identity.domain.RefreshToken;
 import com.buruna.identity.persistence.PasswordResetTokenRepository;
@@ -330,7 +331,9 @@ class IdentityIntegrationTest {
     void refresh_expiredToken_returns401() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
-        RefreshToken token = refreshTokenRepository.findByToken(r1).orElseThrow();
+        // BAIXA (hash): o banco guarda o SHA-256 do token, não o valor em claro —
+        // o lookup direto tem que hashear o mesmo jeito que TokenService faz.
+        RefreshToken token = refreshTokenRepository.findByToken(TokenHash.sha256Hex(r1)).orElseThrow();
         token.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
         refreshTokenRepository.save(token);
 
@@ -340,6 +343,19 @@ class IdentityIntegrationTest {
     @Test
     void refresh_invalidToken_returns401() throws Exception {
         assertThat(refresh("nao-existe-este-token").getResponse().getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    void refreshToken_persistedValue_differsFromReturnedValue() throws Exception {
+        // BAIXA (hash): um vazamento do banco não pode dar acesso à sessão — a coluna
+        // guarda o SHA-256 do valor que o cliente de fato recebeu, nunca o valor usável.
+        String rawRefreshToken = loginAndGetRefreshToken("active@id.test");
+
+        List<RefreshToken> stored = refreshTokenRepository.findAll();
+        assertThat(stored).hasSize(1);
+        assertThat(stored.get(0).getToken())
+                .isNotEqualTo(rawRefreshToken)
+                .isEqualTo(TokenHash.sha256Hex(rawRefreshToken));
     }
 
     @Test
@@ -707,14 +723,18 @@ class IdentityIntegrationTest {
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
-    void forgot_activeUser_returns200_andCreatesToken() throws Exception {
+    void forgot_activeUser_returns200_andCreatesHashedToken() throws Exception {
         mockMvc.perform(post("/auth/password/forgot")
                         .header("X-Forwarded-For", uniqueIp())
                         .contentType(JSON)
                         .content("{\"email\":\"active@id.test\"}"))
                 .andExpect(status().isOk());
 
-        assertThat(passwordResetTokenRepository.findAll()).hasSize(1);
+        List<PasswordResetToken> tokens = passwordResetTokenRepository.findAll();
+        assertThat(tokens).hasSize(1);
+        // BAIXA (hash): o e-mail (mockado) recebe o valor em claro; o banco só vê
+        // o SHA-256 dele (64 chars hex), nunca o token usável.
+        assertThat(tokens.get(0).getToken()).matches("[0-9a-f]{64}");
     }
 
     @Test
@@ -757,7 +777,7 @@ class IdentityIntegrationTest {
     @Test
     void resetInfo_usedToken_returns401() throws Exception {
         String token = createResetToken(activeUser);
-        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token).orElseThrow();
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(token)).orElseThrow();
         prt.setUsedAt(OffsetDateTime.now());
         passwordResetTokenRepository.save(prt);
 
@@ -768,7 +788,7 @@ class IdentityIntegrationTest {
     @Test
     void resetInfo_expiredToken_returns401() throws Exception {
         String token = createResetToken(activeUser);
-        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token).orElseThrow();
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(token)).orElseThrow();
         prt.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
         passwordResetTokenRepository.save(prt);
 
@@ -812,7 +832,7 @@ class IdentityIntegrationTest {
     @Test
     void resetPassword_expiredToken_returns401() throws Exception {
         String token = createResetToken(activeUser);
-        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token).orElseThrow();
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(token)).orElseThrow();
         prt.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
         passwordResetTokenRepository.save(prt);
 
@@ -881,13 +901,19 @@ class IdentityIntegrationTest {
         return secret;
     }
 
-    /** Cria um token de reset de senha válido para o usuário e devolve o valor bruto. */
+    /**
+     * Cria um token de reset de senha válido para o usuário e devolve o valor BRUTO
+     * (o que o usuário receberia por e-mail) — o banco guarda só o hash, espelhando
+     * {@code AccountService.forgotPassword}.
+     */
     String createResetToken(User user) {
         User persisted = userRepository.findById(user.getId()).orElseThrow();
+        String rawToken = UUID.randomUUID().toString();
         PasswordResetToken prt = new PasswordResetToken();
         prt.setUser(persisted);
-        prt.setToken(UUID.randomUUID().toString());
+        prt.setToken(TokenHash.sha256Hex(rawToken));
         prt.setExpiresAt(OffsetDateTime.now().plusHours(1));
-        return passwordResetTokenRepository.save(prt).getToken();
+        passwordResetTokenRepository.save(prt);
+        return rawToken;
     }
 }

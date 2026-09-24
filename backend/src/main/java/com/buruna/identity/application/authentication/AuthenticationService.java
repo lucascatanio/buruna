@@ -1,6 +1,5 @@
 package com.buruna.identity.application.authentication;
 
-import com.buruna.identity.domain.RefreshToken;
 import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserNotActiveException;
 import com.buruna.identity.domain.UserStatus;
@@ -99,15 +98,15 @@ public class AuthenticationService {
         userRepository.save(user);
 
         String accessToken = tokenService.generateAccessToken(user);
-        RefreshToken refreshToken = tokenService.createRefreshToken(user);
+        TokenService.IssuedRefreshToken issuedRefreshToken = tokenService.createRefreshToken(user);
 
-        return LoginResponse.authenticated(accessToken, refreshToken.getToken(), appProperties.jwt().expiration());
+        return LoginResponse.authenticated(accessToken, issuedRefreshToken.rawToken(), appProperties.jwt().expiration());
     }
 
     @Transactional
     public TokenResponse refresh(String rawRefreshToken) {
-        RefreshToken rotated = tokenService.validateAndRotateRefreshToken(rawRefreshToken);
-        User user = rotated.getUser();
+        TokenService.IssuedRefreshToken rotated = tokenService.validateAndRotateRefreshToken(rawRefreshToken);
+        User user = rotated.user();
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new UserNotActiveException("Your account is not active");
@@ -115,7 +114,7 @@ public class AuthenticationService {
 
         return new TokenResponse(
                 tokenService.generateAccessToken(user),
-                rotated.getToken(),
+                rotated.rawToken(),
                 appProperties.jwt().expiration()
         );
     }

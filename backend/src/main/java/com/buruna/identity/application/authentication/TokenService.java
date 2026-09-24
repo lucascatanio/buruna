@@ -70,16 +70,22 @@ public class TokenService {
         }
     }
 
+    /** Token de refresh em claro emitido para o chamador (cookie), nunca persistido como tal. */
+    public record IssuedRefreshToken(String rawToken, User user) {
+    }
+
     @Transactional
-    public RefreshToken createRefreshToken(User user) {
+    public IssuedRefreshToken createRefreshToken(User user) {
         refreshTokenRepository.deleteByUserId(user.getId());
 
+        String rawToken = generateSecureToken();
         RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setToken(generateSecureToken());
+        refreshToken.setToken(TokenHash.sha256Hex(rawToken));
         refreshToken.setUser(user);
         refreshToken.setExpiresAt(OffsetDateTime.now().plusSeconds(appProperties.jwt().refreshTokenExpiration()));
 
-        return refreshTokenRepository.save(refreshToken);
+        refreshTokenRepository.save(refreshToken);
+        return new IssuedRefreshToken(rawToken, user);
     }
 
     public UUID validateAccessTokenAndGetUserId(String token) {
@@ -99,8 +105,8 @@ public class TokenService {
     }
 
     @Transactional
-    public RefreshToken validateAndRotateRefreshToken(String rawToken) {
-        RefreshToken existing = refreshTokenRepository.findByToken(rawToken)
+    public IssuedRefreshToken validateAndRotateRefreshToken(String rawToken) {
+        RefreshToken existing = refreshTokenRepository.findByToken(TokenHash.sha256Hex(rawToken))
                 .orElseThrow(InvalidTokenException::new);
 
         if (existing.getExpiresAt().isBefore(OffsetDateTime.now())) {
@@ -111,17 +117,19 @@ public class TokenService {
         User user = existing.getUser();
         refreshTokenRepository.delete(existing);
 
+        String newRawToken = generateSecureToken();
         RefreshToken rotated = new RefreshToken();
-        rotated.setToken(generateSecureToken());
+        rotated.setToken(TokenHash.sha256Hex(newRawToken));
         rotated.setUser(user);
         rotated.setExpiresAt(OffsetDateTime.now().plusSeconds(appProperties.jwt().refreshTokenExpiration()));
 
-        return refreshTokenRepository.save(rotated);
+        refreshTokenRepository.save(rotated);
+        return new IssuedRefreshToken(newRawToken, user);
     }
 
     @Transactional
     public void deleteRefreshToken(String rawToken) {
-        refreshTokenRepository.findByToken(rawToken).ifPresent(refreshTokenRepository::delete);
+        refreshTokenRepository.findByToken(TokenHash.sha256Hex(rawToken)).ifPresent(refreshTokenRepository::delete);
     }
 
     @Transactional

@@ -1,6 +1,7 @@
 package com.buruna.identity.application.account;
 
 import com.buruna.identity.application.authentication.CaptchaService;
+import com.buruna.identity.application.authentication.TokenHash;
 import com.buruna.identity.application.authentication.TokenService;
 import com.buruna.identity.application.authentication.TotpService;
 import com.buruna.identity.domain.Email;
@@ -176,20 +177,21 @@ public class AccountService {
 
             passwordResetTokenRepository.deleteByUserId(user.getId());
 
+            String rawToken = generateSecureToken();
             PasswordResetToken resetToken = new PasswordResetToken();
             resetToken.setUser(user);
-            resetToken.setToken(generateSecureToken());
+            resetToken.setToken(TokenHash.sha256Hex(rawToken));
             resetToken.setExpiresAt(OffsetDateTime.now().plusHours(1));
             passwordResetTokenRepository.save(resetToken);
 
-            String resetLink = appProperties.frontendUrl() + "/reset-password?token=" + resetToken.getToken();
+            String resetLink = appProperties.frontendUrl() + "/reset-password?token=" + rawToken;
             emailService.sendPasswordResetEmail(user.getEmail(), user.getUsername(), resetLink);
         });
     }
 
     @Transactional(readOnly = true)
     public boolean isResetTokenTotpRequired(String token) {
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(token))
                 .orElseThrow(InvalidTokenException::new);
 
         if (resetToken.getUsedAt() != null || resetToken.getExpiresAt().isBefore(OffsetDateTime.now())) {
@@ -205,7 +207,7 @@ public class AccountService {
     // um código errado não consome o token nem muda a senha.
     @Transactional(noRollbackFor = BadCredentialsException.class)
     public void resetPassword(ResetPasswordRequest request) {
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.token())
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(request.token()))
                 .orElseThrow(InvalidTokenException::new);
 
         if (resetToken.getUsedAt() != null) {
