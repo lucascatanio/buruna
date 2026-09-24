@@ -18,6 +18,10 @@ public class ResendEmailSender implements EmailSender {
 
     private static final Logger log = LoggerFactory.getLogger(ResendEmailSender.class);
     private static final String RESEND_API_URL = "https://api.resend.com/emails";
+    private static final String RESEND_BATCH_URL = "https://api.resend.com/emails/batch";
+    // os e-mails saem dentro da requisição (Cloud Run corta a CPU fora dela), então o
+    // timeout de resposta limita quanto o usuário espera se o Resend travar
+    private static final Duration TIMEOUT = Duration.ofSeconds(5);
 
     private final RestTemplate restTemplate;
     private final String apiKey;
@@ -30,8 +34,9 @@ public class ResendEmailSender implements EmailSender {
                 .requestFactory(() -> {
                     HttpComponentsClientHttpRequestFactory factory =
                             new HttpComponentsClientHttpRequestFactory();
-                    factory.setConnectTimeout(Duration.ofSeconds(10));
-                    factory.setConnectionRequestTimeout(Duration.ofSeconds(10));
+                    factory.setConnectTimeout(TIMEOUT);
+                    factory.setConnectionRequestTimeout(TIMEOUT);
+                    factory.setReadTimeout(TIMEOUT);
                     return factory;
                 })
                 .build();
@@ -46,22 +51,48 @@ public class ResendEmailSender implements EmailSender {
             return;
         }
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
-
-            Map<String, Object> payload = Map.of(
-                    "from", from,
-                    "to", List.of(to),
-                    "subject", subject,
-                    "text", body
-            );
-
             restTemplate.exchange(RESEND_API_URL, HttpMethod.POST,
-                    new HttpEntity<>(payload, headers), Void.class);
+                    new HttpEntity<>(payload(to, subject, body), headers()), Void.class);
             log.info("Email sent successfully to {}", to);
         } catch (Exception e) {
             log.warn("Failed to send email to {}: {}", to, e.getMessage());
         }
+    }
+
+    @Override
+    public void sendToEach(List<String> recipients, String subject, String body) {
+        if (recipients.isEmpty()) {
+            return;
+        }
+        if (apiKey == null || apiKey.isBlank()) {
+            System.out.println("[EMAIL SKIP] RESEND_API_KEY not configured. Would send to: " + recipients + " | Subject: " + subject);
+            return;
+        }
+        try {
+            List<Map<String, Object>> batch = recipients.stream()
+                    .map(to -> payload(to, subject, body))
+                    .toList();
+            restTemplate.exchange(RESEND_BATCH_URL, HttpMethod.POST,
+                    new HttpEntity<>(batch, headers()), Void.class);
+            log.info("Email sent successfully to {}", recipients);
+        } catch (Exception e) {
+            log.warn("Failed to send email to {}: {}", recipients, e.getMessage());
+        }
+    }
+
+    private HttpHeaders headers() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(apiKey);
+        return headers;
+    }
+
+    private Map<String, Object> payload(String to, String subject, String body) {
+        return Map.of(
+                "from", from,
+                "to", List.of(to),
+                "subject", subject,
+                "text", body
+        );
     }
 }

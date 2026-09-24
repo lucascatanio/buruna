@@ -43,8 +43,8 @@ public class SubmitForApprovalUseCase {
         manga.submitForApproval();
         mangaRepository.save(manga);
 
-        listActiveAdminEmails.handle().forEach(adminEmail ->
-                emailService.sendMangaSubmissionNotification(adminEmail, actorUsername, manga.getTitle()));
+        emailService.sendMangaSubmissionNotification(
+                listActiveAdminEmails.handle(), actorUsername, manga.getTitle());
 
         return mapper.toResponse(manga);
     }
