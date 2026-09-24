@@ -35,7 +35,7 @@ de pacote (é `persistence/`), não faça entidade anêmica.
 
 Camadas, fluxos de usuário atualizados e diagrama completo:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Decisões e tradeoffs de cada escolha:
-[docs/adr/](docs/adr/) (ADR-01 a ADR-39).
+[docs/adr/](docs/adr/) (ADR-01 a ADR-41).
 
 ## Regra de dependência (guardada por ArchUnit em ArchitectureTest)
 
