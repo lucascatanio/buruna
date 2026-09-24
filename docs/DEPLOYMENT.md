@@ -48,14 +48,14 @@
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  Cloud Scheduler (us-east1) — job "buruna-inactivity"                       │
-│  Cron: "0 0 2 * * *" (02:00 UTC)                                            │
+│  Cron: "0 2 * * *" (02:00 UTC)                                              │
 │  POST /api/admin/jobs/inactivity, header: X-Job-Secret: <APP_JOBS_SECRET>   │
 └───────────────────────────────┬──────────────────────────────────────────────┘
                                 ▼
                     buruna-backend → RunInactivityUseCase (ADR-03)
 
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  Pub/Sub (us-east1) — tópico "password-reset-requests"                      │
+│  Pub/Sub (global) — tópico "password-reset-requests"                        │
 │  Publicado por buruna-backend (PubSubPublisher, REST, dentro da requisição)  │
 │  Subscription push "password-reset-push" — OIDC:                            │
 │    pubsub-push-invoker@buruna.iam.gserviceaccount.com                       │
@@ -91,7 +91,7 @@
 | Banco de dados      | GCE e2-micro + Docker (PostgreSQL 16)| us-east1-b         | Free tier permanente                |
 | Arquivos PDF/capas  | GCS `buruna-files-catanio`           | southamerica-east1 | Latência baixa para usuários BR     |
 | Jobs agendados      | Cloud Scheduler                      | us-east1           | Job `buruna-inactivity`: trigger diário de `RunInactivityUseCase` (ADR-03) |
-| Mensageria          | Pub/Sub                              | us-east1           | Tópico `password-reset-requests` + push subscription `password-reset-push` (ADR-42) |
+| Mensageria          | Pub/Sub                              | global             | Tópico `password-reset-requests` + push subscription `password-reset-push` (ADR-42) |
 | Imagens Docker      | Artifact Registry                    | us-east1           | Pipeline de CI/deploy               |
 | Secrets             | Secret Manager                       | us-east1           | Injetados no Cloud Run              |
 | CI/CD               | GitHub Actions                       | —                  | Deploy automático no push para main |
@@ -229,7 +229,7 @@ acima é só para reproduzir manualmente em caso de incidente com o pipeline.
     URL do endpoint de push). `APP_PUBSUB_PUSH_SERVICE_ACCOUNT`: o e-mail da conta de
     serviço acima — `PubSubPushAuthenticator` recusa qualquer token assinado por outra
     conta.
-- Job do Cloud Scheduler `buruna-inactivity`: cron `0 0 2 * * *` (02:00 UTC),
+- Job do Cloud Scheduler `buruna-inactivity`: cron `0 2 * * *` (02:00 UTC),
   `POST /api/admin/jobs/inactivity`, header `X-Job-Secret: <APP_JOBS_SECRET>`. Substituiu o
   `@Scheduled` interno de `RunInactivityUseCase` — ver atualização de 2026-09-24 em
   [ADR-03](adr/ADR-03-async-e-scheduled-internos.md).
