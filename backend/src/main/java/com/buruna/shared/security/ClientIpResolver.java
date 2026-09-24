@@ -2,6 +2,8 @@ package com.buruna.shared.security;
 
 import com.buruna.shared.config.AppProperties;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -10,7 +12,7 @@ import java.util.List;
 /**
  * Resolve o IP real do cliente a partir do {@code X-Forwarded-For}, contando um
  * número configurável de saltos de proxy confiável (infra própria) a partir da
- * DIREITA da lista (FIND-003).
+ * DIREITA da lista.
  *
  * <p>O cliente controla o conteúdo do header, então a primeira entrada (a mais à
  * esquerda) não é confiável — ele pode forjar qualquer valor ali para escapar de
@@ -26,6 +28,8 @@ import java.util.List;
 @Component
 public class ClientIpResolver {
 
+    private static final Logger log = LoggerFactory.getLogger(ClientIpResolver.class);
+
     private final int trustedProxyHops;
 
     public ClientIpResolver(AppProperties appProperties) {
@@ -34,6 +38,8 @@ public class ClientIpResolver {
 
     public String resolve(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
+        // ligado só durante a calibração de APP_TRUSTED_PROXY_HOPS (docs/DEPLOYMENT.md)
+        log.debug("X-Forwarded-For={} remoteAddr={}", forwarded, request.getRemoteAddr());
         if (forwarded == null || forwarded.isBlank()) {
             return request.getRemoteAddr();
         }
