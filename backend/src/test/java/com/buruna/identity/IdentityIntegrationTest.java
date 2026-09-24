@@ -6,6 +6,7 @@ import com.buruna.identity.domain.RefreshToken;
 import com.buruna.identity.persistence.PasswordResetTokenRepository;
 import com.buruna.identity.persistence.RefreshTokenRepository;
 import com.buruna.shared.notification.EmailSender;
+import com.buruna.shared.security.PubSubPushAuthenticator;
 import com.buruna.identity.domain.Email;
 import com.buruna.identity.domain.Quota;
 import com.buruna.identity.domain.Role;
@@ -21,6 +22,7 @@ import dev.samstevens.totp.code.DefaultCodeGenerator;
 import dev.samstevens.totp.secret.DefaultSecretGenerator;
 import dev.samstevens.totp.time.SystemTimeProvider;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -31,10 +33,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
@@ -43,12 +47,16 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -944,5 +952,76 @@ class IdentityIntegrationTest {
         prt.setExpiresAt(OffsetDateTime.now().plusHours(1));
         passwordResetTokenRepository.save(prt);
         return rawToken;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Push do Pub/Sub — POST /internal/pubsub/password-reset
+    //
+    //  O profile local (ativo neste teste) usa InlinePasswordResetRequests, então os
+    //  testes de /auth/password/forgot acima não passam pelo Pub/Sub. Este bloco testa
+    //  o outro lado do fluxo B3 (ADR-42) diretamente: o endpoint que a push subscription
+    //  chamaria em produção. PubSubPushAuthenticator real, sem app.pubsub.push-audience/
+    //  push-service-account configurados, recusaria todo push — por isso é mockado aqui
+    //  para simular verify() autorizando ou rejeitando.
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    class PasswordResetPush {
+
+        // @MockitoBean força um ApplicationContext próprio para esta classe aninhada,
+        // separado do da IdentityIntegrationTest externa. Um MockMvc próprio (em vez do
+        // herdado por referência ao mockMvc da instância externa, que fica preso ao
+        // contexto original sem o mock) garante que as chamadas atravessem o filter
+        // chain montado sobre o contexto com o PubSubPushAuthenticator substituído.
+        @Autowired
+        MockMvc mockMvc;
+
+        @MockitoBean
+        PubSubPushAuthenticator pubSubPushAuthenticator;
+
+        String pushEnvelope(String email) {
+            String messageJson = "{\"email\":\"%s\"}".formatted(email);
+            String data = Base64.getEncoder().encodeToString(messageJson.getBytes(StandardCharsets.UTF_8));
+            return """
+                    {"message":{"data":"%s","messageId":"m1"},"subscription":"projects/p/subscriptions/password-reset-push"}"""
+                    .formatted(data);
+        }
+
+        @Test
+        void push_verifyRejects_returns401_andCreatesNoToken() throws Exception {
+            doThrow(new BadCredentialsException("token inválido"))
+                    .when(pubSubPushAuthenticator).verify(any());
+
+            mockMvc.perform(post("/internal/pubsub/password-reset")
+                            .contentType(JSON)
+                            .content(pushEnvelope("active@id.test")))
+                    .andExpect(status().isUnauthorized());
+
+            assertThat(passwordResetTokenRepository.findAll()).isEmpty();
+        }
+
+        @Test
+        void push_validForActiveUser_returns204_andCreatesToken() throws Exception {
+            mockMvc.perform(post("/internal/pubsub/password-reset")
+                            .header("Authorization", "Bearer valido")
+                            .contentType(JSON)
+                            .content(pushEnvelope("active@id.test")))
+                    .andExpect(status().isNoContent());
+
+            List<PasswordResetToken> tokens = passwordResetTokenRepository.findAll();
+            assertThat(tokens).hasSize(1);
+            assertThat(tokens.get(0).getUser().getId()).isEqualTo(activeUser.getId());
+        }
+
+        @Test
+        void push_validForNonexistentEmail_returns204_andCreatesNoToken() throws Exception {
+            mockMvc.perform(post("/internal/pubsub/password-reset")
+                            .header("Authorization", "Bearer valido")
+                            .contentType(JSON)
+                            .content(pushEnvelope("ninguem@id.test")))
+                    .andExpect(status().isNoContent());
+
+            assertThat(passwordResetTokenRepository.findAll()).isEmpty();
+        }
     }
 }
