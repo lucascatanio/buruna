@@ -16,7 +16,7 @@ comunidade.
 
 ## Stacks
 
-Backend: Java 21, Spring Boot 3.4.3, PostgreSQL 16, Flyway, JWT + Refresh Token,
+Backend: Java 21, Spring Boot 3.5.16, PostgreSQL 16, Flyway, JWT + Refresh Token,
 BCrypt, 2FA TOTP, Google Cloud Storage, Testcontainers e ArchUnit.
 
 Frontend: React 19, TypeScript 5.9, Vite, shadcn/ui, Tailwind CSS, Axios e Zustand.
