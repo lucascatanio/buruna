@@ -82,6 +82,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(
             Exception ex, HttpServletRequest request) {
+        // Exceções do Spring MVC que já carregam um status 4xx (rota inexistente, header
+        // obrigatório ausente, método não suportado…) chegam aqui porque este handler captura
+        // Exception; sem este desvio elas viravam 500 e poluíam o log com stack trace.
+        if (ex instanceof org.springframework.web.ErrorResponse springError
+                && springError.getStatusCode().is4xxClientError()) {
+            HttpStatus status = HttpStatus.valueOf(springError.getStatusCode().value());
+            String detail = springError.getBody().getDetail();
+            return buildResponse(status, status.getReasonPhrase(),
+                    detail != null ? detail : status.getReasonPhrase(), request);
+        }
         log.error("Unhandled exception on {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno",
                 "Ocorreu um erro inesperado", request);
