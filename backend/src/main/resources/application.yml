@@ -55,6 +55,10 @@ app:
     from: ${APP_MAIL_FROM:Burūna <noreply@buruna.com.br>}
   upload:
     max-file-size-mb: ${MAX_FILE_SIZE_MB:500}
+  security:
+    # Quantos saltos de proxy confiável (infra própria) precedem a entrada do
+    # cliente no X-Forwarded-For (FIND-003). Ver docs/DEPLOYMENT.md.
+    trusted-proxy-hops: ${APP_TRUSTED_PROXY_HOPS:1}
 
 server:
   port: ${PORT:8080}

@@ -3,6 +3,7 @@ package com.buruna.identity.web;
 import com.buruna.identity.application.account.AccountService;
 import com.buruna.identity.application.authentication.AuthenticationService;
 import com.buruna.identity.domain.User;
+import com.buruna.shared.security.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -18,16 +19,19 @@ public class AuthController {
 
     private final AuthenticationService authenticationService;
     private final AccountService accountService;
+    private final ClientIpResolver clientIpResolver;
 
-    public AuthController(AuthenticationService authenticationService, AccountService accountService) {
+    public AuthController(AuthenticationService authenticationService, AccountService accountService,
+                          ClientIpResolver clientIpResolver) {
         this.authenticationService = authenticationService;
         this.accountService = accountService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping("/register")
     public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequest request,
                                          HttpServletRequest httpRequest) {
-        String clientIp = resolveClientIp(httpRequest);
+        String clientIp = clientIpResolver.resolve(httpRequest);
         accountService.register(request, clientIp);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
@@ -100,10 +104,5 @@ public class AuthController {
     public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         accountService.resetPassword(request);
         return ResponseEntity.ok().build();
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        return (forwarded != null) ? forwarded.split(",")[0].trim() : request.getRemoteAddr();
     }
 }

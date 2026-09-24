@@ -63,7 +63,8 @@
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  Secret Manager (us-east1) — injeta env vars no Cloud Run no deploy:         │
 │  DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET, GCS_BUCKET_NAME,                 │
-│  RESEND_API_KEY, APP_JOBS_SECRET, APP_CORS_ALLOWED_ORIGIN, …                │
+│  RESEND_API_KEY, APP_JOBS_SECRET, APP_TRUSTED_PROXY_HOPS,                   │
+│  APP_CORS_ALLOWED_ORIGIN, …                                                 │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -151,6 +152,14 @@ acima é só para reproduzir manualmente em caso de incidente com o pipeline.
   `roles/storage.objectAdmin`.
 - Domínio próprio configurado (DKIM/SPF/DMARC) se for usar Resend para e-mail com
   domínio customizado — ver [ADR-29](adr/ADR-29-resend-api-email-dominio-proprio.md).
+- `APP_TRUSTED_PROXY_HOPS` define quantos proxies confiáveis da própria infra (o
+  nginx do `buruna-frontend`, e qualquer outro salto que o Cloud Run acrescente ao
+  `X-Forwarded-For`) precedem o IP real do cliente. O `ClientIpResolver`
+  (`shared/security`) usa esse valor para o rate limit de login/registro/forgot não
+  ser burlável forjando o header (FIND-003) — confirme a contagem certa observando o
+  `X-Forwarded-For` recebido nos logs do backend antes de fixar o valor. Limitação
+  conhecida: uma chamada direta ao `run.app` do backend (sem passar pelo frontend)
+  ainda escolhe o valor que cai na posição lida.
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).
