@@ -1,5 +1,7 @@
+import {useEffect} from "react";
 import {BrowserRouter, Routes, Route, Navigate} from "react-router-dom";
 import {Toaster} from "@/components/ui/sonner";
+import {bootstrapAuth} from "@/lib/authBootstrap";
 import {ProtectedRoute} from "@/components/ProtectedRoute";
 import {AppLayout} from "@/components/AppLayout";
 import {AdminLayout} from "@/components/AdminLayout";
@@ -31,6 +33,10 @@ import {ResetPasswordPage} from "@/pages/ResetPasswordPage.tsx";
 import {SecuritySettingsPage} from "@/pages/SecuritySettingsPage.tsx";
 
 export default function App() {
+    useEffect(() => {
+        bootstrapAuth();
+    }, []);
+
     return (
         <BrowserRouter>
             <Routes>

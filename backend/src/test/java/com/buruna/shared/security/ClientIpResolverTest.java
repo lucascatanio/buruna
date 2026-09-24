@@ -18,7 +18,7 @@ class ClientIpResolverTest {
     private static ClientIpResolver resolverWithHops(int hops) {
         AppProperties appProperties = new AppProperties(
                 null, null, null, null, null,
-                new AppProperties.SecurityProperties(hops));
+                new AppProperties.SecurityProperties(hops), null);
         return new ClientIpResolver(appProperties);
     }
 

@@ -2,14 +2,12 @@ import {logout as logoutRequest} from "@/api/identityApi";
 import {useAuthStore} from "@/store/authStore";
 
 export async function performLogout(): Promise<void> {
-    const {refreshToken, clearAuth} = useAuthStore.getState();
-
-    if (refreshToken) {
-        try {
-            await logoutRequest(refreshToken);
-        } catch {
-        }
+    try {
+        // O cookie httpOnly buruna_refresh vai junto (withCredentials no axios) —
+        // nada para o frontend ler ou repassar (ADR-41).
+        await logoutRequest();
+    } catch {
     }
 
-    clearAuth();
+    useAuthStore.getState().clearAuth();
 }

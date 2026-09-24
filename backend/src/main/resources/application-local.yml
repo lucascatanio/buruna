@@ -10,3 +10,5 @@ app:
     local:
       path: /app/storage
       base-url: http://localhost
+  auth:
+    cookie-secure: false

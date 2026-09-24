@@ -2,11 +2,15 @@ package com.buruna.identity.web;
 
 import com.buruna.identity.application.account.AccountService;
 import com.buruna.identity.application.authentication.AuthenticationService;
+import com.buruna.identity.domain.InvalidTokenException;
 import com.buruna.identity.domain.User;
+import com.buruna.shared.config.AppProperties;
 import com.buruna.shared.security.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -17,15 +21,45 @@ import java.util.Map;
 @RequestMapping("/auth")
 public class AuthController {
 
+    /**
+     * Path restrito a /auth (SameSite=Strict): o navegador só envia o cookie em
+     * requisições de primeira parte para esses endpoints, então um token CSRF
+     * dedicado seria redundante aqui (ADR-41).
+     */
+    private static final String REFRESH_COOKIE_NAME = "buruna_refresh";
+    private static final String REFRESH_COOKIE_PATH = "/api/auth";
+
     private final AuthenticationService authenticationService;
     private final AccountService accountService;
     private final ClientIpResolver clientIpResolver;
+    private final AppProperties appProperties;
 
     public AuthController(AuthenticationService authenticationService, AccountService accountService,
-                          ClientIpResolver clientIpResolver) {
+                          ClientIpResolver clientIpResolver, AppProperties appProperties) {
         this.authenticationService = authenticationService;
         this.accountService = accountService;
         this.clientIpResolver = clientIpResolver;
+        this.appProperties = appProperties;
+    }
+
+    private ResponseCookie refreshCookie(String rawRefreshToken) {
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, rawRefreshToken)
+                .httpOnly(true)
+                .secure(appProperties.auth().cookieSecure())
+                .sameSite("Strict")
+                .path(REFRESH_COOKIE_PATH)
+                .maxAge(appProperties.jwt().refreshTokenExpiration())
+                .build();
+    }
+
+    private ResponseCookie clearedRefreshCookie() {
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(appProperties.auth().cookieSecure())
+                .sameSite("Strict")
+                .path(REFRESH_COOKIE_PATH)
+                .maxAge(0)
+                .build();
     }
 
     @PostMapping("/register")
@@ -38,18 +72,35 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authenticationService.login(request));
+        LoginResponse response = authenticationService.login(request);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+        if (response.refreshToken() != null) {
+            builder.header(HttpHeaders.SET_COOKIE, refreshCookie(response.refreshToken()).toString());
+        }
+        return builder.body(response);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
-        return ResponseEntity.ok(authenticationService.refresh(request.refreshToken()));
+    public ResponseEntity<TokenResponse> refresh(
+            @CookieValue(name = REFRESH_COOKIE_NAME, required = false) String refreshToken) {
+        if (refreshToken == null) {
+            throw new InvalidTokenException();
+        }
+        TokenResponse response = authenticationService.refresh(refreshToken);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie(response.refreshToken()).toString())
+                .body(response);
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest request) {
-        authenticationService.logout(request.refreshToken());
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = REFRESH_COOKIE_NAME, required = false) String refreshToken) {
+        if (refreshToken != null) {
+            authenticationService.logout(refreshToken);
+        }
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, clearedRefreshCookie().toString())
+                .build();
     }
 
     @DeleteMapping("/account")
@@ -85,7 +136,12 @@ public class AuthController {
 
     @PostMapping("/2fa/authenticate")
     public ResponseEntity<LoginResponse> authenticate2FA(@Valid @RequestBody TotpAuthenticateRequest request) {
-        return ResponseEntity.ok(authenticationService.authenticate2FA(request));
+        LoginResponse response = authenticationService.authenticate2FA(request);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+        if (response.refreshToken() != null) {
+            builder.header(HttpHeaders.SET_COOKIE, refreshCookie(response.refreshToken()).toString());
+        }
+        return builder.body(response);
     }
 
     @PostMapping("/password/forgot")

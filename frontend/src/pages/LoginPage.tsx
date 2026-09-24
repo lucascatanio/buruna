@@ -31,7 +31,7 @@ export function LoginPage() {
                 setRequires2FA(true);
                 setTempToken(data.tempToken!);
             } else {
-                setTokens(data.accessToken!, data.refreshToken!);
+                setTokens(data.accessToken!);
                 navigate("/");
             }
         } catch (err: any) {
@@ -46,7 +46,7 @@ export function LoginPage() {
         setLoading(true);
         try {
             const data = await authenticate2FA(tempToken, totpCode);
-            setTokens(data.accessToken!, data.refreshToken!);
+            setTokens(data.accessToken!);
             navigate("/");
         } catch (err: any) {
             toast.error(err.response?.data?.message ?? "Código inválido");

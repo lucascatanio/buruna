@@ -15,6 +15,7 @@ import com.buruna.identity.domain.Username;
 import com.buruna.identity.persistence.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import dev.samstevens.totp.code.CodeGenerator;
 import dev.samstevens.totp.code.DefaultCodeGenerator;
 import dev.samstevens.totp.secret.DefaultSecretGenerator;
@@ -88,6 +89,8 @@ class IdentityIntegrationTest {
     private static final String KNOWN_PASSWORD = "Password@123";
     private static final MediaType JSON = MediaType.APPLICATION_JSON;
     private static final AtomicInteger IP_SEQ = new AtomicInteger();
+    /** ADR-41: refresh token viaja em cookie httpOnly, nunca no corpo JSON. */
+    private static final String REFRESH_COOKIE = "buruna_refresh";
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -162,19 +165,27 @@ class IdentityIntegrationTest {
                 .andReturn();
     }
 
-    /** Faz login de um usuário ACTIVE sem 2FA e devolve o refresh token emitido. */
+    /** Faz login de um usuário ACTIVE sem 2FA e devolve o refresh token emitido (valor do cookie). */
     String loginAndGetRefreshToken(String email) throws Exception {
         MvcResult result = login(email, KNOWN_PASSWORD);
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
-        return body(result).get("refreshToken").asText();
+        return extractRefreshCookieValue(result);
     }
 
     MvcResult refresh(String refreshToken) throws Exception {
         return mockMvc.perform(post("/auth/refresh")
-                        .contentType(JSON)
-                        .content("""
-                                {"refreshToken":"%s"}""".formatted(refreshToken)))
+                        .cookie(new Cookie(REFRESH_COOKIE, refreshToken)))
                 .andReturn();
+    }
+
+    /** Extrai o valor bruto do cookie buruna_refresh de um Set-Cookie da resposta. */
+    String extractRefreshCookieValue(MvcResult result) {
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        assertThat(setCookie).as("Set-Cookie de %s", REFRESH_COOKIE).isNotNull();
+        String prefix = REFRESH_COOKIE + "=";
+        int start = setCookie.indexOf(prefix) + prefix.length();
+        int end = setCookie.indexOf(';', start);
+        return end == -1 ? setCookie.substring(start) : setCookie.substring(start, end);
     }
 
     String currentTotpCode(String secret) throws Exception {
@@ -251,12 +262,21 @@ class IdentityIntegrationTest {
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
-    void login_activeUser_returns200_withTokens() throws Exception {
+    void login_activeUser_returns200_withAccessTokenBody_andHttpOnlyRefreshCookie() throws Exception {
         MvcResult result = login("active@id.test", KNOWN_PASSWORD);
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
+
+        // ADR-41: refreshToken nunca aparece no corpo — só accessToken.
         JsonNode body = body(result);
         assertThat(body.get("accessToken").asText()).isNotBlank();
-        assertThat(body.get("refreshToken").asText()).isNotBlank();
+        assertThat(body.has("refreshToken")).isFalse();
+
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        assertThat(setCookie).isNotNull();
+        assertThat(setCookie).contains(REFRESH_COOKIE + "=");
+        assertThat(setCookie).contains("HttpOnly");
+        assertThat(setCookie).contains("SameSite=Strict");
+        assertThat(setCookie).contains("Path=/api/auth");
     }
 
     @Test
@@ -293,6 +313,8 @@ class IdentityIntegrationTest {
         assertThat(body.get("requires2FA").asBoolean()).isTrue();
         assertThat(body.get("tempToken").asText()).isNotBlank();
         assertThat(body.has("accessToken")).isFalse();
+        // Sem 2FA concluído ainda não há sessão — nenhum cookie de refresh é emitido.
+        assertThat(result.getResponse().getHeader("Set-Cookie")).isNull();
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -300,24 +322,25 @@ class IdentityIntegrationTest {
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
-    void refresh_validToken_returns200_withNewTokens() throws Exception {
+    void refresh_validToken_returns200_withNewAccessToken_andRotatedCookie() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
         MvcResult result = refresh(r1);
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         JsonNode body = body(result);
         assertThat(body.get("accessToken").asText()).isNotBlank();
-        assertThat(body.get("refreshToken").asText()).isNotBlank();
+        assertThat(body.has("refreshToken")).isFalse();
+        assertThat(extractRefreshCookieValue(result)).isNotBlank();
     }
 
     @Test
-    void refresh_rotates_oldTokenDies_newTokenWorks() throws Exception {
+    void refresh_rotates_oldCookieDies_newCookieWorks() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
         // Rotação: R1 -> R2; R1 é deletado.
         MvcResult rotated = refresh(r1);
         assertThat(rotated.getResponse().getStatus()).isEqualTo(200);
-        String r2 = body(rotated).get("refreshToken").asText();
+        String r2 = extractRefreshCookieValue(rotated);
         assertThat(r2).isNotEqualTo(r1);
 
         // Reusar R1 (antigo) deve falhar: já não existe.
@@ -331,8 +354,6 @@ class IdentityIntegrationTest {
     void refresh_expiredToken_returns401() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
-        // BAIXA (hash): o banco guarda o SHA-256 do token, não o valor em claro —
-        // o lookup direto tem que hashear o mesmo jeito que TokenService faz.
         RefreshToken token = refreshTokenRepository.findByToken(TokenHash.sha256Hex(r1)).orElseThrow();
         token.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
         refreshTokenRepository.save(token);
@@ -346,9 +367,15 @@ class IdentityIntegrationTest {
     }
 
     @Test
-    void refreshToken_persistedValue_differsFromReturnedValue() throws Exception {
-        // BAIXA (hash): um vazamento do banco não pode dar acesso à sessão — a coluna
-        // guarda o SHA-256 do valor que o cliente de fato recebeu, nunca o valor usável.
+    void refresh_withoutCookie_returns401() throws Exception {
+        mockMvc.perform(post("/auth/refresh"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refreshToken_persistedValue_differsFromCookieValue() throws Exception {
+        // BAIXA (hash): um vazamento do banco não pode dar acesso à sessão — a
+        // coluna guarda o SHA-256 do valor que o navegador de fato tem no cookie.
         String rawRefreshToken = loginAndGetRefreshToken("active@id.test");
 
         List<RefreshToken> stored = refreshTokenRepository.findAll();
@@ -408,24 +435,30 @@ class IdentityIntegrationTest {
 
     @Test
     void logout_withoutAuth_returns401() throws Exception {
-        mockMvc.perform(post("/auth/logout")
-                        .contentType(JSON)
-                        .content("{\"refreshToken\":\"qualquer\"}"))
+        mockMvc.perform(post("/auth/logout"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void logout_returns204_andInvalidatesRefreshToken() throws Exception {
+    void logout_returns204_andInvalidatesRefreshToken_andClearsCookie() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
-        mockMvc.perform(post("/auth/logout")
+        MvcResult result = mockMvc.perform(post("/auth/logout")
                         .with(auth(activeUser))
-                        .contentType(JSON)
-                        .content("""
-                                {"refreshToken":"%s"}""".formatted(r1)))
-                .andExpect(status().isNoContent());
+                        .cookie(new Cookie(REFRESH_COOKIE, r1)))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        assertThat(setCookie).contains("Max-Age=0");
 
         assertThat(refresh(r1).getResponse().getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    void logout_withoutCookie_returns204_idempotent() throws Exception {
+        mockMvc.perform(post("/auth/logout").with(auth(activeUser)))
+                .andExpect(status().isNoContent());
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -611,7 +644,7 @@ class IdentityIntegrationTest {
     }
 
     @Test
-    void twoFA_authenticate_validCode_returns200_withTokens() throws Exception {
+    void twoFA_authenticate_validCode_returns200_withAccessTokenBody_andRefreshCookie() throws Exception {
         String secret = enableTotp(activeUser);
 
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
@@ -623,7 +656,10 @@ class IdentityIntegrationTest {
                                 {"tempToken":"%s","totpCode":"%s"}""".formatted(tempToken, currentTotpCode(secret))))
                 .andExpect(status().isOk())
                 .andReturn();
-        assertThat(body(result).get("accessToken").asText()).isNotBlank();
+        JsonNode body = body(result);
+        assertThat(body.get("accessToken").asText()).isNotBlank();
+        assertThat(body.has("refreshToken")).isFalse();
+        assertThat(extractRefreshCookieValue(result)).isNotBlank();
     }
 
     @Test

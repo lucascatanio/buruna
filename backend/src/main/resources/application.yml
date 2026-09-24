@@ -63,6 +63,10 @@ app:
     # Quantos saltos de proxy confiável (infra própria) precedem a entrada do
     # cliente no X-Forwarded-For (FIND-003). Ver docs/DEPLOYMENT.md.
     trusted-proxy-hops: ${APP_TRUSTED_PROXY_HOPS:1}
+  auth:
+    # Atributo Secure do cookie httpOnly de refresh token. false só em
+    # application-local.yml (dev local roda em HTTP puro).
+    cookie-secure: ${APP_AUTH_COOKIE_SECURE:true}
 
 server:
   port: ${PORT:8080}

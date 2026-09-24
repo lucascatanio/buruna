@@ -9,7 +9,8 @@ public record AppProperties(
         String adminEmail,
         String frontendUrl,
         RateLimitProperties rateLimit,
-        SecurityProperties security
+        SecurityProperties security,
+        AuthProperties auth
 ) {
     public record JwtProperties(
             String secret,
@@ -41,6 +42,17 @@ public record AppProperties(
      */
     public record SecurityProperties(
             int trustedProxyHops
+    ) {
+    }
+
+    /**
+     * {@code cookieSecure} controla o atributo {@code Secure} do cookie
+     * {@code buruna_refresh} (ADR-41). Precisa ser {@code false} em
+     * {@code application-local.yml} porque o dev local roda em HTTP puro — um
+     * cookie {@code Secure} nunca seria enviado de volta pelo navegador nesse caso.
+     */
+    public record AuthProperties(
+            boolean cookieSecure
     ) {
     }
 }

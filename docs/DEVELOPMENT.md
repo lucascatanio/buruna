@@ -48,7 +48,10 @@ Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
   `APP_MAIL_FROM`, `SWAGGER_ENABLED` (default `false` — defina `true` local para ver o
   Swagger UI), `APP_TRUSTED_PROXY_HOPS` (default `1` — quantos
   proxies confiáveis da própria infra precedem o IP do cliente no
-  `X-Forwarded-For`, ver [DEPLOYMENT.md](DEPLOYMENT.md)), `PORT`.
+  `X-Forwarded-For`, ver [DEPLOYMENT.md](DEPLOYMENT.md)), `APP_AUTH_COOKIE_SECURE`
+  (default `true` — atributo `Secure` do cookie httpOnly de refresh token;
+  `application-local.yml` já sobrescreve para `false`, então não precisa mexer nela
+  rodando local, mesmo fora do Docker), `PORT`.
 - `HCAPTCHA_SECRET` tem default vazio, mas o bypass só é aceito com o profile `local`
   ativo (`CaptchaService` falha no startup fora dele — FIND-006). Local, deixe vazio
   para captcha desligado.
