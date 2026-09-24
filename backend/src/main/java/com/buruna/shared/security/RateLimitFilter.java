@@ -29,14 +29,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final ConcurrentHashMap<String, RateEntry> attempts = new ConcurrentHashMap<>();
     private final Map<String, Integer> limits;
+    private final ClientIpResolver clientIpResolver;
 
-    public RateLimitFilter(AppProperties appProperties) {
+    public RateLimitFilter(AppProperties appProperties, ClientIpResolver clientIpResolver) {
         this.limits = Map.of(
                 REGISTER_SUFFIX, appProperties.rateLimit().registerPerHour(),
                 LOGIN_SUFFIX, appProperties.rateLimit().loginPerHour(),
                 FEEDBACK_SUFFIX, appProperties.rateLimit().feedbackPerHour(),
                 FORGOT_PASSWORD_SUFFIX, appProperties.rateLimit().forgotPasswordPerHour()
         );
+        this.clientIpResolver = clientIpResolver;
     }
 
     @Override
@@ -65,7 +67,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        String ip = resolveClientIp(request);
+        String ip = clientIpResolver.resolve(request);
         String key = matchedSuffix + ":" + ip;
         long now = Instant.now().toEpochMilli();
 
@@ -93,11 +95,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public void evictExpiredEntries() {
         long now = Instant.now().toEpochMilli();
         attempts.entrySet().removeIf(e -> now - e.getValue().windowStart() > WINDOW_MS);
-    }
-
-    private String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        return (forwarded != null) ? forwarded.split(",")[0].trim() : request.getRemoteAddr();
     }
 
     private record RateEntry(long windowStart, AtomicInteger count) {

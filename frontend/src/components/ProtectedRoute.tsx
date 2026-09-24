@@ -8,7 +8,12 @@ interface Props {
 }
 
 export function ProtectedRoute({requiredRole}: Props) {
-    const {user, accessToken} = useAuthStore();
+    const {user, accessToken, initialized} = useAuthStore();
+
+    // Aguarda o bootstrap (troca do cookie httpOnly por accessToken) antes de decidir
+    // redirecionar — sem isso, um F5 manda todo mundo para /login antes da resposta
+    // do /auth/refresh chegar.
+    if (!initialized) return null;
 
     if (!accessToken || !user) return <Navigate to="/login" replace/>;
 

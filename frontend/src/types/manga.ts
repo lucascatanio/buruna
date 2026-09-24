@@ -78,6 +78,7 @@ export interface MangaListFilters {
 export interface VolumeUploadUrlResponse {
     uploadUrl: string;
     objectName: string;
+    requiredHeaders: Record<string, string>;
 }
 
 export interface CreatedManga {

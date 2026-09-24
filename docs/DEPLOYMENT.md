@@ -63,7 +63,8 @@
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  Secret Manager (us-east1) — injeta env vars no Cloud Run no deploy:         │
 │  DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET, GCS_BUCKET_NAME,                 │
-│  RESEND_API_KEY, APP_JOBS_SECRET, APP_CORS_ALLOWED_ORIGIN, …                │
+│  RESEND_API_KEY, APP_JOBS_SECRET, HCAPTCHA_SECRET,                          │
+│  APP_TRUSTED_PROXY_HOPS, APP_CORS_ALLOWED_ORIGIN, …                         │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -123,8 +124,25 @@ proxy ([ADR-04](adr/ADR-04-nginx-reverse-proxy-frontend.md)).
 |-------------------------------------------------------------|-----------------|---------|
 | `https://buruna.com.br`                                    | GET, PUT, HEAD | 3600s   |
 | `https://buruna-frontend-922749062176.us-east1.run.app`    | GET, PUT, HEAD | 3600s   |
+| `http://localhost`, `http://192.168.100.192` (teste local contra o bucket de prod) | GET, PUT, HEAD | 3600s   |
 
 PUT necessário para upload direto; GET/HEAD para leitura de PDF pelo browser.
+`responseHeader` inclui `Range`/`Content-Range` (leitura parcial do PDF) e `x-goog-content-length-range`, que a Signed URL de upload
+assina para limitar o tamanho do PUT ([ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)).
+
+**GCS Bucket — lifecycle** (`gcs-lifecycle.json`): apaga objetos em `pending/` com
+mais de 1 dia — uploads que nunca chegaram ao finalize ([ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)).
+O GCS aplica a regra de forma assíncrona, então a remoção pode levar até mais um dia.
+
+Aplicar ou atualizar as duas configurações (o bucket de dev usa `gcs-cors-dev.json`):
+
+```bash
+# o --lifecycle-file SUBSTITUI as regras existentes — confira antes se já há alguma
+gcloud storage buckets describe gs://<bucket> --format="default(cors_config,lifecycle_config)"
+
+gcloud storage buckets update gs://<bucket> --cors-file=gcs-cors.json
+gcloud storage buckets update gs://<bucket> --lifecycle-file=gcs-lifecycle.json
+```
 
 ## 5. Deploy manual (fallback)
 
@@ -151,6 +169,32 @@ acima é só para reproduzir manualmente em caso de incidente com o pipeline.
   `roles/storage.objectAdmin`.
 - Domínio próprio configurado (DKIM/SPF/DMARC) se for usar Resend para e-mail com
   domínio customizado — ver [ADR-29](adr/ADR-29-resend-api-email-dominio-proprio.md).
+- `APP_JOBS_SECRET` é **obrigatório** em produção (o backend não sobe sem ele).
+  Sem essa variável, o job de inatividade (`/admin/jobs/inactivity`,
+  `permitAll`) ficaria disparável por qualquer um.
+- `HCAPTCHA_SECRET` também é **obrigatório** fora do profile `local`:
+  sem ele o registro ficaria sem captcha algum.
+- `APP_TRUSTED_PROXY_HOPS` define quantos proxies confiáveis da própria infra (o
+  nginx do `buruna-frontend`, e qualquer outro salto que o Cloud Run acrescente ao
+  `X-Forwarded-For`) precedem o IP real do cliente. O `ClientIpResolver`
+  (`shared/security`) usa esse valor para o rate limit de login/registro/forgot não
+  ser burlável forjando o header. Limitação conhecida: uma chamada direta ao
+  `run.app` do backend (sem passar pelo frontend) ainda escolhe o valor que cai na
+  posição lida. Para calibrar o valor:
+  1. Ligue o log do header: variável `LOGGING_LEVEL_COM_BURUNA_SHARED_SECURITY=DEBUG`
+     no `buruna-backend` (nível de pacote: o Spring converte a variável para
+     minúsculas, então o nome da classe não funcionaria).
+  2. Descubra seu IP público (`curl -s https://ifconfig.me`) e faça uma tentativa de
+     login passando pelo frontend, com um header forjado:
+     `curl -X POST https://<frontend>/api/auth/login -H 'Content-Type: application/json' -H 'X-Forwarded-For: 6.6.6.6' -d '{"email":"calibracao@example.com","password":"x"}'`.
+  3. Nos logs do backend, procure `X-Forwarded-For=`. O `6.6.6.6` forjado fica à
+     esquerda; ache o seu IP real na lista. Com as entradas numeradas a partir de 0,
+     `APP_TRUSTED_PROXY_HOPS = total de entradas − posição do seu IP`
+     (ex.: `6.6.6.6, <seu IP>, <proxy>, <proxy>` → 4 − 1 = 3).
+  4. Defina `APP_TRUSTED_PROXY_HOPS` e remova a variável de log: o log registra IPs
+     de usuários e só deve ficar ligado durante a calibração.
+- `SWAGGER_ENABLED` tem default `false`; defina `true` explicitamente se quiser
+  expor `/api/swagger-ui.html` em algum ambiente.
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).

@@ -1,5 +1,4 @@
 import {create} from "zustand";
-import {persist} from "zustand/middleware";
 import {clearSignedUrlCache} from "@/lib/signedUrlCache";
 
 export interface AuthUser {
@@ -9,10 +8,12 @@ export interface AuthUser {
 
 interface AuthState {
     accessToken: string | null;
-    refreshToken: string | null;
     user: AuthUser | null;
-    setTokens: (accessToken: string, refreshToken: string) => void;
+    /** true depois que o bootstrap (POST /auth/refresh via cookie) resolveu, com ou sem sessão. */
+    initialized: boolean;
+    setTokens: (accessToken: string) => void;
     clearAuth: () => void;
+    setInitialized: () => void;
 }
 
 function decodeUser(token: string): AuthUser | null {
@@ -24,19 +25,17 @@ function decodeUser(token: string): AuthUser | null {
     }
 }
 
-export const useAuthStore = create<AuthState>()(
-    persist(
-        (set) => ({
-            accessToken: null,
-            refreshToken: null,
-            user: null,
-            setTokens: (accessToken, refreshToken) =>
-                set({accessToken, refreshToken, user: decodeUser(accessToken)}),
-            clearAuth: () => {
-                clearSignedUrlCache();
-                set({accessToken: null, refreshToken: null, user: null});
-            },
-        }),
-        {name: "buruna-auth"}
-    )
-);
+// ADR-41: refresh token vive só no cookie httpOnly buruna_refresh (invisível ao JS);
+// o access token fica só em memória, sem persist — um XSS não consegue mais lê-los
+// do localStorage.
+export const useAuthStore = create<AuthState>()((set) => ({
+    accessToken: null,
+    user: null,
+    initialized: false,
+    setTokens: (accessToken) => set({accessToken, user: decodeUser(accessToken)}),
+    clearAuth: () => {
+        clearSignedUrlCache();
+        set({accessToken: null, user: null});
+    },
+    setInitialized: () => set({initialized: true}),
+}));

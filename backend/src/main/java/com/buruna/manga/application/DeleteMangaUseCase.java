@@ -14,13 +14,16 @@ public class DeleteMangaUseCase {
 
     private final MangaRepository mangaRepository;
     private final StorageClient storageClient;
+    private final VolumeFileCleaner volumeFileCleaner;
     private final PublicMangaAccess access;
 
     public DeleteMangaUseCase(MangaRepository mangaRepository,
                               StorageClient storageClient,
+                              VolumeFileCleaner volumeFileCleaner,
                               PublicMangaAccess access) {
         this.mangaRepository = mangaRepository;
         this.storageClient = storageClient;
+        this.volumeFileCleaner = volumeFileCleaner;
         this.access = access;
     }
 
@@ -28,7 +31,7 @@ public class DeleteMangaUseCase {
     public void handle(UUID id, UUID actorId, boolean isAdmin) {
         Manga manga = access.findModifiable(id, actorId, isAdmin);
 
-        manga.getVolumes().forEach(v -> storageClient.delete(v.getFileUrl()));
+        manga.getVolumes().forEach(volumeFileCleaner::delete);
         if (manga.getCoverUrl() != null) {
             storageClient.delete(manga.getCoverUrl());
         }

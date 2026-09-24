@@ -1,6 +1,7 @@
 import {useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {createManga, finalizeVolumeUpload, getVolumeUploadUrl} from "@/api/mangaApi";
+import {uploadVolumeFile} from "@/api/volumeUpload";
 import type {CreatedManga, MangaRequest} from "@/types/manga";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
@@ -127,13 +128,8 @@ export function MangaUploadPage() {
         if (!createdManga || !volumeFile) return;
         setUploadingVolume(true);
         try {
-            const {uploadUrl, objectName} = await getVolumeUploadUrl(createdManga.id, parseInt(volumeNumber));
-            const uploadRes = await fetch(uploadUrl, {
-                method: "PUT",
-                headers: {"Content-Type": "application/pdf"},
-                body: volumeFile,
-            });
-            if (!uploadRes.ok) throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
+            const {uploadUrl, objectName, requiredHeaders} = await getVolumeUploadUrl(createdManga.id, parseInt(volumeNumber));
+            await uploadVolumeFile(uploadUrl, requiredHeaders, volumeFile);
             await finalizeVolumeUpload(createdManga.id, objectName, parseInt(volumeNumber));
             toast.success(`Volume ${volumeNumber} enviado!`);
             setUploadedVolumes((prev) => [...prev, Number(volumeNumber)]);

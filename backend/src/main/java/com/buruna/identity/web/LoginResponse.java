@@ -1,13 +1,18 @@
 package com.buruna.identity.web;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+/**
+ * {@code refreshToken} nunca aparece no corpo JSON (ADR-41) — a web layer o lê para
+ * montar o cookie httpOnly {@code buruna_refresh} e o descarta.
+ */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record LoginResponse(
         boolean requires2FA,
         String tempToken,
         String accessToken,
-        String refreshToken,
+        @JsonIgnore String refreshToken,
         Long expiresIn
 ) {
     public static LoginResponse requires2FA(String tempToken) {

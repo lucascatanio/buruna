@@ -28,6 +28,8 @@ public interface VolumeRepository extends JpaRepository<Volume, UUID> {
 
     boolean existsByFileHashAndMangaIsPublicTrue(String fileHash);
 
+    boolean existsByFileUrlAndIdNot(String fileUrl, UUID id);
+
     @Query("""
     SELECT v.manga.ownerId AS ownerId, SUM(v.fileSizeBytes) AS totalBytes
     FROM Volume v

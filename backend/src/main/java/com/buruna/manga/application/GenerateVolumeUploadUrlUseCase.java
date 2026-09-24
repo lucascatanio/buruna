@@ -1,6 +1,7 @@
 package com.buruna.manga.application;
 
 import com.buruna.manga.domain.DuplicateVolumeException;
+import com.buruna.manga.domain.VolumeObjectName;
 import com.buruna.manga.dto.VolumeUploadUrlResponse;
 import com.buruna.manga.persistence.VolumeRepository;
 import com.buruna.shared.storage.StorageClient;
@@ -39,9 +40,10 @@ public class GenerateVolumeUploadUrlUseCase {
             throw new DuplicateVolumeException(volumeNumber);
         }
 
-        String objectName = "volumes/" + UUID.randomUUID() + ".pdf";
-        var uploadUrl = storageClient.generateUploadSignedUrl(objectName, UPLOAD_URL_EXPIRATION);
+        String objectName = VolumeObjectName.pendingFor(mangaId);
+        var signedUpload = storageClient.generateUploadSignedUrl(objectName, UPLOAD_URL_EXPIRATION);
 
-        return new VolumeUploadUrlResponse(uploadUrl.toString(), objectName);
+        return new VolumeUploadUrlResponse(
+                signedUpload.url().toString(), objectName, signedUpload.requiredHeaders());
     }
 }

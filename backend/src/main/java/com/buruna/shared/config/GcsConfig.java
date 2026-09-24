@@ -46,7 +46,8 @@ public class GcsConfig {
     @Bean
     public StorageClient gcsStorageClient(Storage storage,
                                           @Qualifier("gcsCredentials") GoogleCredentials credentials,
-                                          @Value("${app.gcs.bucket-name}") String bucketName) {
-        return new GcsStorageClient(storage, bucketName, credentials);
+                                          @Value("${app.gcs.bucket-name}") String bucketName,
+                                          @Value("${app.upload.max-file-size-mb}") long maxFileSizeMb) {
+        return new GcsStorageClient(storage, bucketName, credentials, maxFileSizeMb * 1024 * 1024);
     }
 }

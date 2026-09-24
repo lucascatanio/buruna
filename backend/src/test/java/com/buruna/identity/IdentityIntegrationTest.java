@@ -1,5 +1,6 @@
 package com.buruna.identity;
 
+import com.buruna.identity.application.authentication.TokenHash;
 import com.buruna.identity.domain.PasswordResetToken;
 import com.buruna.identity.domain.RefreshToken;
 import com.buruna.identity.persistence.PasswordResetTokenRepository;
@@ -14,6 +15,7 @@ import com.buruna.identity.domain.Username;
 import com.buruna.identity.persistence.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import dev.samstevens.totp.code.CodeGenerator;
 import dev.samstevens.totp.code.DefaultCodeGenerator;
 import dev.samstevens.totp.secret.DefaultSecretGenerator;
@@ -87,6 +89,7 @@ class IdentityIntegrationTest {
     private static final String KNOWN_PASSWORD = "Password@123";
     private static final MediaType JSON = MediaType.APPLICATION_JSON;
     private static final AtomicInteger IP_SEQ = new AtomicInteger();
+    private static final String REFRESH_COOKIE = "buruna_refresh";
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -161,19 +164,25 @@ class IdentityIntegrationTest {
                 .andReturn();
     }
 
-    /** Faz login de um usuário ACTIVE sem 2FA e devolve o refresh token emitido. */
     String loginAndGetRefreshToken(String email) throws Exception {
         MvcResult result = login(email, KNOWN_PASSWORD);
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
-        return body(result).get("refreshToken").asText();
+        return extractRefreshCookieValue(result);
     }
 
     MvcResult refresh(String refreshToken) throws Exception {
         return mockMvc.perform(post("/auth/refresh")
-                        .contentType(JSON)
-                        .content("""
-                                {"refreshToken":"%s"}""".formatted(refreshToken)))
+                        .cookie(new Cookie(REFRESH_COOKIE, refreshToken)))
                 .andReturn();
+    }
+
+    String extractRefreshCookieValue(MvcResult result) {
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        assertThat(setCookie).as("Set-Cookie de %s", REFRESH_COOKIE).isNotNull();
+        String prefix = REFRESH_COOKIE + "=";
+        int start = setCookie.indexOf(prefix) + prefix.length();
+        int end = setCookie.indexOf(';', start);
+        return end == -1 ? setCookie.substring(start) : setCookie.substring(start, end);
     }
 
     String currentTotpCode(String secret) throws Exception {
@@ -231,17 +240,39 @@ class IdentityIntegrationTest {
         assertThat(result.getResponse().getStatus()).isEqualTo(400);
     }
 
+    @Test
+    void register_avatarWithDisallowedContentType_returns400() throws Exception {
+        // StorageUploadHelper.uploadBase64Image aceitava qualquer content-type do data URI
+        // (achado de baixa severidade): um avatar text/html seria salvo no bucket com
+        // extensão .html e servido depois com esse content-type. Só image/png|jpeg|webp
+        // são aceitos agora.
+        String json = """
+                {"email":"avatarhtml@id.test","username":"avatarHtmlUser","password":"%s","presentationMessage":"oi","captchaToken":"dummy","avatarBase64":"data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="}"""
+                .formatted(KNOWN_PASSWORD);
+        MvcResult result = register(json);
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        assertThat(userRepository.existsByEmail("avatarhtml@id.test")).isFalse();
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  Login — POST /auth/login
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
-    void login_activeUser_returns200_withTokens() throws Exception {
+    void login_activeUser_returns200_withAccessTokenBody_andHttpOnlyRefreshCookie() throws Exception {
         MvcResult result = login("active@id.test", KNOWN_PASSWORD);
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
+
         JsonNode body = body(result);
         assertThat(body.get("accessToken").asText()).isNotBlank();
-        assertThat(body.get("refreshToken").asText()).isNotBlank();
+        assertThat(body.has("refreshToken")).isFalse();
+
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        assertThat(setCookie).isNotNull();
+        assertThat(setCookie).contains(REFRESH_COOKIE + "=");
+        assertThat(setCookie).contains("HttpOnly");
+        assertThat(setCookie).contains("SameSite=Strict");
+        assertThat(setCookie).contains("Path=/api/auth");
     }
 
     @Test
@@ -278,6 +309,8 @@ class IdentityIntegrationTest {
         assertThat(body.get("requires2FA").asBoolean()).isTrue();
         assertThat(body.get("tempToken").asText()).isNotBlank();
         assertThat(body.has("accessToken")).isFalse();
+        // Sem 2FA concluído ainda não há sessão — nenhum cookie de refresh é emitido.
+        assertThat(result.getResponse().getHeader("Set-Cookie")).isNull();
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -285,24 +318,25 @@ class IdentityIntegrationTest {
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
-    void refresh_validToken_returns200_withNewTokens() throws Exception {
+    void refresh_validToken_returns200_withNewAccessToken_andRotatedCookie() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
         MvcResult result = refresh(r1);
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         JsonNode body = body(result);
         assertThat(body.get("accessToken").asText()).isNotBlank();
-        assertThat(body.get("refreshToken").asText()).isNotBlank();
+        assertThat(body.has("refreshToken")).isFalse();
+        assertThat(extractRefreshCookieValue(result)).isNotBlank();
     }
 
     @Test
-    void refresh_rotates_oldTokenDies_newTokenWorks() throws Exception {
+    void refresh_rotates_oldCookieDies_newCookieWorks() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
         // Rotação: R1 -> R2; R1 é deletado.
         MvcResult rotated = refresh(r1);
         assertThat(rotated.getResponse().getStatus()).isEqualTo(200);
-        String r2 = body(rotated).get("refreshToken").asText();
+        String r2 = extractRefreshCookieValue(rotated);
         assertThat(r2).isNotEqualTo(r1);
 
         // Reusar R1 (antigo) deve falhar: já não existe.
@@ -316,7 +350,7 @@ class IdentityIntegrationTest {
     void refresh_expiredToken_returns401() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
-        RefreshToken token = refreshTokenRepository.findByToken(r1).orElseThrow();
+        RefreshToken token = refreshTokenRepository.findByToken(TokenHash.sha256Hex(r1)).orElseThrow();
         token.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
         refreshTokenRepository.save(token);
 
@@ -326,6 +360,25 @@ class IdentityIntegrationTest {
     @Test
     void refresh_invalidToken_returns401() throws Exception {
         assertThat(refresh("nao-existe-este-token").getResponse().getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    void refresh_withoutCookie_returns401() throws Exception {
+        mockMvc.perform(post("/auth/refresh"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void refreshToken_persistedValue_differsFromCookieValue() throws Exception {
+        // Um vazamento do banco não pode dar acesso à sessão — a
+        // coluna guarda o SHA-256 do valor que o navegador de fato tem no cookie.
+        String rawRefreshToken = loginAndGetRefreshToken("active@id.test");
+
+        List<RefreshToken> stored = refreshTokenRepository.findAll();
+        assertThat(stored).hasSize(1);
+        assertThat(stored.get(0).getToken())
+                .isNotEqualTo(rawRefreshToken)
+                .isEqualTo(TokenHash.sha256Hex(rawRefreshToken));
     }
 
     @Test
@@ -348,29 +401,57 @@ class IdentityIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    //  Autorização — JwtFilter com Bearer real (sem o postprocessor `auth()`)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    void accessToken_deactivatedUser_returns401_onNextRequest() throws Exception {
+        MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
+        String accessToken = body(loginResult).get("accessToken").asText();
+
+        mockMvc.perform(get("/auth/2fa/status")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        User persisted = userRepository.findById(activeUser.getId()).orElseThrow();
+        persisted.deactivate();
+        userRepository.save(persisted);
+
+        mockMvc.perform(get("/auth/2fa/status")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     //  Logout — POST /auth/logout
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     void logout_withoutAuth_returns401() throws Exception {
-        mockMvc.perform(post("/auth/logout")
-                        .contentType(JSON)
-                        .content("{\"refreshToken\":\"qualquer\"}"))
+        mockMvc.perform(post("/auth/logout"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void logout_returns204_andInvalidatesRefreshToken() throws Exception {
+    void logout_returns204_andInvalidatesRefreshToken_andClearsCookie() throws Exception {
         String r1 = loginAndGetRefreshToken("active@id.test");
 
-        mockMvc.perform(post("/auth/logout")
+        MvcResult result = mockMvc.perform(post("/auth/logout")
                         .with(auth(activeUser))
-                        .contentType(JSON)
-                        .content("""
-                                {"refreshToken":"%s"}""".formatted(r1)))
-                .andExpect(status().isNoContent());
+                        .cookie(new Cookie(REFRESH_COOKIE, r1)))
+                .andExpect(status().isNoContent())
+                .andReturn();
+
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        assertThat(setCookie).contains("Max-Age=0");
 
         assertThat(refresh(r1).getResponse().getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    void logout_withoutCookie_returns204_idempotent() throws Exception {
+        mockMvc.perform(post("/auth/logout").with(auth(activeUser)))
+                .andExpect(status().isNoContent());
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -556,7 +637,7 @@ class IdentityIntegrationTest {
     }
 
     @Test
-    void twoFA_authenticate_validCode_returns200_withTokens() throws Exception {
+    void twoFA_authenticate_validCode_returns200_withAccessTokenBody_andRefreshCookie() throws Exception {
         String secret = enableTotp(activeUser);
 
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
@@ -568,7 +649,10 @@ class IdentityIntegrationTest {
                                 {"tempToken":"%s","totpCode":"%s"}""".formatted(tempToken, currentTotpCode(secret))))
                 .andExpect(status().isOk())
                 .andReturn();
-        assertThat(body(result).get("accessToken").asText()).isNotBlank();
+        JsonNode body = body(result);
+        assertThat(body.get("accessToken").asText()).isNotBlank();
+        assertThat(body.has("refreshToken")).isFalse();
+        assertThat(extractRefreshCookieValue(result)).isNotBlank();
     }
 
     @Test
@@ -582,6 +666,70 @@ class IdentityIntegrationTest {
                         .contentType(JSON)
                         .content("""
                                 {"tempToken":"%s","totpCode":"000000"}""".formatted(tempToken)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void twoFA_authenticate_reusingAcceptedCode_returns401() throws Exception {
+        // O tempToken continua válido por 5 minutos (não é consumido no
+        // uso), então sem controle de replay o MESMO código correto autenticaria
+        // de novo dentro da mesma janela de 30s.
+        String secret = enableTotp(activeUser);
+        MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
+        String tempToken = body(loginResult).get("tempToken").asText();
+        String code = currentTotpCode(secret);
+
+        mockMvc.perform(post("/auth/2fa/authenticate")
+                        .contentType(JSON)
+                        .content("""
+                                {"tempToken":"%s","totpCode":"%s"}""".formatted(tempToken, code)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/auth/2fa/authenticate")
+                        .contentType(JSON)
+                        .content("""
+                                {"tempToken":"%s","totpCode":"%s"}""".formatted(tempToken, code)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void twoFA_authenticate_fifthInvalidAttempt_locksAndRejectsCorrectCodeWith429() throws Exception {
+        String secret = enableTotp(activeUser);
+        MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
+        String tempToken = body(loginResult).get("tempToken").asText();
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/auth/2fa/authenticate")
+                            .contentType(JSON)
+                            .content("""
+                                    {"tempToken":"%s","totpCode":"000000"}""".formatted(tempToken)))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        // Bloqueado por 15 minutos — nem o código CORRETO passa agora.
+        mockMvc.perform(post("/auth/2fa/authenticate")
+                        .contentType(JSON)
+                        .content("""
+                                {"tempToken":"%s","totpCode":"%s"}""".formatted(tempToken, currentTotpCode(secret))))
+                .andExpect(status().isTooManyRequests());
+
+        // O contador/bloqueio foi persistido apesar do rollback padrão de
+        // BadCredentialsException (noRollbackFor).
+        User persisted = userRepository.findById(activeUser.getId()).orElseThrow();
+        assertThat(persisted.getTotpLockedUntil()).isNotNull();
+    }
+
+    @Test
+    void twoFA_tempToken_cannotBeUsedAsAccessToken_returns401() throws Exception {
+        enableTotp(activeUser);
+
+        MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
+        String tempToken = body(loginResult).get("tempToken").asText();
+
+        // O tempToken (purpose=2fa) tem que ser recusado como Bearer de
+        // um endpoint autenticado comum — senão a 2FA fica inútil.
+        mockMvc.perform(get("/auth/2fa/status")
+                        .header("Authorization", "Bearer " + tempToken))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -604,14 +752,18 @@ class IdentityIntegrationTest {
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
-    void forgot_activeUser_returns200_andCreatesToken() throws Exception {
+    void forgot_activeUser_returns200_andCreatesHashedToken() throws Exception {
         mockMvc.perform(post("/auth/password/forgot")
                         .header("X-Forwarded-For", uniqueIp())
                         .contentType(JSON)
                         .content("{\"email\":\"active@id.test\"}"))
                 .andExpect(status().isOk());
 
-        assertThat(passwordResetTokenRepository.findAll()).hasSize(1);
+        List<PasswordResetToken> tokens = passwordResetTokenRepository.findAll();
+        assertThat(tokens).hasSize(1);
+        // O e-mail (mockado) recebe o valor em claro; o banco só vê
+        // o SHA-256 dele (64 chars hex), nunca o token usável.
+        assertThat(tokens.get(0).getToken()).matches("[0-9a-f]{64}");
     }
 
     @Test
@@ -654,7 +806,7 @@ class IdentityIntegrationTest {
     @Test
     void resetInfo_usedToken_returns401() throws Exception {
         String token = createResetToken(activeUser);
-        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token).orElseThrow();
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(token)).orElseThrow();
         prt.setUsedAt(OffsetDateTime.now());
         passwordResetTokenRepository.save(prt);
 
@@ -665,7 +817,7 @@ class IdentityIntegrationTest {
     @Test
     void resetInfo_expiredToken_returns401() throws Exception {
         String token = createResetToken(activeUser);
-        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token).orElseThrow();
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(token)).orElseThrow();
         prt.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
         passwordResetTokenRepository.save(prt);
 
@@ -709,7 +861,7 @@ class IdentityIntegrationTest {
     @Test
     void resetPassword_expiredToken_returns401() throws Exception {
         String token = createResetToken(activeUser);
-        PasswordResetToken prt = passwordResetTokenRepository.findByToken(token).orElseThrow();
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(token)).orElseThrow();
         prt.setExpiresAt(OffsetDateTime.now().minusMinutes(1));
         passwordResetTokenRepository.save(prt);
 
@@ -778,13 +930,19 @@ class IdentityIntegrationTest {
         return secret;
     }
 
-    /** Cria um token de reset de senha válido para o usuário e devolve o valor bruto. */
+    /**
+     * Cria um token de reset de senha válido para o usuário e devolve o valor BRUTO
+     * (o que o usuário receberia por e-mail) — o banco guarda só o hash, espelhando
+     * {@code AccountService.forgotPassword}.
+     */
     String createResetToken(User user) {
         User persisted = userRepository.findById(user.getId()).orElseThrow();
+        String rawToken = UUID.randomUUID().toString();
         PasswordResetToken prt = new PasswordResetToken();
         prt.setUser(persisted);
-        prt.setToken(UUID.randomUUID().toString());
+        prt.setToken(TokenHash.sha256Hex(rawToken));
         prt.setExpiresAt(OffsetDateTime.now().plusHours(1));
-        return passwordResetTokenRepository.save(prt).getToken();
+        passwordResetTokenRepository.save(prt);
+        return rawToken;
     }
 }

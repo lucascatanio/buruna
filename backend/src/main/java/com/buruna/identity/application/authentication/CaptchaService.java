@@ -2,6 +2,8 @@ package com.buruna.identity.application.authentication;
 
 import com.buruna.identity.domain.InvalidCaptchaException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,13 +22,20 @@ public class CaptchaService {
     private final String secret;
     private final RestTemplate restTemplate = new RestTemplate();
 
-    public CaptchaService(@Value("${app.hcaptcha.secret:}") String secret) {
+    // Sem segredo, o captcha só pode ser pulado com o profile "local"
+    // ativo (dev). Em qualquer outro profile (inclusive produção sem a variável
+    // definida), falha no startup em vez de aceitar qualquer captcha.
+    public CaptchaService(@Value("${app.hcaptcha.secret:}") String secret, Environment environment) {
         this.secret = secret;
+        if ((secret == null || secret.isBlank()) && !environment.acceptsProfiles(Profiles.of("local"))) {
+            throw new IllegalStateException(
+                    "app.hcaptcha.secret (HCAPTCHA_SECRET) é obrigatório fora do profile 'local'");
+        }
     }
 
     public void verify(String token, String clientIp) {
         if (secret == null || secret.isBlank()) {
-            // dev: skippa captcha quando não configurado
+            // Só chega aqui com o profile "local" ativo (validado no construtor).
             return;
         }
 

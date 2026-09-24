@@ -2,7 +2,6 @@ export interface LoginResponse {
     requires2FA: boolean;
     tempToken?: string;
     accessToken?: string;
-    refreshToken?: string;
     expiresIn?: number;
 }
 

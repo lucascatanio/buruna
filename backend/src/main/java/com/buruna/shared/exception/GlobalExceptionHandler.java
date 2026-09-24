@@ -61,6 +61,7 @@ public class GlobalExceptionHandler {
             case UNAUTHORIZED -> HttpStatus.UNAUTHORIZED;
             case VALIDATION -> HttpStatus.BAD_REQUEST;
             case UNPROCESSABLE -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case RATE_LIMITED -> HttpStatus.TOO_MANY_REQUESTS;
         };
     }
 
