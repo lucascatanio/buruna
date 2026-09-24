@@ -96,7 +96,7 @@
 | **actorId** | UUID do usuário autenticado, passado como primitivo para a `application` — nunca a entidade `User` de `identity` cruza para outro contexto (ADR-35/ADR-39). |
 | **Ownership** | Regra "o recurso pertence ao actorId" verificada na `application` (não no `@PreAuthorize`, que cobre só RBAC). |
 | **RBAC na borda** | `@PreAuthorize` no controller decide **papel** (`Role`); a `application` decide **posse** (ownership) via query/`actorId`. |
-| **Exceção de domínio pura** | Estende a base sem `HttpStatus` (ADR-33); tradução para HTTP só no `GlobalExceptionHandler`. `LegacyHttpDomainException` é o padrão antigo, em remoção (Epic 6). |
+| **Exceção de domínio pura** | Estende `DomainException` com um `DomainErrorType`, sem `HttpStatus` (ADR-33); tradução para HTTP só no `GlobalExceptionHandler`. O padrão antigo (`LegacyHttpDomainException`) foi removido no Epic 6. |
 | **Domain service** | Só quando a lógica não pertence a uma entidade e precisa de I/O (ex.: `QuotaService`, `SlugAllocator` em `manga/application` — a parte pura fica no VO/policy, a parte com repositório fica na `application`). |
 
 ---

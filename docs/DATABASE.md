@@ -43,12 +43,14 @@ User ──< PasswordResetToken
 | users                 | totp_secret, totp_enabled                      | V17 — colunas para 2FA TOTP          |
 | password_reset_tokens | UNIQUE(token), INDEX(user_id), INDEX(token)    | V18 — tokens de reset de senha       |
 | mangas                | submission_status, rejection_reason, submitted_at, reviewed_by, reviewed_at | V20 — fluxo de submissão/revisão |
+| users                 | totp_last_used_step, totp_failed_attempts, totp_locked_until | V21 — força bruta e replay de TOTP |
+| refresh_tokens        | token VARCHAR(64)                              | V22 — SHA-256 hex do token, não mais o valor em claro |
 
 Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-indices-seletivos-banco.md).
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
 e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-## 3. Migrations Flyway (V1–V20)
+## 3. Migrations Flyway (V1–V22)
 
 > Verificado em `backend/src/main/resources/db/migration/` — atualize esta tabela ao
 > adicionar uma migration nova.
@@ -75,6 +77,8 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V18    | Tabela password_reset_tokens (reset de senha)                      |
 | V19    | Adicionou valor `LIVRO` ao enum manga_format                       |
 | V20    | Colunas de submissão/revisão em mangas (submission_status, rejection_reason, submitted_at, reviewed_by, reviewed_at) |
+| V21    | Colunas totp_last_used_step, totp_failed_attempts, totp_locked_until em users (força bruta e replay de TOTP) |
+| V22    | Apaga refresh_tokens e password_reset_tokens (valores em claro descartados) e encolhe refresh_tokens.token para VARCHAR(64) — os dois passam a guardar SHA-256 hex (ADR-41) |
 
 > `manga_submission_status` (V20) tem só `PENDING`/`REJECTED` — não existe `APPROVED`.
 > Assimetria de domínio conhecida, ver [`docs/BACKLOG.md`](BACKLOG.md).

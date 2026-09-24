@@ -9,6 +9,7 @@ import {
     submitForApproval,
     updateMyManga,
 } from "@/api/privateMangaApi";
+import {uploadVolumeFile} from "@/api/volumeUpload";
 import type {PrivateManga, Volume} from "@/types/manga";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
@@ -89,17 +90,9 @@ export function PrivateMangaDetailPage() {
         if (!manga || !volumeFile) return;
         setUploadingVolume(true);
         try {
-            const {uploadUrl, objectName} = await getMyVolumeUploadUrl(manga.id, parseInt(volumeNumber));
+            const {uploadUrl, objectName, requiredHeaders} = await getMyVolumeUploadUrl(manga.id, parseInt(volumeNumber));
 
-            const uploadRes = await fetch(uploadUrl, {
-                method: "PUT",
-                headers: {"Content-Type": "application/pdf"},
-                body: volumeFile,
-            });
-
-            if (!uploadRes.ok) {
-                throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
-            }
+            await uploadVolumeFile(uploadUrl, requiredHeaders, volumeFile);
 
             const data = await finalizeMyVolumeUpload(manga.id, objectName, parseInt(volumeNumber));
 

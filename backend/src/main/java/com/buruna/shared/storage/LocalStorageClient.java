@@ -15,6 +15,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.Map;
 
 public class LocalStorageClient implements StorageClient {
 
@@ -79,12 +80,26 @@ public class LocalStorageClient implements StorageClient {
     }
 
     @Override
-    public URL generateUploadSignedUrl(String objectName, Duration expiration) {
+    public SignedUpload generateUploadSignedUrl(String objectName, Duration expiration) {
         log.debug("generateUploadSignedUrl ignorou expiração (local mode). Expiration solicitado: {}", expiration);
         try {
-            return new URL(baseUrl + "/api/local-storage/upload/" + objectName);
+            // modo local não assina headers: não há GCS para impor x-goog-content-length-range.
+            return new SignedUpload(
+                    new URL(baseUrl + "/api/local-storage/upload/" + objectName), Map.of());
         } catch (IOException e) {
             throw new StorageException("Falha ao gerar upload URL local para: " + objectName, e);
+        }
+    }
+
+    @Override
+    public void move(String from, String to) {
+        Path source = resolve(from);
+        Path target = resolve(to);
+        try {
+            Files.createDirectories(target.getParent());
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new StorageException("Falha ao mover arquivo local de " + from + " para " + to, e);
         }
     }
 

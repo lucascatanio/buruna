@@ -1,7 +1,7 @@
 import axios from "axios";
 import {useAuthStore} from "@/store/authStore";
 
-const api = axios.create({baseURL: "/api"});
+const api = axios.create({baseURL: "/api", withCredentials: true});
 
 api.interceptors.request.use((config) => {
     const token = useAuthStore.getState().accessToken;
@@ -25,7 +25,10 @@ api.interceptors.response.use(
     async (error) => {
         const original = error.config;
 
-        if (error.response?.status !== 401 || original._retry) {
+        // Request anônima (login, 2FA, reset de senha) com 401 é erro de credencial, não
+        // sessão expirada: tentar refresh aqui redirecionaria para /login e a tela perderia
+        // a mensagem de erro.
+        if (error.response?.status !== 401 || original._retry || !original.headers?.Authorization) {
             return Promise.reject(error);
         }
 
@@ -41,16 +44,13 @@ api.interceptors.response.use(
         original._retry = true;
         isRefreshing = true;
 
-        const {refreshToken, setTokens, clearAuth} = useAuthStore.getState();
-
-        if (!refreshToken) {
-            clearAuth();
-            return Promise.reject(error);
-        }
+        const {setTokens, clearAuth} = useAuthStore.getState();
 
         try {
-            const {data} = await axios.post("/api/auth/refresh", {refreshToken});
-            setTokens(data.accessToken, data.refreshToken);
+            // Sem corpo: o refresh token vai só no cookie httpOnly buruna_refresh,
+            // invisível a este código (ADR-41) — withCredentials é o que o envia.
+            const {data} = await axios.post("/api/auth/refresh", undefined, {withCredentials: true});
+            setTokens(data.accessToken);
             processQueue(null, data.accessToken);
             original.headers.Authorization = `Bearer ${data.accessToken}`;
             return api(original);

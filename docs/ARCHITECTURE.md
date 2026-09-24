@@ -88,8 +88,9 @@ Fronteiras de agregado (`Manga` raiz com `Volume`, um agregado por caso público
 
 Exceções de domínio são puras (`DomainErrorType`, sem `HttpStatus`); a tradução para
 resposta HTTP acontece só no `GlobalExceptionHandler` (`shared/exception/`), retornando
-`ErrorResponse {status, error, message, path, timestamp}`. `LegacyHttpDomainException`
-é legado em remoção — não crie novos usos. Ver [ADR-33](adr/ADR-33-excecoes-dominio-sem-httpstatus.md).
+`ErrorResponse {status, error, message, path, timestamp}`. A `LegacyHttpDomainException`
+do padrão antigo já foi removida por completo no Epic 6 — nenhuma exceção carrega
+`HttpStatus` hoje. Ver [ADR-33](adr/ADR-33-excecoes-dominio-sem-httpstatus.md).
 
 ## 4. ArchUnit como guarda de arquitetura
 
@@ -104,6 +105,12 @@ falha o build (`./mvnw clean test`) se a fronteira for violada. Três regras:
    consumir `application` de outros contextos.
 3. **`persistenceLayer_shouldNotUseNativeQueries`** — detecta `@Query(nativeQuery=true)`
    nas camadas `persistence` de contextos migrados.
+
+A camada `web/` fica **deliberadamente de fora** das três regras: um controller recebe
+`identity.domain.User` via `@AuthenticationPrincipal` e extrai `user.getId()` antes de
+delegar (ex.: `engagement.web.RatingController`). Esse import cross-contexto na `web/` é
+o padrão aceito, não uma violação — o guard genérico e o de `admin` isentam a camada
+pelo mesmo motivo.
 
 O que nenhum guard cobre (JPQL referenciando entidade de outro contexto por nome de
 string) é review-only — ver a seção "Guard de arquitetura" em
@@ -172,12 +179,16 @@ Se a signed URL expirar (403 do GCS), o frontend pede uma nova via o mesmo endpo
 
 ### 6.4 Upload de volume público (duas fases)
 
-Use cases: `GeneratePublicVolumeUploadUrlUseCase` (fase 1 — gera Signed URL de PUT) e
-`FinalizePublicVolumeUseCase` (fase 3 — lê metadados do blob via `blob.getMd5()`,
-persiste `Volume`). Controller `manga.controller.VolumeController`
+Use cases: `GeneratePublicVolumeUploadUrlUseCase` (fase 1 — gera Signed URL de PUT para
+`pending/volumes/{mangaId}/{uuid}.pdf`, um caminho VINCULADO ao mangá via o Value Object
+`manga.domain.VolumeObjectName`) e `FinalizePublicVolumeUseCase` (fase 2 — valida que o
+`objectName` recebido é um pendente do PRÓPRIO mangá, lê metadados do blob via
+`blob.getMd5()`, move o objeto para `volumes/{mangaId}/{uuid}.pdf` e persiste `Volume`).
+Controller `manga.controller.VolumeController`
 (`POST /mangas/{id}/volumes/upload-url`, `POST /mangas/{id}/volumes/finalize`). O
-backend nunca toca os bytes do arquivo — ver [ADR-24](adr/ADR-24-upload-direto-gcs-signed-url.md)
-e [ADR-25](adr/ADR-25-hash-blob-getmd5-gcs.md).
+backend nunca toca os bytes do arquivo — ver [ADR-24](adr/ADR-24-upload-direto-gcs-signed-url.md),
+[ADR-25](adr/ADR-25-hash-blob-getmd5-gcs.md) e [ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)
+(objectName vinculado ao mangá + prefixo `pending/`).
 
 ### 6.5 Upload privado + submissão/promoção
 

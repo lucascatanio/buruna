@@ -11,5 +11,6 @@ public enum DomainErrorType {
     FORBIDDEN,
     UNAUTHORIZED,
     VALIDATION,
-    UNPROCESSABLE
+    UNPROCESSABLE,
+    RATE_LIMITED
 }

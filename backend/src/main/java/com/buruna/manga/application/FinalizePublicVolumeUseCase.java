@@ -5,6 +5,7 @@ import com.buruna.manga.domain.FileHash;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.domain.VolumeNumber;
+import com.buruna.manga.domain.VolumeObjectName;
 import com.buruna.manga.dto.VolumeFinalizeRequest;
 import com.buruna.manga.dto.VolumeResponse;
 import com.buruna.manga.exception.PublicVolumeOnPrivateMangaException;
@@ -19,8 +20,10 @@ import java.util.UUID;
  * Finaliza o upload (fase 2) de um volume de mangá público. Posse "dono OU ADMIN" (ADR-35);
  * mangá precisa ser público. Dedup por hash atravessa agregados (outros públicos) e fica na
  * application; dedup por número é invariante do agregado ({@code Manga.addVolume}).
+ * {@code objectName} precisa ser um pendente do PRÓPRIO mangá (ADR-40).
  *
- * <p>RISCO (ADR-24): se o finalize falhar após o upload no storage, o arquivo fica órfão.
+ * <p>RISCO residual (ADR-24, mitigado pelo ADR-40): objeto pendente órfão se o finalize
+ * falhar após o upload; lifecycle rule do bucket apaga {@code pending/} após 1 dia.
  */
 @Service
 public class FinalizePublicVolumeUseCase {
@@ -48,6 +51,7 @@ public class FinalizePublicVolumeUseCase {
             throw new PublicVolumeOnPrivateMangaException();
         }
 
+        VolumeObjectName pending = VolumeObjectName.parsePending(request.objectName(), mangaId);
         var metadata = storageClient.getFileMetadata(request.objectName());
 
         // dedup por hash atravessa agregados (outros mangás públicos): permanece na application
@@ -55,9 +59,14 @@ public class FinalizePublicVolumeUseCase {
             throw new DuplicateVolumeException();
         }
 
+        // invariantes do agregado antes do move: se addVolume lançar, o objeto continua em
+        // pending/ (limpo pela lifecycle rule) em vez de virar órfão em volumes/
+        String finalObjectName = pending.finalObjectName();
         Volume volume = manga.addVolume(
-                VolumeNumber.of(request.volumeNumber()), request.objectName(),
+                VolumeNumber.of(request.volumeNumber()), finalObjectName,
                 FileHash.of(metadata.md5()), metadata.size(), actorId);
+
+        storageClient.move(request.objectName(), finalObjectName);
 
         return volumeResponseMapper.toResponse(volumeRepository.save(volume));
     }

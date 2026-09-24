@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -19,6 +20,9 @@ import java.util.UUID;
 @Table(name = "users")
 @Getter
 public class User {
+
+    private static final int MAX_TOTP_FAILED_ATTEMPTS = 5;
+    private static final Duration TOTP_LOCK_DURATION = Duration.ofMinutes(15);
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -57,6 +61,18 @@ public class User {
 
     @Column(name = "totp_enabled", nullable = false)
     private boolean totpEnabled;
+
+    /** Último passo de tempo (janela de 30s) aceito, para rejeitar replay. */
+    @Column(name = "totp_last_used_step")
+    private Long totpLastUsedStep;
+
+    /** Tentativas de TOTP inválidas seguidas desde o último sucesso ou bloqueio. */
+    @Column(name = "totp_failed_attempts", nullable = false)
+    private int totpFailedAttempts;
+
+    /** Bloqueado para tentativas de TOTP até este instante (null = não bloqueado). */
+    @Column(name = "totp_locked_until")
+    private OffsetDateTime totpLockedUntil;
 
     @Column(name = "last_access_at")
     private OffsetDateTime lastAccessAt;
@@ -123,6 +139,10 @@ public class User {
 
     // ── Outras mutações de negócio ──────────────────────────────────────────
 
+    public boolean canAuthenticate() {
+        return status == UserStatus.ACTIVE;
+    }
+
     public void changeRole(Role newRole) {
         this.role = newRole;
     }
@@ -151,6 +171,8 @@ public class User {
             throw new IllegalStateException("2FA is already enabled");
         }
         this.totpSecret = secret;
+        this.totpLastUsedStep = null;
+        resetTotpFailures();
     }
 
     public void enableTotp() {
@@ -160,6 +182,47 @@ public class User {
     public void disableTotp() {
         this.totpEnabled = false;
         this.totpSecret = null;
+        this.totpLastUsedStep = null;
+        resetTotpFailures();
+    }
+
+    // ── 2FA (TOTP) — controle de força bruta e replay ────────────────────────
+
+    /**
+     * Lança {@link TotpLockedException} se o usuário estiver bloqueado por
+     * excesso de tentativas de TOTP inválidas. Chamado ANTES de testar o código,
+     * para que uma conta bloqueada nem gaste um teste de força bruta.
+     */
+    public void assertTotpNotLocked(OffsetDateTime now) {
+        if (totpLockedUntil != null && now.isBefore(totpLockedUntil)) {
+            throw new TotpLockedException();
+        }
+    }
+
+    /**
+     * Aceita um passo de tempo TOTP que casou com o código informado. Rejeita
+     * replay: um passo já usado (ou anterior a ele) não pode autenticar de novo,
+     * mesmo dentro da mesma janela de tolerância de 30s.
+     */
+    public void acceptTotpStep(long step) {
+        if (totpLastUsedStep != null && step <= totpLastUsedStep) {
+            throw new TotpReplayException();
+        }
+        this.totpLastUsedStep = step;
+        resetTotpFailures();
+    }
+
+    public void registerTotpFailure(OffsetDateTime now) {
+        this.totpFailedAttempts++;
+        if (totpFailedAttempts >= MAX_TOTP_FAILED_ATTEMPTS) {
+            this.totpLockedUntil = now.plus(TOTP_LOCK_DURATION);
+            this.totpFailedAttempts = 0;
+        }
+    }
+
+    private void resetTotpFailures() {
+        this.totpFailedAttempts = 0;
+        this.totpLockedUntil = null;
     }
 
     @PrePersist

@@ -8,6 +8,17 @@
 
 - Java 21, Docker (Docker Compose), Node 22+.
 
+O backend exige **Java 21** (`<java.version>21</java.version>` no `pom.xml`), e não há
+toolchain configurado: o Maven usa o `java` que estiver no `PATH`. Se o seu for outro,
+o build falha com `error: release version 21 not supported` e é preciso apontar o
+`JAVA_HOME` explicitamente:
+
+```
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk ./mvnw clean test
+```
+
+(o caminho varia por distribuição — confira com `ls /usr/lib/jvm/`.)
+
 ## Subir o Postgres
 
 ```
@@ -19,21 +30,31 @@ lidos pelo `docker compose` automaticamente).
 
 ## Rodar o backend local
 
-Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 7:
+Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
 `DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `GCS_BUCKET_NAME`,
-`GCS_CREDENTIALS_PATH`, `ADMIN_EMAIL`.
+`GCS_CREDENTIALS_PATH`, `ADMIN_EMAIL`, `APP_JOBS_SECRET`.
 
 - `GCS_BUCKET_NAME`/`GCS_CREDENTIALS_PATH` **não são usados** no profile `local`
   (`GcsConfig` é `@Profile("!local")`, o bean real de GCS não sobe) — mas precisam de
   **qualquer valor** (ex.: `dummy`) porque `AppProperties` (`@ConfigurationProperties`)
   faz bind **eager** de todo `app.*`, inclusive o que não é usado no profile ativo.
+- `APP_JOBS_SECRET` não tem mais default (`dev-secret-change-me` foi removido):
+  sem ele o `/admin/jobs/inactivity` seria disparável por qualquer um em
+  produção. Local, qualquer valor serve (ex.: `dev-secret`).
 - Demais variáveis de `application.yml` têm default e são **opcionais** para rodar
   local: `JWT_EXPIRATION`, `REFRESH_TOKEN_EXPIRATION`, `MAX_FILE_SIZE_MB`,
   `RATE_LIMIT_REGISTER_PER_HOUR`/`LOGIN_PER_HOUR`/`FEEDBACK_PER_HOUR`/`FORGOT_PASSWORD_PER_HOUR`,
-  `RESEND_API_KEY`, `APP_FRONTEND_URL`, `APP_CORS_ALLOWED_ORIGIN`, `APP_JOBS_SECRET`,
-  `APP_MAIL_FROM`, `SWAGGER_ENABLED`, `PORT`.
-- `HCAPTCHA_SECRET` também tem default vazio → captcha desligado local
-  (`CaptchaService` pula a verificação quando `app.hcaptcha.secret` está vazio).
+  `RESEND_API_KEY`, `APP_FRONTEND_URL`, `APP_CORS_ALLOWED_ORIGIN`,
+  `APP_MAIL_FROM`, `SWAGGER_ENABLED` (default `false` — defina `true` local para ver o
+  Swagger UI), `APP_TRUSTED_PROXY_HOPS` (default `1` — quantos
+  proxies confiáveis da própria infra precedem o IP do cliente no
+  `X-Forwarded-For`, ver [DEPLOYMENT.md](DEPLOYMENT.md)), `APP_AUTH_COOKIE_SECURE`
+  (default `true` — atributo `Secure` do cookie httpOnly de refresh token;
+  `application-local.yml` já sobrescreve para `false`, então não precisa mexer nela
+  rodando local, mesmo fora do Docker), `PORT`.
+- `HCAPTCHA_SECRET` tem default vazio, mas o bypass só é aceito com o profile `local`
+  ativo (`CaptchaService` falha no startup fora dele). Local, deixe vazio
+  para captcha desligado.
 
 O profile `local` ativa `LocalStorageClient` (`LocalStorageConfig`, `@Profile("local")`),
 que exige `app.storage.local.path`. O default em `application-local.yml`
@@ -48,6 +69,7 @@ JWT_SECRET=<qualquer-string-para-dev> \
 ADMIN_EMAIL=<email-do-admin-seed> \
 GCS_BUCKET_NAME=dummy \
 GCS_CREDENTIALS_PATH=dummy \
+APP_JOBS_SECRET=<qualquer-string-para-dev> \
 ./mvnw spring-boot:run \
   -Dspring-boot.run.profiles=local \
   -Dspring-boot.run.arguments=--app.storage.local.path=/tmp/buruna-storage

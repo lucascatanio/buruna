@@ -1,6 +1,7 @@
 package com.buruna.identity.application.account;
 
 import com.buruna.identity.application.authentication.CaptchaService;
+import com.buruna.identity.application.authentication.TokenHash;
 import com.buruna.identity.application.authentication.TokenService;
 import com.buruna.identity.application.authentication.TotpService;
 import com.buruna.identity.domain.Email;
@@ -137,7 +138,9 @@ public class AccountService {
         return new TotpSetupResponse(secret, qrUri);
     }
 
-    @Transactional
+    // noRollbackFor evita que o rollback padrão de BadCredentialsException
+    // desfaça o incremento do contador de falhas de TOTP no agregado.
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public void verify2FA(UUID userId, String code) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
@@ -146,15 +149,13 @@ public class AccountService {
             throw new IllegalStateException("2FA setup not started. Call /auth/2fa/setup first.");
         }
 
-        if (!totpService.verifyCode(user.getTotpSecret(), code)) {
-            throw new BadCredentialsException("Invalid TOTP code");
-        }
+        totpService.verify(user, code);
 
         user.enableTotp();
         userRepository.save(user);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public void disable2FA(UUID userId, String code) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
@@ -163,9 +164,7 @@ public class AccountService {
             throw new IllegalStateException("2FA is not enabled");
         }
 
-        if (!totpService.verifyCode(user.getTotpSecret(), code)) {
-            throw new BadCredentialsException("Invalid TOTP code");
-        }
+        totpService.verify(user, code);
 
         user.disableTotp();
         userRepository.save(user);
@@ -178,20 +177,21 @@ public class AccountService {
 
             passwordResetTokenRepository.deleteByUserId(user.getId());
 
+            String rawToken = generateSecureToken();
             PasswordResetToken resetToken = new PasswordResetToken();
             resetToken.setUser(user);
-            resetToken.setToken(generateSecureToken());
+            resetToken.setToken(TokenHash.sha256Hex(rawToken));
             resetToken.setExpiresAt(OffsetDateTime.now().plusHours(1));
             passwordResetTokenRepository.save(resetToken);
 
-            String resetLink = appProperties.frontendUrl() + "/reset-password?token=" + resetToken.getToken();
+            String resetLink = appProperties.frontendUrl() + "/reset-password?token=" + rawToken;
             emailService.sendPasswordResetEmail(user.getEmail(), user.getUsername(), resetLink);
         });
     }
 
     @Transactional(readOnly = true)
     public boolean isResetTokenTotpRequired(String token) {
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(token))
                 .orElseThrow(InvalidTokenException::new);
 
         if (resetToken.getUsedAt() != null || resetToken.getExpiresAt().isBefore(OffsetDateTime.now())) {
@@ -201,9 +201,13 @@ public class AccountService {
         return resetToken.getUser().isTotpEnabled();
     }
 
-    @Transactional
+    // noRollbackFor evita que o rollback padrão de BadCredentialsException
+    // desfaça o incremento do contador de falhas de TOTP no agregado. A verificação
+    // do TOTP acontece ANTES de marcar o token como usado ou trocar a senha, então
+    // um código errado não consome o token nem muda a senha.
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public void resetPassword(ResetPasswordRequest request) {
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.token())
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(TokenHash.sha256Hex(request.token()))
                 .orElseThrow(InvalidTokenException::new);
 
         if (resetToken.getUsedAt() != null) {
@@ -219,9 +223,7 @@ public class AccountService {
             if (request.totpCode() == null || request.totpCode().isBlank()) {
                 throw new BadCredentialsException("TOTP code is required");
             }
-            if (!totpService.verifyCode(user.getTotpSecret(), request.totpCode())) {
-                throw new BadCredentialsException("Invalid TOTP code");
-            }
+            totpService.verify(user, request.totpCode());
         }
 
         user.changePassword(passwordEncoder.encode(request.newPassword()));

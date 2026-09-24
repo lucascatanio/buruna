@@ -8,7 +8,9 @@ public record AppProperties(
         GcsProperties gcs,
         String adminEmail,
         String frontendUrl,
-        RateLimitProperties rateLimit
+        RateLimitProperties rateLimit,
+        SecurityProperties security,
+        AuthProperties auth
 ) {
     public record JwtProperties(
             String secret,
@@ -28,6 +30,16 @@ public record AppProperties(
             int loginPerHour,
             int feedbackPerHour,
             int forgotPasswordPerHour
+    ) {
+    }
+
+    public record SecurityProperties(
+            int trustedProxyHops
+    ) {
+    }
+
+    public record AuthProperties(
+            boolean cookieSecure
     ) {
     }
 }

@@ -12,15 +12,10 @@ mesmo caminho: a `InsufficientStorageQuotaException` devolvia 500 porque o
 bug. Se ainda reproduzir, o fluxo agora tem cobertura de integração em `MangaIntegrationTest`,
 o que facilita o diagnóstico.
 
-### Logout não revoga refresh token no servidor
+### UI para deletar conta
 
-`POST /auth/logout` e `DELETE /auth/account` existem e têm teste no backend, mas o botão de
-logout do frontend (`AppLayout.tsx`, `AdminLayout.tsx`) só chama `clearAuth()` local. O refresh
-token permanece válido no servidor depois do logout. Também não há UI para deletar conta.
+`DELETE /auth/account` existe e tem teste no backend, mas não há UI no frontend que o chame.
 Achado no [6.3], investigação read-only.
-
-Escopo: ligar o botão ao endpoint existente e avaliar revogação de todos os refresh tokens do
-usuário. É o item de maior prioridade do backlog, por ser segurança de sessão.
 
 ## Dívida técnica
 

@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {useParams, useNavigate} from "react-router-dom";
 import {deleteManga, finalizeVolumeUpload, getManga, getVolumeUploadUrl} from "@/api/mangaApi";
+import {uploadVolumeFile} from "@/api/volumeUpload";
 import {getBatchProgress, getVolumeUrl} from "@/api/readingApi";
 import {
     createRating,
@@ -215,17 +216,9 @@ export function MangaDetailPage() {
         if (!manga || !volumeFile) return;
         setUploading(true);
         try {
-            const {uploadUrl, objectName} = await getVolumeUploadUrl(manga.id, parseInt(volumeNumber));
+            const {uploadUrl, objectName, requiredHeaders} = await getVolumeUploadUrl(manga.id, parseInt(volumeNumber));
 
-            const uploadRes = await fetch(uploadUrl, {
-                method: "PUT",
-                headers: {"Content-Type": "application/pdf"},
-                body: volumeFile,
-            });
-
-            if (!uploadRes.ok) {
-                throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
-            }
+            await uploadVolumeFile(uploadUrl, requiredHeaders, volumeFile);
 
             const data = await finalizeVolumeUpload(manga.id, objectName, parseInt(volumeNumber));
 

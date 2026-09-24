@@ -17,6 +17,8 @@ app:
     bucket-name: test-bucket
     credentials-path: ""
   admin-email: admin@test.local
+  jobs:
+    secret: test-jobs-secret
   storage:
     local:
       path: ${java.io.tmpdir}/buruna-test-storage
