@@ -16,7 +16,7 @@ comunidade.
 
 ## Stacks
 
-Backend: Java 21, Spring Boot 3.4.3, PostgreSQL 16, Flyway, JWT + Refresh Token,
+Backend: Java 21, Spring Boot 3.5.16, PostgreSQL 16, Flyway, JWT + Refresh Token,
 BCrypt, 2FA TOTP, Google Cloud Storage, Testcontainers e ArchUnit.
 
 Frontend: React 19, TypeScript 5.9, Vite, shadcn/ui, Tailwind CSS, Axios e Zustand.
@@ -35,7 +35,7 @@ de pacote (é `persistence/`), não faça entidade anêmica.
 
 Camadas, fluxos de usuário atualizados e diagrama completo:
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Decisões e tradeoffs de cada escolha:
-[docs/adr/](docs/adr/) (ADR-01 a ADR-39).
+[docs/adr/](docs/adr/) (ADR-01 a ADR-41).
 
 ## Regra de dependência (guardada por ArchUnit em ArchitectureTest)
 

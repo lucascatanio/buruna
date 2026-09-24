@@ -138,7 +138,7 @@ VISITANTE               BROWSER                    BACKEND (identity)           
    │                      │── POST /auth/register ──────►│                            │
    │                      │                              │ rate limit (5/h) + hCaptcha│
    │                      │                              │ User{PENDING} + BCrypt     │
-   │                      │                              │──── e-mail (@Async) ──────►│
+   │                      │                              │─── e-mail admins (lote) ──►│
    │                      │◄── 201 Created ──────────────│                            │
    │                      │                              │◄── GET /admin/users/pending│
    │                      │                              │─── lista pendentes ───────►│
