@@ -6,6 +6,7 @@ import com.buruna.manga.domain.MangaStatusOrigin;
 import com.buruna.manga.domain.MangaStatusSite;
 import com.buruna.manga.domain.Tag;
 import com.buruna.manga.domain.TagCategory;
+import com.buruna.manga.domain.Volume;
 import com.buruna.manga.persistence.TagCategoryRepository;
 import com.buruna.manga.persistence.TagRepository;
 import com.buruna.manga.persistence.MangaRepository;
@@ -49,6 +50,8 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -109,10 +112,13 @@ class MangaIntegrationTest {
     @BeforeEach
     void setUp() {
         when(storageClient.generateSignedUrl(anyString(), any(Duration.class))).thenReturn(FAKE_URL);
-        when(storageClient.generateUploadSignedUrl(anyString(), any(Duration.class))).thenReturn(FAKE_URL);
-        // por padrão cada objectName tem um hash único e tamanho pequeno (1 KB)
+        when(storageClient.generateUploadSignedUrl(anyString(), any(Duration.class)))
+                .thenReturn(new StorageClient.SignedUpload(FAKE_URL, java.util.Map.of()));
+        // por padrão cada objectName tem um hash único e tamanho pequeno (1 KB). O hash é
+        // derivado do objectName (não copiado dele): objectName pendente agora carrega o
+        // mangaId no caminho (ADR-40) e passaria de 64 chars, o limite da coluna file_hash.
         when(storageClient.getFileMetadata(anyString()))
-                .thenAnswer(inv -> new StorageClient.FileMetadata("md5-" + inv.getArgument(0), 1024L));
+                .thenAnswer(inv -> new StorageClient.FileMetadata(fakeMd5(inv.getArgument(0)), 1024L));
 
         // limpa apenas os dados de churn; mantém os seeds de tags (V12/V13)
         volumeRepository.deleteAllInBatch();
@@ -145,6 +151,11 @@ class MangaIntegrationTest {
     }
 
     static String json(String s) { return s; }
+
+    /** Hash falso e curto (coluna file_hash é VARCHAR(64)) derivado — não copiado — do objectName. */
+    static String fakeMd5(String objectName) {
+        return "md5-" + Integer.toHexString(objectName.hashCode());
+    }
 
     String createPublicManga(String title, User owner, UUID... tagIds) throws Exception {
         StringBuilder tags = new StringBuilder();
@@ -652,12 +663,12 @@ class MangaIntegrationTest {
         @Test
         void finalize_duplicateFileHash_returns409() throws Exception {
             String id = createPublicManga("ITest Vol DupHash", collab);
-            String obj1 = uploadVolume("/mangas", id, 1, collab); // hash = md5-obj1
+            String obj1 = uploadVolume("/mangas", id, 1, collab); // hash = fakeMd5(obj1)
 
             String obj2 = requestUploadUrl("/mangas", id, 2, collab);
             // força o mesmo hash do volume 1
             when(storageClient.getFileMetadata(eq(obj2)))
-                    .thenReturn(new StorageClient.FileMetadata("md5-" + obj1, 1024L));
+                    .thenReturn(new StorageClient.FileMetadata(fakeMd5(obj1), 1024L));
 
             finalizeVolume("/mangas", id, obj2, 2, collab)
                     .andExpect(status().isConflict());
@@ -875,6 +886,94 @@ class MangaIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
+    //  4.5. FIND-002 — objectName vinculado ao mangá (ADR-40)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Vetor do FIND-002: o finalize aceitava qualquer objectName vindo do cliente. Um
+     * objectName de volume PÚBLICO (visível na URL assinada de {@code /reader/{id}/url})
+     * podia ser reaproveitado para "finalizar" um volume em um mangá PRIVADO qualquer —
+     * apagar esse volume forjado apagava o arquivo público real junto. VolumeObjectName
+     * (ADR-40) fecha isso: o objectName tem que ser um pendente do PRÓPRIO mangá.
+     */
+    @Nested
+    class VolumeObjectNameSecurity {
+
+        @Test
+        void finalizeVolume_pendingObjectNameFromAnotherManga_returns400() throws Exception {
+            String idA = createPrivateManga("ITest FIND002 Manga A", reader);
+            String idB = createPrivateManga("ITest FIND002 Manga B", reader);
+
+            String objectNameForA = requestUploadUrl("/my/mangas", idA, 1, reader);
+
+            finalizeVolume("/my/mangas", idB, objectNameForA, 1, reader)
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void finalizeVolume_alreadyFinalizedObjectNameLeakedFromPublicVolume_returns400() throws Exception {
+            // objectName finalizado ("volumes/...") de um volume PÚBLICO, do jeito que
+            // vaza pela URL assinada de leitura — reaproveitado para finalizar um volume
+            // num mangá PRIVADO qualquer.
+            String publicId = createPublicManga("ITest FIND002 Public", collab);
+            uploadVolume("/mangas", publicId, 1, collab);
+            String leakedObjectName =
+                    volumeRepository.findByMangaId(UUID.fromString(publicId)).get(0).getFileUrl();
+
+            String privateId = createPrivateManga("ITest FIND002 Private", reader);
+
+            finalizeVolume("/my/mangas", privateId, leakedObjectName, 1, reader)
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void uploadAndFinalize_movesObjectFromPendingPrefixToFinalVolumesPrefix() throws Exception {
+            String id = createPrivateManga("ITest FIND002 HappyPath", reader);
+
+            String pendingObjectName = requestUploadUrl("/my/mangas", id, 1, reader);
+            org.assertj.core.api.Assertions.assertThat(pendingObjectName)
+                    .matches("^pending/volumes/" + id + "/[0-9a-fA-F-]{36}\\.pdf$");
+
+            finalizeVolume("/my/mangas", id, pendingObjectName, 1, reader)
+                    .andExpect(status().isCreated());
+
+            String storedFileUrl =
+                    volumeRepository.findByMangaId(UUID.fromString(id)).get(0).getFileUrl();
+            org.assertj.core.api.Assertions.assertThat(storedFileUrl)
+                    .matches("^volumes/" + id + "/[0-9a-fA-F-]{36}\\.pdf$");
+
+            verify(storageClient).move(eq(pendingObjectName), eq(storedFileUrl));
+        }
+
+        @Test
+        void deleteVolume_fileUrlSharedWithAnotherVolume_doesNotDeleteFile() throws Exception {
+            // Simula dado legado (pré-ADR-40): dois volumes de mangás diferentes apontando
+            // para o MESMO objeto físico, algo que só era possível quando o finalize
+            // aceitava qualquer objectName do cliente.
+            String sharedObjectName = "volumes/legacy-shared-" + UUID.randomUUID() + ".pdf";
+
+            String idA = createPrivateManga("ITest FIND002 Shared A", reader);
+            String idB = createPrivateManga("ITest FIND002 Shared B", reader);
+
+            // manga.addVolume() exige a coleção volumes carregada (sessão do Hibernate aberta);
+            // como os mangás aqui vêm de um findById fora de transação, o Volume é construído
+            // e salvo direto — mesmo resultado no banco, sem depender de proxy lazy.
+            Manga mangaA = mangaRepository.findById(UUID.fromString(idA)).orElseThrow();
+            volumeRepository.save(new Volume(mangaA, 1, sharedObjectName, "hash-shared-a", 1024L, reader.getId()));
+
+            Manga mangaB = mangaRepository.findById(UUID.fromString(idB)).orElseThrow();
+            volumeRepository.save(new Volume(mangaB, 1, sharedObjectName, "hash-shared-b", 1024L, reader.getId()));
+
+            UUID volIdA = volumeRepository.findByMangaId(UUID.fromString(idA)).get(0).getId();
+
+            mockMvc.perform(delete("/my/mangas/{id}/volumes/{vid}", idA, volIdA).with(auth(reader)))
+                    .andExpect(status().isOk());
+
+            verify(storageClient, never()).delete(eq(sharedObjectName));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
     //  5. Promote  (test-phase5.sh §7)
     // ══════════════════════════════════════════════════════════════════════════
 
@@ -918,13 +1017,13 @@ class MangaIntegrationTest {
         void promote_volumeHashAlreadyPublic_returns409() throws Exception {
             // mangá público com volume de hash conhecido
             String publicId = createPublicManga("ITest Hash Public", collab);
-            String publicObj = uploadVolume("/mangas", publicId, 1, collab); // hash = md5-publicObj
+            String publicObj = uploadVolume("/mangas", publicId, 1, collab); // hash = fakeMd5(publicObj)
 
             // mangá privado cujo volume tem o MESMO hash
             String privateId = createPrivateManga("ITest Hash Private", collab);
             String privObj = requestUploadUrl("/my/mangas", privateId, 1, collab);
             when(storageClient.getFileMetadata(eq(privObj)))
-                    .thenReturn(new StorageClient.FileMetadata("md5-" + publicObj, 1024L));
+                    .thenReturn(new StorageClient.FileMetadata(fakeMd5(publicObj), 1024L));
             finalizeVolume("/my/mangas", privateId, privObj, 1, collab).andExpect(status().isCreated());
 
             mockMvc.perform(post("/my/mangas/{id}/promote", privateId).with(auth(collab)))

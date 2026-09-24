@@ -28,6 +28,14 @@ public interface VolumeRepository extends JpaRepository<Volume, UUID> {
 
     boolean existsByFileHashAndMangaIsPublicTrue(String fileHash);
 
+    /**
+     * Defesa para dados legados (FIND-002): antes de apagar um arquivo de volume,
+     * confirma que nenhum OUTRO volume ainda referencia o mesmo file_url. Antes da
+     * validação de {@code VolumeObjectName} (ADR-40), o finalize aceitava qualquer
+     * objectName do cliente, permitindo dois volumes apontando para o mesmo objeto.
+     */
+    boolean existsByFileUrlAndIdNot(String fileUrl, UUID id);
+
     @Query("""
     SELECT v.manga.ownerId AS ownerId, SUM(v.fileSizeBytes) AS totalBytes
     FROM Volume v

@@ -4,6 +4,7 @@ import com.buruna.manga.domain.FileHash;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.domain.VolumeNumber;
+import com.buruna.manga.domain.VolumeObjectName;
 import com.buruna.manga.dto.PrivateMangaResponse;
 import com.buruna.manga.dto.VolumeFinalizeRequest;
 import com.buruna.manga.persistence.VolumeRepository;
@@ -15,12 +16,15 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Finaliza o upload de um volume (fase 2): lê o metadado do objeto no storage, valida a
- * cota e adiciona o volume ao agregado. O limite de cota ({@code quotaGb}) chega como
+ * Finaliza o upload de um volume (fase 2): valida que o {@code objectName} é um
+ * pendente do PRÓPRIO mangá (ADR-40, fecha o FIND-002), lê o metadado do objeto no
+ * storage, valida a cota, move o objeto de {@code pending/} para o nome definitivo e
+ * adiciona o volume ao agregado. O limite de cota ({@code quotaGb}) chega como
  * primitivo da borda (ADR-35).
  *
- * <p>RISCO (ADR-24): se o finalize falhar após o upload no storage, o arquivo fica órfão
- * no bucket. Mitigação futura: lifecycle rule de 24h para objetos sem registro no banco.
+ * <p>RISCO residual (ADR-24, mitigado pelo ADR-40): se o finalize falhar após o upload
+ * no storage, o objeto pendente fica órfão em {@code pending/}. A lifecycle rule do
+ * bucket (passo manual, ADR-40) apaga esse prefixo após 1 dia.
  */
 @Service
 public class FinalizeVolumeUseCase {
@@ -48,12 +52,16 @@ public class FinalizeVolumeUseCase {
                                        UUID actorId, BigDecimal quotaGb) {
         Manga manga = access.findOwned(mangaId, actorId);
 
+        VolumeObjectName pending = VolumeObjectName.parsePending(request.objectName(), mangaId);
         var metadata = storageClient.getFileMetadata(request.objectName());
 
         quotaService.assertCanFit(actorId, quotaGb, metadata.size());
 
+        String finalObjectName = pending.finalObjectName();
+        storageClient.move(request.objectName(), finalObjectName);
+
         Volume volume = manga.addVolume(
-                VolumeNumber.of(request.volumeNumber()), request.objectName(),
+                VolumeNumber.of(request.volumeNumber()), finalObjectName,
                 FileHash.of(metadata.md5()), metadata.size(), actorId);
         volumeRepository.save(volume);
 

@@ -3,10 +3,18 @@ package com.buruna.shared.storage;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.Duration;
+import java.util.Map;
 
 public interface StorageClient {
 
     record FileMetadata(String md5, long size) {}
+
+    /**
+     * URL assinada de upload e os headers que o cliente PUT precisa enviar para a
+     * assinatura bater (FIND-007) — ex.: {@code x-goog-content-length-range} no GCS,
+     * limitando o tamanho aceito pelo PUT sem o backend tocar o arquivo.
+     */
+    record SignedUpload(URL url, Map<String, String> requiredHeaders) {}
 
     String upload(InputStream content, String fileName, String contentType, long contentLength);
 
@@ -14,7 +22,10 @@ public interface StorageClient {
 
     URL generateSignedUrl(String fileName, Duration expiration);
 
-    URL generateUploadSignedUrl(String objectName, Duration expiration);
+    SignedUpload generateUploadSignedUrl(String objectName, Duration expiration);
+
+    /** Move um objeto de {@code from} para {@code to} dentro do mesmo bucket/storage. */
+    void move(String from, String to);
 
     FileMetadata getFileMetadata(String objectName);
 }

@@ -1,5 +1,6 @@
 package com.buruna.manga.application.maintenance;
 
+import com.buruna.manga.application.VolumeFileCleaner;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.persistence.MangaRepository;
 import org.springframework.stereotype.Service;
@@ -24,14 +25,22 @@ import java.util.UUID;
  *
  * <p>Escopo: apaga <b>somente</b> mangás {@code isPublic=false} do usuário; mangás
  * públicos permanecem intactos.
+ *
+ * <p>O arquivo de um volume só entra na lista devolvida se nenhum OUTRO volume ainda
+ * o referenciar (FIND-002, ver {@link VolumeFileCleaner}) — checado aqui, dentro da
+ * transação, antes do {@code deleteAll} remover as linhas. A capa não entra nessa
+ * regra.
  */
 @Service
 public class DeletePrivateCollectionForUserUseCase {
 
     private final MangaRepository mangaRepository;
+    private final VolumeFileCleaner volumeFileCleaner;
 
-    public DeletePrivateCollectionForUserUseCase(MangaRepository mangaRepository) {
+    public DeletePrivateCollectionForUserUseCase(MangaRepository mangaRepository,
+                                                  VolumeFileCleaner volumeFileCleaner) {
         this.mangaRepository = mangaRepository;
+        this.volumeFileCleaner = volumeFileCleaner;
     }
 
     /**
@@ -47,7 +56,11 @@ public class DeletePrivateCollectionForUserUseCase {
             if (manga.getCoverUrl() != null) {
                 objectNames.add(manga.getCoverUrl());
             }
-            manga.getVolumes().forEach(volume -> objectNames.add(volume.getFileUrl()));
+            manga.getVolumes().forEach(volume -> {
+                if (!volumeFileCleaner.isShared(volume)) {
+                    objectNames.add(volume.getFileUrl());
+                }
+            });
         }
 
         mangaRepository.deleteAll(privateMangas);

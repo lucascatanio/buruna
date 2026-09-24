@@ -179,12 +179,16 @@ Se a signed URL expirar (403 do GCS), o frontend pede uma nova via o mesmo endpo
 
 ### 6.4 Upload de volume público (duas fases)
 
-Use cases: `GeneratePublicVolumeUploadUrlUseCase` (fase 1 — gera Signed URL de PUT) e
-`FinalizePublicVolumeUseCase` (fase 3 — lê metadados do blob via `blob.getMd5()`,
-persiste `Volume`). Controller `manga.controller.VolumeController`
+Use cases: `GeneratePublicVolumeUploadUrlUseCase` (fase 1 — gera Signed URL de PUT para
+`pending/volumes/{mangaId}/{uuid}.pdf`, um caminho VINCULADO ao mangá via o Value Object
+`manga.domain.VolumeObjectName`) e `FinalizePublicVolumeUseCase` (fase 2 — valida que o
+`objectName` recebido é um pendente do PRÓPRIO mangá, lê metadados do blob via
+`blob.getMd5()`, move o objeto para `volumes/{mangaId}/{uuid}.pdf` e persiste `Volume`).
+Controller `manga.controller.VolumeController`
 (`POST /mangas/{id}/volumes/upload-url`, `POST /mangas/{id}/volumes/finalize`). O
-backend nunca toca os bytes do arquivo — ver [ADR-24](adr/ADR-24-upload-direto-gcs-signed-url.md)
-e [ADR-25](adr/ADR-25-hash-blob-getmd5-gcs.md).
+backend nunca toca os bytes do arquivo — ver [ADR-24](adr/ADR-24-upload-direto-gcs-signed-url.md),
+[ADR-25](adr/ADR-25-hash-blob-getmd5-gcs.md) e [ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)
+(objectName vinculado ao mangá + prefixo `pending/`).
 
 ### 6.5 Upload privado + submissão/promoção
 

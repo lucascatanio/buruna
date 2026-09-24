@@ -5,7 +5,7 @@
       "https://buruna-frontend-922749062176.us-east1.run.app"
     ],
     "method": ["GET", "PUT", "HEAD"],
-    "responseHeader": ["Content-Type", "Content-Length", "Accept-Ranges"],
+    "responseHeader": ["Content-Type", "Content-Length", "Accept-Ranges", "x-goog-content-length-range"],
     "maxAgeSeconds": 3600
   }
 ]

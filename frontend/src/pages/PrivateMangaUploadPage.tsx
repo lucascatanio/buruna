@@ -1,6 +1,7 @@
 import {useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {createMyManga, finalizeMyVolumeUpload, getMyVolumeUploadUrl} from "@/api/privateMangaApi";
+import {uploadVolumeFile} from "@/api/volumeUpload";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
@@ -41,17 +42,9 @@ export function PrivateMangaUploadPage() {
     }
 
     async function uploadVolumeViaSignedUrl(mangaId: string, file: File, volNum: string) {
-        const {uploadUrl, objectName} = await getMyVolumeUploadUrl(mangaId, parseInt(volNum));
+        const {uploadUrl, objectName, requiredHeaders} = await getMyVolumeUploadUrl(mangaId, parseInt(volNum));
 
-        const uploadRes = await fetch(uploadUrl, {
-            method: "PUT",
-            headers: {"Content-Type": "application/pdf"},
-            body: file,
-        });
-
-        if (!uploadRes.ok) {
-            throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
-        }
+        await uploadVolumeFile(uploadUrl, requiredHeaders, file);
 
         await finalizeMyVolumeUpload(mangaId, objectName, parseInt(volNum));
     }
