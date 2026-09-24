@@ -34,18 +34,17 @@ public class FeedbackController {
             @Valid @RequestBody FeedbackRequest request,
             @AuthenticationPrincipal User sender) {
 
-        List<User> admins = userRepository.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE);
+        List<String> adminEmails = userRepository.findByRoleAndStatus(Role.ADMIN, UserStatus.ACTIVE)
+                .stream().map(User::getEmail).toList();
         String timestamp = OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
-        for (User admin : admins) {
-            emailService.sendFeedbackNotification(
-                    admin.getEmail(),
-                    sender.getUsername(),
-                    sender.getEmail(),
-                    request.message(),
-                    timestamp
-            );
-        }
+        emailService.sendFeedbackNotification(
+                adminEmails,
+                sender.getUsername(),
+                sender.getEmail(),
+                request.message(),
+                timestamp
+        );
 
         return ResponseEntity.ok().build();
     }
