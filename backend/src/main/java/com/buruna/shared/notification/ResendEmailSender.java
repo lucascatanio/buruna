@@ -45,7 +45,7 @@ public class ResendEmailSender implements EmailSender {
     }
 
     @Override
-    public void send(String to, String subject, String body) {
+    public void sendOrFail(String to, String subject, String body) {
         if (apiKey == null || apiKey.isBlank()) {
             System.out.println("[EMAIL SKIP] RESEND_API_KEY not configured. Would send to: " + to + " | Subject: " + subject);
             return;
@@ -55,7 +55,7 @@ public class ResendEmailSender implements EmailSender {
                     new HttpEntity<>(payload(to, subject, body), headers()), Void.class);
             log.info("Email sent successfully to {}", to);
         } catch (Exception e) {
-            log.warn("Failed to send email to {}: {}", to, e.getMessage());
+            throw new EmailDeliveryException("Falha ao enviar e-mail para " + to, e);
         }
     }
 

@@ -44,6 +44,12 @@ app:
     # Sem default de propósito: /admin/jobs/** é público e o job apaga arquivos, então
     # a aplicação não sobe sem o segredo em vez de aceitar um valor conhecido.
     secret: ${APP_JOBS_SECRET}
+  pubsub:
+    # Obrigatórios fora do profile "local" (PubSubPasswordResetRequests / PubSubPushAuthenticator
+    # falham no startup sem eles). Ver docs/DEPLOYMENT.md.
+    password-reset-topic: ${APP_PUBSUB_PASSWORD_RESET_TOPIC:}
+    push-audience: ${APP_PUBSUB_PUSH_AUDIENCE:}
+    push-service-account: ${APP_PUBSUB_PUSH_SERVICE_ACCOUNT:}
   cors:
     allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:http://localhost:5173}
   rate-limit:

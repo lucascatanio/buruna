@@ -29,9 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.security.SecureRandom;
 import java.time.OffsetDateTime;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,9 +42,6 @@ import java.util.UUID;
 @Service
 public class AccountService {
 
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder().withoutPadding();
-
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final TotpService totpService;
@@ -56,12 +51,14 @@ public class AccountService {
     private final StorageClient storageClient;
     private final CaptchaService captchaService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final PasswordResetRequests passwordResetRequests;
 
     public AccountService(UserRepository userRepository, TokenService tokenService,
                           TotpService totpService, EmailService emailService,
                           PasswordEncoder passwordEncoder, AppProperties appProperties,
                           StorageClient storageClient, CaptchaService captchaService,
-                          PasswordResetTokenRepository passwordResetTokenRepository) {
+                          PasswordResetTokenRepository passwordResetTokenRepository,
+                          PasswordResetRequests passwordResetRequests) {
         this.userRepository = userRepository;
         this.tokenService = tokenService;
         this.totpService = totpService;
@@ -71,6 +68,7 @@ public class AccountService {
         this.storageClient = storageClient;
         this.captchaService = captchaService;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
+        this.passwordResetRequests = passwordResetRequests;
     }
 
     @Transactional
@@ -164,23 +162,8 @@ public class AccountService {
         userRepository.save(user);
     }
 
-    @Transactional
     public void forgotPassword(String email) {
-        userRepository.findByEmail(email).ifPresent(user -> {
-            if (user.getStatus() != UserStatus.ACTIVE) return;
-
-            passwordResetTokenRepository.deleteByUserId(user.getId());
-
-            String rawToken = generateSecureToken();
-            PasswordResetToken resetToken = new PasswordResetToken();
-            resetToken.setUser(user);
-            resetToken.setToken(TokenHash.sha256Hex(rawToken));
-            resetToken.setExpiresAt(OffsetDateTime.now().plusHours(1));
-            passwordResetTokenRepository.save(resetToken);
-
-            String resetLink = appProperties.frontendUrl() + "/reset-password?token=" + rawToken;
-            emailService.sendPasswordResetEmail(user.getEmail(), user.getUsername(), resetLink);
-        });
+        passwordResetRequests.submit(email);
     }
 
     @Transactional(readOnly = true)
@@ -231,11 +214,5 @@ public class AccountService {
 
     private String uploadAvatar(String avatarBase64) {
         return StorageUploadHelper.uploadBase64Image(storageClient, avatarBase64, "avatars");
-    }
-
-    private String generateSecureToken() {
-        byte[] bytes = new byte[32];
-        SECURE_RANDOM.nextBytes(bytes);
-        return BASE64_ENCODER.encodeToString(bytes);
     }
 }

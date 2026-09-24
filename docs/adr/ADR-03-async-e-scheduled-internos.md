@@ -14,3 +14,15 @@ instância já tinha sido cortada, e a chamada ao Resend parava até dar timeout
 e-mails falharam em 30 dias, contra a premissa de que "e-mails perdidos são raros". O envio
 agora é síncrono, dentro da requisição, com timeout de 5 s, e as notificações de admin vão
 num único lote do Resend (PR #11). O `@Scheduled` e o Cloud Scheduler seguem como descritos.
+
+**Atualização (2026-09-24):** o Cloud Scheduler descrito na decisão original nunca existiu
+de fato no projeto — a API do Cloud Scheduler estava desabilitada no GCP. Na prática, o job
+de inatividade rodava só pelo `@Scheduled` interno, fora do ciclo de uma requisição HTTP e
+com a CPU da instância estrangulada pelo `cpu-throttling` (a mesma condição que quebrou os
+e-mails `@Async`, ver atualização acima) — o job dependia de a instância já estar de pé por
+outro motivo no horário do cron para ter CPU disponível. `RunInactivityUseCase` perdeu o
+`@Scheduled(cron = "0 0 2 * * *")`: o gatilho agora é o Cloud Scheduler de verdade (criado
+nesta correção), chamando `POST /admin/jobs/inactivity` às 02:00 UTC — a mesma rota que já
+existia como fallback manual (`JobController`, autenticada por `X-Job-Secret`) passa a ser o
+único caminho de execução. `@EnableScheduling` continua na aplicação porque `RateLimitFilter`
+ainda depende dele.
