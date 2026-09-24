@@ -30,18 +30,21 @@ lidos pelo `docker compose` automaticamente).
 
 ## Rodar o backend local
 
-Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 7:
+Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
 `DB_URL`, `DB_USER`, `DB_PASSWORD`, `JWT_SECRET`, `GCS_BUCKET_NAME`,
-`GCS_CREDENTIALS_PATH`, `ADMIN_EMAIL`.
+`GCS_CREDENTIALS_PATH`, `ADMIN_EMAIL`, `APP_JOBS_SECRET`.
 
 - `GCS_BUCKET_NAME`/`GCS_CREDENTIALS_PATH` **não são usados** no profile `local`
   (`GcsConfig` é `@Profile("!local")`, o bean real de GCS não sobe) — mas precisam de
   **qualquer valor** (ex.: `dummy`) porque `AppProperties` (`@ConfigurationProperties`)
   faz bind **eager** de todo `app.*`, inclusive o que não é usado no profile ativo.
+- `APP_JOBS_SECRET` não tem mais default (`dev-secret-change-me` foi removido —
+  FIND-005): sem ele o `/admin/jobs/inactivity` seria disparável por qualquer um em
+  produção. Local, qualquer valor serve (ex.: `dev-secret`).
 - Demais variáveis de `application.yml` têm default e são **opcionais** para rodar
   local: `JWT_EXPIRATION`, `REFRESH_TOKEN_EXPIRATION`, `MAX_FILE_SIZE_MB`,
   `RATE_LIMIT_REGISTER_PER_HOUR`/`LOGIN_PER_HOUR`/`FEEDBACK_PER_HOUR`/`FORGOT_PASSWORD_PER_HOUR`,
-  `RESEND_API_KEY`, `APP_FRONTEND_URL`, `APP_CORS_ALLOWED_ORIGIN`, `APP_JOBS_SECRET`,
+  `RESEND_API_KEY`, `APP_FRONTEND_URL`, `APP_CORS_ALLOWED_ORIGIN`,
   `APP_MAIL_FROM`, `SWAGGER_ENABLED`, `APP_TRUSTED_PROXY_HOPS` (default `1` — quantos
   proxies confiáveis da própria infra precedem o IP do cliente no
   `X-Forwarded-For`, ver [DEPLOYMENT.md](DEPLOYMENT.md)), `PORT`.
@@ -61,6 +64,7 @@ JWT_SECRET=<qualquer-string-para-dev> \
 ADMIN_EMAIL=<email-do-admin-seed> \
 GCS_BUCKET_NAME=dummy \
 GCS_CREDENTIALS_PATH=dummy \
+APP_JOBS_SECRET=<qualquer-string-para-dev> \
 ./mvnw spring-boot:run \
   -Dspring-boot.run.profiles=local \
   -Dspring-boot.run.arguments=--app.storage.local.path=/tmp/buruna-storage

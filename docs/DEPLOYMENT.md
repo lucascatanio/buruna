@@ -152,6 +152,9 @@ acima é só para reproduzir manualmente em caso de incidente com o pipeline.
   `roles/storage.objectAdmin`.
 - Domínio próprio configurado (DKIM/SPF/DMARC) se for usar Resend para e-mail com
   domínio customizado — ver [ADR-29](adr/ADR-29-resend-api-email-dominio-proprio.md).
+- `APP_JOBS_SECRET` é **obrigatório** em produção (o backend não sobe sem ele —
+  FIND-005). Sem essa variável, o job de inatividade (`/admin/jobs/inactivity`,
+  `permitAll`) ficaria disparável por qualquer um.
 - `APP_TRUSTED_PROXY_HOPS` define quantos proxies confiáveis da própria infra (o
   nginx do `buruna-frontend`, e qualquer outro salto que o Cloud Run acrescente ao
   `X-Forwarded-For`) precedem o IP real do cliente. O `ClientIpResolver`

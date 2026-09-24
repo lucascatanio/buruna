@@ -56,6 +56,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -352,6 +353,35 @@ class InactivityJobIntegrationTest {
                 }
             }
             return null;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  Gatilho do job — POST /admin/jobs/inactivity (FIND-005)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    class JobTrigger {
+
+        /** Precisa bater com {@code app.jobs.secret} em application-test.yml. */
+        private static final String CORRECT_SECRET = "test-jobs-secret";
+
+        @Test
+        void triggerInactivity_wrongSecret_returns401() throws Exception {
+            mockMvc.perform(post("/admin/jobs/inactivity")
+                            .header("X-Job-Secret", "not-the-secret"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        void triggerInactivity_correctSecret_returns200_andRunsJob() throws Exception {
+            User user = activeUser("job-trigger@inactivity.test", "jobTriggerUser", 91);
+
+            mockMvc.perform(post("/admin/jobs/inactivity")
+                            .header("X-Job-Secret", CORRECT_SECRET))
+                    .andExpect(status().isOk());
+
+            assertThat(reload(user).getStatus()).isEqualTo(UserStatus.INACTIVE);
         }
     }
 
