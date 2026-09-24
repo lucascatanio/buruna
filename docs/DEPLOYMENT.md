@@ -165,6 +165,8 @@ acima é só para reproduzir manualmente em caso de incidente com o pipeline.
   `X-Forwarded-For` recebido nos logs do backend antes de fixar o valor. Limitação
   conhecida: uma chamada direta ao `run.app` do backend (sem passar pelo frontend)
   ainda escolhe o valor que cai na posição lida.
+- `SWAGGER_ENABLED` tem default `false`; defina `true` explicitamente se quiser
+  expor `/api/swagger-ui.html` em algum ambiente.
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).

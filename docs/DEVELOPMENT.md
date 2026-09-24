@@ -45,7 +45,8 @@ Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
   local: `JWT_EXPIRATION`, `REFRESH_TOKEN_EXPIRATION`, `MAX_FILE_SIZE_MB`,
   `RATE_LIMIT_REGISTER_PER_HOUR`/`LOGIN_PER_HOUR`/`FEEDBACK_PER_HOUR`/`FORGOT_PASSWORD_PER_HOUR`,
   `RESEND_API_KEY`, `APP_FRONTEND_URL`, `APP_CORS_ALLOWED_ORIGIN`,
-  `APP_MAIL_FROM`, `SWAGGER_ENABLED`, `APP_TRUSTED_PROXY_HOPS` (default `1` — quantos
+  `APP_MAIL_FROM`, `SWAGGER_ENABLED` (default `false` — defina `true` local para ver o
+  Swagger UI), `APP_TRUSTED_PROXY_HOPS` (default `1` — quantos
   proxies confiáveis da própria infra precedem o IP do cliente no
   `X-Forwarded-For`, ver [DEPLOYMENT.md](DEPLOYMENT.md)), `PORT`.
 - `HCAPTCHA_SECRET` tem default vazio, mas o bypass só é aceito com o profile `local`
