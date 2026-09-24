@@ -28,7 +28,7 @@
 │   contextos: identity · manga · reading · engagement · admin                 │
 │   RateLimitFilter → JwtFilter → Controllers → Use cases                     │
 └──────────────────┬──────────────────────────────┬───────────────────────────┘
-                   │ VPC connector                 │ HTTPS
+                   │ Direct VPC egress             │ HTTPS
                    ▼                               ▼
     ┌──────────────────────────┐   ┌────────────────────────────────────────────┐
     │  GCE e2-micro (us-east1-b│   │  GCS: buruna-files-catanio                │
