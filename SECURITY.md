@@ -54,6 +54,8 @@ de `localStorage`) e o hash do token no banco (em vez do valor em claro) são
 [ADR-41](docs/adr/ADR-41-refresh-token-cookie-httponly-e-hash.md) — inclusive por que
 `SameSite=Strict` dispensa um token CSRF dedicado nesse fluxo.
 
+> ⚠️ Não há UI para `DELETE /auth/account`. Ver [`docs/BACKLOG.md`](docs/BACKLOG.md).
+
 ## Senhas
 
 BCrypt via `PasswordEncoder` do Spring Security — hashing adaptativo com salt

@@ -18,9 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.OptionalLong;
 
 /**
- * TOTP: geração de secret/QR e verificação de código.
- *
- * <p>{@link #verify(User, String)} é o ponto único de verificação (FIND-004):
+ * {@link #verify(User, String)} é o ponto único de verificação (FIND-004):
  * recusa se o usuário estiver bloqueado por força bruta, casa o código contra
  * os passos de tempo -1/0/+1 e então aceita (rejeitando replay do mesmo passo)
  * ou registra a falha no agregado. Usado por autenticação de 2FA, verify/disable

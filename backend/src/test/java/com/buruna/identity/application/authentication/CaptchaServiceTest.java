@@ -10,11 +10,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * Teste unitário puro (sem contexto Spring): prova que o bypass do captcha sem
- * segredo configurado só é aceito com o profile "local" ativo — em qualquer
- * outro profile, subir sem {@code HCAPTCHA_SECRET} tem que falhar (FIND-006).
- */
 class CaptchaServiceTest {
 
     private static Environment environmentAcceptingLocal(boolean localActive) {

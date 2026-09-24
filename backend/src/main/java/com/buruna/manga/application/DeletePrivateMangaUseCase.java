@@ -8,11 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-/**
- * Apaga um mangá privado do ator e seus arquivos no storage (capa + volumes). O
- * arquivo de cada volume só é apagado se nenhum outro volume ainda o referenciar
- * (FIND-002, ver {@link VolumeFileCleaner}); a capa não entra nessa regra.
- */
+/** Apaga um mangá privado do ator e seus arquivos no storage (capa + volumes). */
 @Service
 public class DeletePrivateMangaUseCase {
 

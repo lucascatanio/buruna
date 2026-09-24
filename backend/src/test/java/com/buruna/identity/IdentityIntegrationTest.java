@@ -89,7 +89,6 @@ class IdentityIntegrationTest {
     private static final String KNOWN_PASSWORD = "Password@123";
     private static final MediaType JSON = MediaType.APPLICATION_JSON;
     private static final AtomicInteger IP_SEQ = new AtomicInteger();
-    /** ADR-41: refresh token viaja em cookie httpOnly, nunca no corpo JSON. */
     private static final String REFRESH_COOKIE = "buruna_refresh";
 
     @Autowired MockMvc mockMvc;
@@ -165,7 +164,6 @@ class IdentityIntegrationTest {
                 .andReturn();
     }
 
-    /** Faz login de um usuário ACTIVE sem 2FA e devolve o refresh token emitido (valor do cookie). */
     String loginAndGetRefreshToken(String email) throws Exception {
         MvcResult result = login(email, KNOWN_PASSWORD);
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
@@ -178,7 +176,6 @@ class IdentityIntegrationTest {
                 .andReturn();
     }
 
-    /** Extrai o valor bruto do cookie buruna_refresh de um Set-Cookie da resposta. */
     String extractRefreshCookieValue(MvcResult result) {
         String setCookie = result.getResponse().getHeader("Set-Cookie");
         assertThat(setCookie).as("Set-Cookie de %s", REFRESH_COOKIE).isNotNull();
@@ -266,7 +263,6 @@ class IdentityIntegrationTest {
         MvcResult result = login("active@id.test", KNOWN_PASSWORD);
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
 
-        // ADR-41: refreshToken nunca aparece no corpo — só accessToken.
         JsonNode body = body(result);
         assertThat(body.get("accessToken").asText()).isNotBlank();
         assertThat(body.has("refreshToken")).isFalse();
@@ -413,7 +409,6 @@ class IdentityIntegrationTest {
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
         String accessToken = body(loginResult).get("accessToken").asText();
 
-        // O access token ainda é válido e autentica normalmente.
         mockMvc.perform(get("/auth/2fa/status")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk());
@@ -422,8 +417,6 @@ class IdentityIntegrationTest {
         persisted.deactivate();
         userRepository.save(persisted);
 
-        // BAIXA-1: usuário desativado não pode mais autenticar, mesmo com o
-        // access token ainda dentro da validade.
         mockMvc.perform(get("/auth/2fa/status")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isUnauthorized());

@@ -8,12 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-/**
- * Apaga um mangá do catálogo e seus arquivos no storage (volumes e capa). Posse
- * "dono OU ADMIN" (ADR-35). O arquivo de cada volume só é apagado se nenhum outro
- * volume ainda o referenciar (FIND-002, ver {@link VolumeFileCleaner}); a capa não
- * entra nessa regra — nunca teve objectName vindo do cliente.
- */
+/** Apaga um mangá do catálogo e seus arquivos no storage. Posse "dono OU ADMIN" (ADR-35). */
 @Service
 public class DeleteMangaUseCase {
 

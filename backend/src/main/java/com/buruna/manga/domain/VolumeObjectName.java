@@ -35,7 +35,6 @@ public final class VolumeObjectName {
         this.fileId = fileId;
     }
 
-    /** Gera o caminho pendente para o upload (fase 1) de um volume do mangá dado. */
     public static String pendingFor(UUID mangaId) {
         if (mangaId == null) {
             throw new IllegalArgumentException("mangaId não pode ser nulo");
@@ -75,7 +74,6 @@ public final class VolumeObjectName {
         return new VolumeObjectName(pathMangaId, fileId);
     }
 
-    /** Nome definitivo do objeto após o finalize, para onde o pendente é movido. */
     public String finalObjectName() {
         return "volumes/" + mangaId + "/" + fileId + ".pdf";
     }

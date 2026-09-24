@@ -41,8 +41,8 @@ app:
   admin-email: ${ADMIN_EMAIL}
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
   jobs:
-    # Sem default (FIND-005): sobe sem valor válido e o job de limpeza fica
-    # impossível de disparar por qualquer um em produção.
+    # Sem default de propósito: /admin/jobs/** é público e o job apaga arquivos, então
+    # a aplicação não sobe sem o segredo em vez de aceitar um valor conhecido.
     secret: ${APP_JOBS_SECRET}
   cors:
     allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:http://localhost:5173}

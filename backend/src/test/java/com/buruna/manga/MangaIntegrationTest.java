@@ -889,13 +889,6 @@ class MangaIntegrationTest {
     //  4.5. FIND-002 — objectName vinculado ao mangá (ADR-40)
     // ══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Vetor do FIND-002: o finalize aceitava qualquer objectName vindo do cliente. Um
-     * objectName de volume PÚBLICO (visível na URL assinada de {@code /reader/{id}/url})
-     * podia ser reaproveitado para "finalizar" um volume em um mangá PRIVADO qualquer —
-     * apagar esse volume forjado apagava o arquivo público real junto. VolumeObjectName
-     * (ADR-40) fecha isso: o objectName tem que ser um pendente do PRÓPRIO mangá.
-     */
     @Nested
     class VolumeObjectNameSecurity {
 

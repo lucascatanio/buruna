@@ -21,9 +21,7 @@ import java.util.UUID;
 @Getter
 public class User {
 
-    /** Tentativas de TOTP inválidas seguidas até bloquear (FIND-004). */
     private static final int MAX_TOTP_FAILED_ATTEMPTS = 5;
-    /** Duração do bloqueio após atingir {@link #MAX_TOTP_FAILED_ATTEMPTS}. */
     private static final Duration TOTP_LOCK_DURATION = Duration.ofMinutes(15);
 
     @Id
@@ -141,7 +139,6 @@ public class User {
 
     // ── Outras mutações de negócio ──────────────────────────────────────────
 
-    /** Só usuários {@code ACTIVE} podem autenticar (usado pelo {@code JwtFilter}). */
     public boolean canAuthenticate() {
         return status == UserStatus.ACTIVE;
     }
@@ -215,10 +212,6 @@ public class User {
         resetTotpFailures();
     }
 
-    /**
-     * Registra uma tentativa de TOTP inválida. Na {@value #MAX_TOTP_FAILED_ATTEMPTS}ª
-     * falha consecutiva, bloqueia por {@link #TOTP_LOCK_DURATION} e zera o contador.
-     */
     public void registerTotpFailure(OffsetDateTime now) {
         this.totpFailedAttempts++;
         if (totpFailedAttempts >= MAX_TOTP_FAILED_ATTEMPTS) {

@@ -26,14 +26,12 @@ public class VolumeFileCleaner {
         this.storageClient = storageClient;
     }
 
-    /** Apaga o arquivo do volume no storage, a menos que outro volume ainda o referencie. */
     public void delete(Volume volume) {
         if (!isShared(volume)) {
             storageClient.delete(volume.getFileUrl());
         }
     }
 
-    /** True se outro volume (id diferente) ainda referencia o mesmo file_url. */
     public boolean isShared(Volume volume) {
         return volumeRepository.existsByFileUrlAndIdNot(volume.getFileUrl(), volume.getId());
     }

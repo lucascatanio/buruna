@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-/** Remove um volume do agregado privado e apaga o arquivo no storage (se não compartilhado). */
+/** Remove um volume do agregado privado e apaga o arquivo no storage. */
 @Service
 public class DeleteVolumeUseCase {
 

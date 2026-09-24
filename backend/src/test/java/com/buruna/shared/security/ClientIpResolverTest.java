@@ -8,11 +8,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/**
- * Teste unitário puro (sem contexto Spring): prova que o IP lido é sempre a
- * entrada acrescentada pelo salto de proxy confiável — nunca uma entrada que o
- * cliente forjou no início do header (FIND-003).
- */
 class ClientIpResolverTest {
 
     private static ClientIpResolver resolverWithHops(int hops) {

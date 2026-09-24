@@ -8,10 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-/**
- * Remove um volume de um mangá público e apaga o arquivo (se não compartilhado).
- * Posse "dono OU ADMIN" (ADR-35).
- */
+/** Remove um volume de um mangá público e apaga o arquivo. Posse "dono OU ADMIN" (ADR-35). */
 @Service
 public class DeletePublicVolumeUseCase {
 

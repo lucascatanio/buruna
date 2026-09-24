@@ -24,7 +24,6 @@ public interface StorageClient {
 
     SignedUpload generateUploadSignedUrl(String objectName, Duration expiration);
 
-    /** Move um objeto de {@code from} para {@code to} dentro do mesmo bucket/storage. */
     void move(String from, String to);
 
     FileMetadata getFileMetadata(String objectName);

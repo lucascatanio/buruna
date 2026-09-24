@@ -33,24 +33,11 @@ public record AppProperties(
     ) {
     }
 
-    /**
-     * {@code trustedProxyHops} é o número de proxies reversos confiáveis entre o
-     * cliente e este serviço (Cloud Run do frontend + qualquer outro salto de
-     * infra). Usado por {@link com.buruna.shared.security.ClientIpResolver} para
-     * ler o IP real do cliente no {@code X-Forwarded-For} sem confiar em entradas
-     * que o próprio cliente pode forjar (FIND-003).
-     */
     public record SecurityProperties(
             int trustedProxyHops
     ) {
     }
 
-    /**
-     * {@code cookieSecure} controla o atributo {@code Secure} do cookie
-     * {@code buruna_refresh} (ADR-41). Precisa ser {@code false} em
-     * {@code application-local.yml} porque o dev local roda em HTTP puro — um
-     * cookie {@code Secure} nunca seria enviado de volta pelo navegador nesse caso.
-     */
     public record AuthProperties(
             boolean cookieSecure
     ) {

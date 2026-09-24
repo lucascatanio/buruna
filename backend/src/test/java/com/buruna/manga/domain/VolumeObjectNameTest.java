@@ -38,7 +38,6 @@ class VolumeObjectNameTest {
 
     @Test
     void parsePending_mangaIdDivergentFromRequest_throws() {
-        // vetor do FIND-002: objectName pendente de UM mangá, finalize pedido para OUTRO.
         String pendingForOtherManga = VolumeObjectName.pendingFor(OTHER_MANGA_ID);
 
         assertThatThrownBy(() -> VolumeObjectName.parsePending(pendingForOtherManga, MANGA_ID))

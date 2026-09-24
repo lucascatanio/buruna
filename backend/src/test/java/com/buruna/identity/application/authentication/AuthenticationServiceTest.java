@@ -15,13 +15,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Unidade da regra BAIXA-2 (enumeração de e-mail por tempo de resposta):
- * quando o e-mail não existe, o login precisa gastar o mesmo custo de BCrypt que um
- * login com e-mail existente, comparando a senha recebida contra um hash fictício.
- * Sem isso, {@code passwordEncoder.matches} nunca é chamado para e-mails inexistentes
- * e a resposta fica mensuravelmente mais rápida.
- */
 @ExtendWith(MockitoExtension.class)
 class AuthenticationServiceTest {
 
