@@ -231,6 +231,20 @@ class IdentityIntegrationTest {
         assertThat(result.getResponse().getStatus()).isEqualTo(400);
     }
 
+    @Test
+    void register_avatarWithDisallowedContentType_returns400() throws Exception {
+        // StorageUploadHelper.uploadBase64Image aceitava qualquer content-type do data URI
+        // (achado de baixa severidade): um avatar text/html seria salvo no bucket com
+        // extensão .html e servido depois com esse content-type. Só image/png|jpeg|webp
+        // são aceitos agora.
+        String json = """
+                {"email":"avatarhtml@id.test","username":"avatarHtmlUser","password":"%s","presentationMessage":"oi","captchaToken":"dummy","avatarBase64":"data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=="}"""
+                .formatted(KNOWN_PASSWORD);
+        MvcResult result = register(json);
+        assertThat(result.getResponse().getStatus()).isEqualTo(400);
+        assertThat(userRepository.existsByEmail("avatarhtml@id.test")).isFalse();
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  Login — POST /auth/login
     // ══════════════════════════════════════════════════════════════════════════
