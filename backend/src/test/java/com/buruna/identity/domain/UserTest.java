@@ -3,8 +3,10 @@ package com.buruna.identity.domain;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UserTest {
@@ -158,5 +160,67 @@ class UserTest {
         user.approve();
         user.deactivate();
         assertThat(user.canAuthenticate()).isFalse();
+    }
+
+    // ── TOTP: bloqueio por força bruta e replay (FIND-004) ────────────────────
+
+    @Test
+    void registerTotpFailure_locksUser_onFifthConsecutiveFailure() {
+        User user = newPendingUser();
+        OffsetDateTime now = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+
+        for (int i = 0; i < 4; i++) {
+            user.registerTotpFailure(now);
+        }
+        assertThatCode(() -> user.assertTotpNotLocked(now)).doesNotThrowAnyException();
+
+        user.registerTotpFailure(now); // 5ª falha consecutiva
+        assertThatThrownBy(() -> user.assertTotpNotLocked(now))
+                .isInstanceOf(TotpLockedException.class);
+    }
+
+    @Test
+    void assertTotpNotLocked_unlocksAgain_after15MinutesPass() {
+        User user = newPendingUser();
+        OffsetDateTime lockedAt = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+        for (int i = 0; i < 5; i++) {
+            user.registerTotpFailure(lockedAt);
+        }
+
+        assertThatThrownBy(() -> user.assertTotpNotLocked(lockedAt.plusMinutes(14)))
+                .isInstanceOf(TotpLockedException.class);
+
+        assertThatCode(() -> user.assertTotpNotLocked(lockedAt.plusMinutes(15).plusSeconds(1)))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void acceptTotpStep_rejectsReplay_whenStepAlreadyUsedOrOlder() {
+        User user = newPendingUser();
+        user.acceptTotpStep(100L);
+
+        assertThatThrownBy(() -> user.acceptTotpStep(100L))
+                .isInstanceOf(TotpReplayException.class);
+        assertThatThrownBy(() -> user.acceptTotpStep(99L))
+                .isInstanceOf(TotpReplayException.class);
+    }
+
+    @Test
+    void acceptTotpStep_resetsFailedAttempts_onSuccess() {
+        User user = newPendingUser();
+        OffsetDateTime now = OffsetDateTime.parse("2026-01-01T00:00:00Z");
+        user.registerTotpFailure(now);
+        user.registerTotpFailure(now);
+        user.registerTotpFailure(now);
+        user.registerTotpFailure(now);
+
+        user.acceptTotpStep(50L);
+
+        // O contador zerou: mais 4 falhas (não 1) não bastam para bloquear de novo.
+        user.registerTotpFailure(now);
+        user.registerTotpFailure(now);
+        user.registerTotpFailure(now);
+        user.registerTotpFailure(now);
+        assertThatCode(() -> user.assertTotpNotLocked(now)).doesNotThrowAnyException();
     }
 }

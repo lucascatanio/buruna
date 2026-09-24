@@ -137,7 +137,9 @@ public class AccountService {
         return new TotpSetupResponse(secret, qrUri);
     }
 
-    @Transactional
+    // FIND-004: noRollbackFor evita que o rollback padrão de BadCredentialsException
+    // desfaça o incremento do contador de falhas de TOTP no agregado.
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public void verify2FA(UUID userId, String code) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
@@ -146,15 +148,13 @@ public class AccountService {
             throw new IllegalStateException("2FA setup not started. Call /auth/2fa/setup first.");
         }
 
-        if (!totpService.verifyCode(user.getTotpSecret(), code)) {
-            throw new BadCredentialsException("Invalid TOTP code");
-        }
+        totpService.verify(user, code);
 
         user.enableTotp();
         userRepository.save(user);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public void disable2FA(UUID userId, String code) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
@@ -163,9 +163,7 @@ public class AccountService {
             throw new IllegalStateException("2FA is not enabled");
         }
 
-        if (!totpService.verifyCode(user.getTotpSecret(), code)) {
-            throw new BadCredentialsException("Invalid TOTP code");
-        }
+        totpService.verify(user, code);
 
         user.disableTotp();
         userRepository.save(user);
@@ -201,7 +199,11 @@ public class AccountService {
         return resetToken.getUser().isTotpEnabled();
     }
 
-    @Transactional
+    // FIND-004: noRollbackFor evita que o rollback padrão de BadCredentialsException
+    // desfaça o incremento do contador de falhas de TOTP no agregado. A verificação
+    // do TOTP acontece ANTES de marcar o token como usado ou trocar a senha, então
+    // um código errado não consome o token nem muda a senha.
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public void resetPassword(ResetPasswordRequest request) {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.token())
                 .orElseThrow(InvalidTokenException::new);
@@ -219,9 +221,7 @@ public class AccountService {
             if (request.totpCode() == null || request.totpCode().isBlank()) {
                 throw new BadCredentialsException("TOTP code is required");
             }
-            if (!totpService.verifyCode(user.getTotpSecret(), request.totpCode())) {
-                throw new BadCredentialsException("Invalid TOTP code");
-            }
+            totpService.verify(user, request.totpCode());
         }
 
         user.changePassword(passwordEncoder.encode(request.newPassword()));

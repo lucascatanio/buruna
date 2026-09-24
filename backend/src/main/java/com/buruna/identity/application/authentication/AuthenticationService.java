@@ -77,7 +77,9 @@ public class AuthenticationService {
         return issueTokens(user);
     }
 
-    @Transactional
+    // FIND-004: noRollbackFor evita que o rollback padrão de BadCredentialsException
+    // desfaça o incremento do contador de falhas de TOTP no agregado.
+    @Transactional(noRollbackFor = BadCredentialsException.class)
     public LoginResponse authenticate2FA(TotpAuthenticateRequest request) {
         UUID userId = tokenService.validateTempTokenAndGetUserId(request.tempToken());
         User user = userRepository.findById(userId)
@@ -87,9 +89,7 @@ public class AuthenticationService {
             throw new BadCredentialsException("2FA is not enabled for this account");
         }
 
-        if (!totpService.verifyCode(user.getTotpSecret(), request.totpCode())) {
-            throw new BadCredentialsException("Invalid TOTP code");
-        }
+        totpService.verify(user, request.totpCode());
 
         return issueTokens(user);
     }

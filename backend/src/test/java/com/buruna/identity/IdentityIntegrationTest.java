@@ -625,6 +625,56 @@ class IdentityIntegrationTest {
     }
 
     @Test
+    void twoFA_authenticate_reusingAcceptedCode_returns401() throws Exception {
+        // FIND-004: o tempToken continua válido por 5 minutos (não é consumido no
+        // uso), então sem controle de replay o MESMO código correto autenticaria
+        // de novo dentro da mesma janela de 30s.
+        String secret = enableTotp(activeUser);
+        MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
+        String tempToken = body(loginResult).get("tempToken").asText();
+        String code = currentTotpCode(secret);
+
+        mockMvc.perform(post("/auth/2fa/authenticate")
+                        .contentType(JSON)
+                        .content("""
+                                {"tempToken":"%s","totpCode":"%s"}""".formatted(tempToken, code)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/auth/2fa/authenticate")
+                        .contentType(JSON)
+                        .content("""
+                                {"tempToken":"%s","totpCode":"%s"}""".formatted(tempToken, code)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void twoFA_authenticate_fifthInvalidAttempt_locksAndRejectsCorrectCodeWith429() throws Exception {
+        String secret = enableTotp(activeUser);
+        MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
+        String tempToken = body(loginResult).get("tempToken").asText();
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/auth/2fa/authenticate")
+                            .contentType(JSON)
+                            .content("""
+                                    {"tempToken":"%s","totpCode":"000000"}""".formatted(tempToken)))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        // FIND-004: bloqueado por 15 minutos — nem o código CORRETO passa agora.
+        mockMvc.perform(post("/auth/2fa/authenticate")
+                        .contentType(JSON)
+                        .content("""
+                                {"tempToken":"%s","totpCode":"%s"}""".formatted(tempToken, currentTotpCode(secret))))
+                .andExpect(status().isTooManyRequests());
+
+        // O contador/bloqueio foi persistido apesar do rollback padrão de
+        // BadCredentialsException (noRollbackFor).
+        User persisted = userRepository.findById(activeUser.getId()).orElseThrow();
+        assertThat(persisted.getTotpLockedUntil()).isNotNull();
+    }
+
+    @Test
     void twoFA_tempToken_cannotBeUsedAsAccessToken_returns401() throws Exception {
         enableTotp(activeUser);
 
