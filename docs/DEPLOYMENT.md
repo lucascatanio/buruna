@@ -83,7 +83,7 @@
 | E-mail              | Resend API                           | —                  | Domínio @buruna.com.br, DKIM/SPF/DMARC |
 | Monitoramento       | UptimeRobot                          | —                  | Alerta de downtime por e-mail       |
 | Domínio             | buruna.com.br (registro.br)          | —                  | TLS automático via Cloud Run        |
-| Documentação API    | SpringDoc OpenAPI 2.7                 | —                  | Swagger UI em /api/swagger-ui.html  |
+| Documentação API    | SpringDoc OpenAPI 2.8                 | —                  | Swagger UI em /api/swagger-ui.html  |
 
 Decisões e tradeoffs por trás de cada escolha de infra: Cloud Run separado por serviço
 ([ADR-22](adr/ADR-22-cloud-run-separado-frontend-backend.md)), PostgreSQL em GCE

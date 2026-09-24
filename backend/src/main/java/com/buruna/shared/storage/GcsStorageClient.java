@@ -103,9 +103,11 @@ public class GcsStorageClient implements StorageClient {
     public void move(String from, String to) {
         BlobId source = BlobId.of(bucketName, from);
         BlobId target = BlobId.of(bucketName, to);
+        // target como BlobId (não BlobInfo) faz o GCS copiar os metadados da origem;
+        // um BlobInfo vazio gravaria o destino como application/octet-stream
         Storage.CopyRequest copyRequest = Storage.CopyRequest.newBuilder()
                 .setSource(source)
-                .setTarget(BlobInfo.newBuilder(target).build())
+                .setTarget(target)
                 .build();
         try {
             storage.copy(copyRequest).getResult();

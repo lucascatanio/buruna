@@ -3,7 +3,7 @@
 ![CI](https://github.com/lucascatanio/buruna/actions/workflows/ci.yml/badge.svg?branch=dev)
 ![Deploy](https://github.com/lucascatanio/buruna/actions/workflows/deploy.yml/badge.svg?branch=main)
 ![Java](https://img.shields.io/badge/Java-21-blue)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.3-brightgreen)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-brightgreen)
 ![React](https://img.shields.io/badge/React-19-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
@@ -15,7 +15,7 @@ Biblioteca pessoal de mangás com autenticação, upload e leitor web inline.
 
 ## Stack
 
-Backend em Java 21 + Spring Boot 3.4.3, Clean Architecture por bounded context
+Backend em Java 21 + Spring Boot 3.5.16, Clean Architecture por bounded context
 (`identity`, `manga`, `reading`, `engagement`, `admin`), PostgreSQL + Flyway,
 JWT + Refresh Token + 2FA (TOTP), arquivos no Google Cloud Storage via URLs
 assinadas. Frontend em React 19 + TypeScript, Vite, shadcn/ui, Tailwind CSS.
