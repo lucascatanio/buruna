@@ -81,9 +81,12 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V21    | Colunas totp_last_used_step, totp_failed_attempts, totp_locked_until em users (força bruta e replay de TOTP) |
 | V22    | Apaga refresh_tokens e password_reset_tokens (valores em claro descartados) e encolhe refresh_tokens.token para VARCHAR(64) — os dois passam a guardar SHA-256 hex (ADR-41) |
 | V23    | Coluna total_pages em reading_progress (nula para progressos antigos) e CHECK de página dentro do total |
+| V24    | Adicionou valor `APPROVED` ao enum manga_submission_status                         |
+| V25    | Backfill: aprovados antigos (público + reviewed_at, status nulo) → `APPROVED`; público com `PENDING`/`REJECTED` (promovido com submissão aberta) → status e motivo nulos |
 
-> `manga_submission_status` (V20) tem só `PENDING`/`REJECTED` — não existe `APPROVED`.
-> Assimetria de domínio conhecida, ver [`docs/BACKLOG.md`](BACKLOG.md).
+> Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
+> transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill
+> que use o valor novo vai numa migration separada (ex.: V24 + V25).
 
 ## 4. Convenções de schema
 

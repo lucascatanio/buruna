@@ -204,9 +204,8 @@ caminhos (promote × submit→approve) coexistem por decisão de domínio.
 Validação de unicidade no promote/aprovação é só contra mangás públicos — ver
 [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md) e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-> Estado atual do enum `MangaSubmissionStatus` (só `PENDING`/`REJECTED`, sem `APPROVED`)
-> é uma assimetria de domínio conhecida — ver [`docs/glossario-dominio.md`](glossario-dominio.md)
-> §3 e a issue em [`docs/BACKLOG.md`](BACKLOG.md).
+> `MangaSubmissionStatus` é `PENDING` → `APPROVED` | `REJECTED`; a promoção direta encerra uma
+> submissão aberta sem status — ver [`docs/glossario-dominio.md`](glossario-dominio.md) §3.
 
 ### 6.6 Inatividade automática
 

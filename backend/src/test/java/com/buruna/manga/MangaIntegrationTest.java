@@ -1164,6 +1164,35 @@ class MangaIntegrationTest {
         }
 
         @Test
+        void approve_persistsApprovedStatus() throws Exception {
+            // round-trip real: a coluna é o enum nativo manga_submission_status (V24)
+            String id = createPrivateManga("ITest Submit Approved Status", reader);
+            mockMvc.perform(post("/my/mangas/{id}/submit", id).with(auth(reader)))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/admin/submissions/{id}/approve", id).with(auth(admin)))
+                    .andExpect(status().isNoContent());
+
+            Manga approved = mangaRepository.findById(UUID.fromString(id)).orElseThrow();
+            org.assertj.core.api.Assertions.assertThat(approved.getSubmissionStatus())
+                    .isEqualTo(com.buruna.manga.domain.MangaSubmissionStatus.APPROVED);
+        }
+
+        @Test
+        void promote_withPendingSubmission_removesItFromReviewQueue() throws Exception {
+            String id = createPrivateManga("ITest Submit Then Promote", collab);
+            mockMvc.perform(post("/my/mangas/{id}/submit", id).with(auth(collab)))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/my/mangas/{id}/promote", id).with(auth(collab)))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(get("/admin/submissions").with(auth(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[?(@.id == '" + id + "')]").isEmpty());
+        }
+
+        @Test
         void approve_asReader_returns403() throws Exception {
             String id = createPrivateManga("ITest Submit Approve Forbidden", reader);
             mockMvc.perform(post("/my/mangas/{id}/submit", id).with(auth(reader)))
