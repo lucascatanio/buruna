@@ -46,7 +46,7 @@ public class EmailService {
     }
 
     public void sendPasswordResetEmail(String userEmail, String username, String resetLink) {
-        emailSender.send(userEmail,
+        emailSender.sendOrFail(userEmail,
                 "[Burūna] Password reset",
                 """
                 Hello %s,

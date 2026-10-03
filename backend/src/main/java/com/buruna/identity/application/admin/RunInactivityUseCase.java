@@ -9,7 +9,6 @@ import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -18,8 +17,9 @@ import java.util.List;
 
 /**
  * Caso de uso de inatividade: avisa usuários inativos e desativa os que passaram do limiar,
- * apagando sua coleção privada. Roda diariamente pelo {@link Scheduled} e pode ser disparado
- * manualmente pelo {@code JobController}.
+ * apagando sua coleção privada. Disparado pelo Cloud Scheduler via
+ * {@code POST /admin/jobs/inactivity} ({@code JobController}) — não roda mais como
+ * {@code @Scheduled} interno (ADR-03, atualização 2026-09-24).
  *
  * <p>Depende de {@code manga} SÓ pela camada application ({@link DeletePrivateCollectionForUserUseCase}) —
  * sem acesso a {@code manga.persistence}/{@code manga.domain} (ADR-35).
@@ -61,8 +61,6 @@ public class RunInactivityUseCase {
         this.clock = clock;
     }
 
-    // roda todo dia às 02:00
-    @Scheduled(cron = "0 0 2 * * *")
     public void run() {
         log.info("RunInactivityUseCase started");
 
