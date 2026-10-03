@@ -86,10 +86,6 @@ HTTP limparia só uma delas. Trocar por limpeza feita pelo próprio filtro (ex.:
 requisições) e remover o `@EnableScheduling`, para ninguém voltar a usar `@Scheduled` achando
 que funciona no Cloud Run com `cpu-throttling` (ADR-03).
 
-### CLAUDE.md cita "ADR-01 a ADR-41"
-
-Já existe o ADR-42. O CLAUDE.md evolui por PR próprio.
-
 ## Segurança (hardening)
 
 Achados de baixa severidade do teste ativo de 2026-09-24 e do ADR-42. Nenhum é explorável
@@ -131,6 +127,8 @@ exige hCaptcha a cada tentativa.
 
 ## Concluído
 
+- [x] CLAUDE.md não cita mais o intervalo de ADRs ("ADR-01 a ADR-41"), que envelhecia a
+  cada ADR novo; aponta só para a pasta `docs/adr/` (issue #38).
 - [x] `@MockBean` (depreciado desde o Spring Boot 3.4) trocado por `@MockitoBean` nos testes
   de integração (issue #36).
 - [x] Migração de pacotes de `manga` e `admin` concluída (issue #34): `controller/` → `web/`,
