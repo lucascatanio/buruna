@@ -21,16 +21,6 @@ A lifecycle rule aplicada em 2026-09-24 (`gcs-lifecycle.json`, ADR-40) só cobre
 os uploads que nunca chegaram ao finalize. Órfãos em `volumes/` precisam de outra rede, por
 exemplo um job que compare o bucket com a tabela `volumes`.
 
-### Adicionar `MangaSubmissionStatus.APPROVED`
-
-O fluxo de submissão é assimétrico. `REJECTED` é estado persistido (`Manga.reject`), mas a
-aprovação não tem estado próprio: `Manga.approve` marca `isPublic=true` e zera
-`submissionStatus`, saindo do fluxo sem deixar rastro no enum. Confunde quem lê o domínio
-(ver `docs/glossario-dominio.md`). Achado na Fase 4, investigação read-only.
-
-Escopo: enum `{PENDING, APPROVED, REJECTED}`, migration, ajuste em `ReviewSubmissionUseCase` e
-`Manga.approve`, teste de regressão.
-
 ### `application/` importando DTO da `web/` em identity, engagement e reading
 
 O ADR-31 manda a dependência apontar só para dentro (`web → application`), mas 6 classes da
@@ -127,6 +117,9 @@ exige hCaptcha a cada tentativa.
 
 ## Concluído
 
+- [x] `MangaSubmissionStatus.APPROVED` (issue #40): `Manga.approve` grava `APPROVED` em vez de
+  zerar o status (V24 + backfill na V25), e `promoteToPublic` encerra uma submissão aberta,
+  que antes deixava o mangá público na fila de revisão do admin.
 - [x] CLAUDE.md não cita mais o intervalo de ADRs ("ADR-01 a ADR-41"), que envelhecia a
   cada ADR novo; aponta só para a pasta `docs/adr/` (issue #38).
 - [x] `@MockBean` (depreciado desde o Spring Boot 3.4) trocado por `@MockitoBean` nos testes

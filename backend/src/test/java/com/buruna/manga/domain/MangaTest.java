@@ -77,13 +77,13 @@ class MangaTest {
     }
 
     @Test
-    void approve_makesPublicAndRecordsReviewer() {
+    void approve_makesPublicMarksApprovedAndRecordsReviewer() {
         Manga manga = privateManga();
         manga.submitForApproval();
         manga.approve(ADMIN);
 
         assertThat(manga.isPublic()).isTrue();
-        assertThat(manga.getSubmissionStatus()).isNull();
+        assertThat(manga.getSubmissionStatus()).isEqualTo(MangaSubmissionStatus.APPROVED);
         assertThat(manga.getReviewedById()).isEqualTo(ADMIN);
         assertThat(manga.getReviewedAt()).isNotNull();
     }
@@ -119,6 +119,39 @@ class MangaTest {
         Manga manga = privateManga();
         manga.promoteToPublic();
         assertThat(manga.isPublic()).isTrue();
+    }
+
+    @Test
+    void promoteToPublic_withPendingSubmission_closesSubmissionWithoutStatus() {
+        Manga manga = privateManga();
+        manga.submitForApproval();
+
+        manga.promoteToPublic();
+
+        assertThat(manga.isPublic()).isTrue();
+        assertThat(manga.getSubmissionStatus()).isNull();
+    }
+
+    @Test
+    void promoteToPublic_afterRejection_clearsStatusAndReason() {
+        Manga manga = privateManga();
+        manga.submitForApproval();
+        manga.reject(ADMIN, "qualidade");
+
+        manga.promoteToPublic();
+
+        assertThat(manga.getSubmissionStatus()).isNull();
+        assertThat(manga.getRejectionReason()).isNull();
+    }
+
+    @Test
+    void approve_afterApproval_throws() {
+        Manga manga = privateManga();
+        manga.submitForApproval();
+        manga.approve(ADMIN);
+
+        assertThatThrownBy(() -> manga.approve(ADMIN))
+                .isInstanceOf(SubmissionNotPendingException.class);
     }
 
     @Test
