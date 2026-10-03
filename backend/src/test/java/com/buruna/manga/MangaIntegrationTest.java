@@ -11,6 +11,7 @@ import com.buruna.manga.persistence.TagCategoryRepository;
 import com.buruna.manga.persistence.TagRepository;
 import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.manga.persistence.VolumeRepository;
+import com.buruna.shared.exception.StorageObjectNotFoundException;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.identity.domain.Email;
@@ -50,6 +51,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -443,6 +445,37 @@ class MangaIntegrationTest {
         }
 
         @Test
+        void postManga_titleOver255Chars_returns400() throws Exception {
+            mockMvc.perform(post("/mangas").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"title\":\"" + "a".repeat(256) + "\",\"format\":\"MANGA\",\"statusOrigin\":\"ONGOING\",\"statusSite\":\"INCOMPLETE\"}")
+                    .with(auth(collab)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("255")));
+        }
+
+        @Test
+        void postManga_originCountryOver100Chars_returns400() throws Exception {
+            mockMvc.perform(post("/mangas").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"title\":\"ITest Long Country\",\"originCountry\":\"" + "a".repeat(101) + "\",\"format\":\"MANGA\",\"statusOrigin\":\"ONGOING\",\"statusSite\":\"INCOMPLETE\"}")
+                    .with(auth(collab)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("100")));
+        }
+
+        @Test
+        void getMangas_sortByAllowedField_returns200() throws Exception {
+            mockMvc.perform(get("/mangas").param("sort", "avgRating,desc").with(auth(reader)))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        void getMangas_sortByModerationField_returns400() throws Exception {
+            // campo da entidade fora do DTO: ordenar por ele vazaria a ordem dos dados de moderação
+            mockMvc.perform(get("/mangas").param("sort", "reviewedAt").with(auth(reader)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
         void postManga_asCollaborator_returns201WithSlug() throws Exception {
             mockMvc.perform(post("/mangas").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"title\":\"ITest Public One\",\"format\":\"MANGA\",\"statusOrigin\":\"ONGOING\",\"statusSite\":\"INCOMPLETE\"}")
@@ -672,6 +705,31 @@ class MangaIntegrationTest {
 
             finalizeVolume("/mangas", id, obj2, 2, collab)
                     .andExpect(status().isConflict());
+        }
+
+        @Test
+        void finalize_sameObjectNameTwice_returns404() throws Exception {
+            String id = createPublicManga("ITest Vol Finalize Twice", collab);
+            String obj = uploadVolume("/mangas", id, 1, collab);
+            // o primeiro finalize moveu o objeto para fora de pending/
+            when(storageClient.getFileMetadata(eq(obj)))
+                    .thenThrow(new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + obj));
+
+            finalizeVolume("/mangas", id, obj, 1, collab)
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void finalize_objectGoneBeforeMove_returns404AndSavesNoVolume() throws Exception {
+            // perdedor de dois finalizes concorrentes: leu o metadado, mas o vencedor moveu antes
+            String id = createPublicManga("ITest Vol Finalize Race", collab);
+            String obj = requestUploadUrl("/mangas", id, 1, collab);
+            doThrow(new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + obj))
+                    .when(storageClient).move(eq(obj), any());
+
+            finalizeVolume("/mangas", id, obj, 1, collab)
+                    .andExpect(status().isNotFound());
+            org.assertj.core.api.Assertions.assertThat(volumeRepository.findByMangaId(UUID.fromString(id))).isEmpty();
         }
 
         @Test
@@ -936,6 +994,17 @@ class MangaIntegrationTest {
                     .matches("^volumes/" + id + "/[0-9a-fA-F-]{36}\\.pdf$");
 
             verify(storageClient).move(eq(pendingObjectName), eq(storedFileUrl));
+        }
+
+        @Test
+        void finalizeVolume_sameObjectNameTwice_returns404() throws Exception {
+            String id = createPrivateManga("ITest Private Finalize Twice", reader);
+            String obj = uploadVolume("/my/mangas", id, 1, reader);
+            when(storageClient.getFileMetadata(eq(obj)))
+                    .thenThrow(new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + obj));
+
+            finalizeVolume("/my/mangas", id, obj, 1, reader)
+                    .andExpect(status().isNotFound());
         }
 
         @Test
