@@ -5,7 +5,8 @@ import {getResetInfo, resetPassword} from "@/api/identityApi";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
+import {PasswordInput} from "@/components/PasswordInput";
+import {AuthLayout} from "@/components/AuthLayout";
 
 export function ResetPasswordPage() {
     const [searchParams] = useSearchParams();
@@ -53,82 +54,61 @@ export function ResetPasswordPage() {
 
     if (!token) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background px-4">
-                <Card className="w-full max-w-md">
-                    <CardHeader className="text-center">
-                        <CardTitle>Link inválido</CardTitle>
-                        <CardDescription>O link de recuperação é inválido ou está incompleto.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Link to="/forgot-password">
-                            <Button variant="outline" className="w-full">Solicitar novo link</Button>
-                        </Link>
-                    </CardContent>
-                </Card>
-            </div>
+            <AuthLayout title="Link inválido" description="O link de recuperação é inválido ou está incompleto.">
+                <Button variant="outline" className="w-full h-12" asChild>
+                    <Link to="/forgot-password">Solicitar novo link</Link>
+                </Button>
+            </AuthLayout>
         );
     }
 
     if (checkingToken) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background px-4">
-                <p className="text-muted-foreground">Verificando link…</p>
-            </div>
-        );
+        return <AuthLayout title="Redefinir senha" description="Verificando link…"/>;
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-4">
-            <Card className="w-full max-w-md">
-                <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Redefinir senha</CardTitle>
-                    <CardDescription>Digite sua nova senha</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="newPassword">Nova senha</Label>
-                            <Input
-                                id="newPassword"
-                                type="password"
-                                placeholder="Mín. 8 caracteres"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                required
-                                autoFocus
-                            />
-                        </div>
-                        {totpRequired && (
-                            <div className="space-y-2">
-                                <Label htmlFor="totpCode">Código 2FA</Label>
-                                <Input
-                                    id="totpCode"
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]{6}"
-                                    maxLength={6}
-                                    placeholder="000000"
-                                    value={totpCode}
-                                    onChange={(e) => setTotpCode(e.target.value)}
-                                    required
-                                    autoComplete="one-time-code"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Sua conta possui 2FA ativado. Digite o código do app autenticador.
-                                </p>
-                            </div>
-                        )}
-                        <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? "Redefinindo…" : "Redefinir senha"}
-                        </Button>
-                    </form>
-                    <p className="text-center text-sm text-muted-foreground mt-4">
-                        <Link to="/login" className="underline underline-offset-4 hover:text-primary">
-                            Voltar ao login
-                        </Link>
-                    </p>
-                </CardContent>
-            </Card>
-        </div>
+        <AuthLayout title="Redefinir senha" description="Digite sua nova senha.">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="newPassword">Nova senha</Label>
+                    <PasswordInput
+                        id="newPassword"
+                        placeholder="Mín. 8 caracteres"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                        autoFocus
+                        autoComplete="new-password"
+                    />
+                </div>
+                {totpRequired && (
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="totpCode">Código 2FA</Label>
+                        <Input
+                            id="totpCode"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]{6}"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={totpCode}
+                            onChange={(e) => setTotpCode(e.target.value)}
+                            required
+                            autoComplete="one-time-code"
+                            className="font-mono tracking-[0.3em]"
+                        />
+                        <p className="m-0 text-xs text-muted-foreground">
+                            Sua conta possui 2FA ativado. Digite o código do app autenticador.
+                        </p>
+                    </div>
+                )}
+                <Button type="submit" className="w-full mt-2" disabled={loading}>
+                    {loading ? "Redefinindo…" : "Redefinir senha"}
+                </Button>
+            </form>
+            <Link to="/login" className="self-start text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">
+                Voltar ao login
+            </Link>
+        </AuthLayout>
     );
 }

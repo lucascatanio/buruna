@@ -6,9 +6,8 @@ import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
-
-declare const __APP_VERSION__: string
+import {AuthLayout} from "@/components/AuthLayout";
+import {PasswordInput} from "@/components/PasswordInput";
 
 export function LoginPage() {
     const navigate = useNavigate();
@@ -57,105 +56,89 @@ export function LoginPage() {
 
     if (requires2FA) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 gap-3">
-                <Card className="w-full max-w-md">
-                    <CardHeader className="text-center">
-                        <CardTitle className="text-2xl">Verificação 2FA</CardTitle>
-                        <CardDescription>Digite o código do seu app autenticador</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handle2FA} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="totpCode">Código TOTP</Label>
-                                <Input
-                                    id="totpCode"
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]{6}"
-                                    maxLength={6}
-                                    placeholder="000000"
-                                    value={totpCode}
-                                    onChange={(e) => setTotpCode(e.target.value)}
-                                    required
-                                    autoFocus
-                                    autoComplete="one-time-code"
-                                />
-                            </div>
-                            <Button type="submit" className="w-full" disabled={loading || totpCode.length !== 6}>
-                                {loading ? "Verificando…" : "Verificar"}
-                            </Button>
-                        </form>
-                        <p className="text-center text-sm text-muted-foreground mt-4">
-                            <button
-                                type="button"
-                                className="underline underline-offset-4 hover:text-primary"
-                                onClick={() => {
-                                    setRequires2FA(false);
-                                    setTempToken("");
-                                    setTotpCode("");
-                                }}
-                            >
-                                Voltar ao login
-                            </button>
-                        </p>
-                    </CardContent>
-                </Card>
-                <p className="text-xs text-muted-foreground/50 text-center">
-                    v{__APP_VERSION__}
-                </p>
-            </div>
+            <AuthLayout title="Verificação 2FA" description="Digite o código do seu app autenticador.">
+                <form onSubmit={handle2FA} className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-2">
+                        <Label htmlFor="totpCode">Código TOTP</Label>
+                        <Input
+                            id="totpCode"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]{6}"
+                            maxLength={6}
+                            placeholder="000000"
+                            value={totpCode}
+                            onChange={(e) => setTotpCode(e.target.value)}
+                            required
+                            autoFocus
+                            autoComplete="one-time-code"
+                            className="font-mono tracking-[0.3em]"
+                        />
+                    </div>
+                    <Button type="submit" className="w-full mt-2" disabled={loading || totpCode.length !== 6}>
+                        {loading ? "Verificando…" : "Verificar"}
+                    </Button>
+                </form>
+                <button
+                    type="button"
+                    className="self-start text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                    onClick={() => {
+                        setRequires2FA(false);
+                        setTempToken("");
+                        setTotpCode("");
+                    }}
+                >
+                    Voltar ao login
+                </button>
+            </AuthLayout>
         );
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 gap-3">
-            <Card className="w-full max-w-md">
-                <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Burūna</CardTitle>
-                    <CardDescription>Entre na sua conta</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">E-mail</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="voce@exemplo.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                autoFocus
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Senha</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                            />
-                        </div>
-                        <Button type="submit" className="w-full" disabled={loading}>
-                            {loading ? "Entrando…" : "Entrar"}
-                        </Button>
-                    </form>
-                    <div className="flex justify-between items-center mt-4">
-                        <Link to="/forgot-password" className="text-sm text-muted-foreground underline underline-offset-4 hover:text-primary">
+        <AuthLayout title="Entrar" description="Acesse sua biblioteca de mangás.">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                <div className="flex flex-col gap-2">
+                    <Label htmlFor="email">E-mail</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="voce@exemplo.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        autoFocus
+                        autoComplete="email"
+                    />
+                </div>
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-baseline justify-between gap-3">
+                        <Label htmlFor="password">Senha</Label>
+                        <Link to="/forgot-password" className="text-[13px] text-muted-foreground hover:text-foreground hover:underline underline-offset-4">
                             Esqueci minha senha
                         </Link>
-                        <Link to="/register" className="text-sm text-muted-foreground underline underline-offset-4 hover:text-primary">
-                            Solicitar acesso
-                        </Link>
                     </div>
-                </CardContent>
-            </Card>
-            <p className="text-xs text-muted-foreground/50 text-center">
-                v{__APP_VERSION__}
-            </p>
-        </div>
+                    <PasswordInput
+                        id="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        autoComplete="current-password"
+                    />
+                </div>
+                <Button type="submit" className="w-full mt-2" disabled={loading}>
+                    {loading ? "Entrando…" : "Entrar"}
+                </Button>
+            </form>
+            <div className="flex flex-col gap-6">
+                <div className="h-px bg-border"/>
+                <p className="m-0 text-sm text-muted-foreground">
+                    Ainda não tem acesso?{" "}
+                    <Link to="/register" className="font-medium text-foreground underline-offset-4 hover:underline">
+                        Solicitar acesso
+                    </Link>
+                </p>
+            </div>
+        </AuthLayout>
     );
 }

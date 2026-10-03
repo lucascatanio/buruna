@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/buruna-wordmark-reversed.svg">
+    <img src="docs/brand/buruna-wordmark.svg" alt="Burūna" width="320">
+  </picture>
+</p>
+
 # Burūna
 
 ![CI](https://github.com/lucascatanio/buruna/actions/workflows/ci.yml/badge.svg?branch=dev)
@@ -37,7 +44,7 @@ Deploy em Cloud Run (GCP). Detalhes completos: [docs/ARCHITECTURE.md](docs/ARCHI
 ```bash
 docker compose up -d postgres   # Postgres em localhost:5433
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local \
-  -Dspring-boot.run.arguments=--app.storage.local.path=/tmp/buruna-storage
+  "-Dspring-boot.run.arguments=--app.storage.local.path=/tmp/buruna-storage --app.storage.local.base-url=http://localhost:5173"
 cd frontend && npm install && npm run dev
 ```
 
@@ -55,6 +62,7 @@ Variáveis de ambiente obrigatórias e notas de setup: [docs/DEVELOPMENT.md](doc
 | [SECURITY.md](SECURITY.md)                             | JWT/refresh, RBAC, rate limit, 2FA e reporte de vulnerabilidades                |
 | [docs/adr/](docs/adr/)                                 | Decisões de arquitetura (ADR-01 a ADR-41)                                       |
 | [docs/glossario-dominio.md](docs/glossario-dominio.md) | Vocabulário de domínio                                                          |
+| [docs/brand/BRAND.md](docs/brand/BRAND.md)             | Marca: logo, cores e regras de uso                                              |
 | [docs/BACKLOG.md](docs/BACKLOG.md)                     | Achados fora de escopo, aguardando issue própria                                |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                     | Fluxo de PR e regras de arquitetura                                             |
 

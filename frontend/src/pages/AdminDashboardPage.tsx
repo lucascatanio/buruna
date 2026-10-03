@@ -2,6 +2,7 @@ import {useEffect, useState} from "react";
 import {getDashboard} from "@/api/adminApi";
 import type {DashboardData} from "@/types/admin";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
 import {Users, HardDrive, Database} from "lucide-react";
 
 export function AdminDashboardPage() {
@@ -19,13 +20,13 @@ export function AdminDashboardPage() {
     if (loading) {
         return (
             <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 space-y-6">
-                <h1 className="text-xl font-semibold">Dashboard</h1>
+                <PageHeader title="Dashboard" description="Usuários ativos e uso de armazenamento."/>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[1, 2].map(i => (
-                        <div key={i} className="h-28 rounded-xl bg-muted animate-pulse"/>
+                        <div key={i} className="h-28 rounded-lg bg-card screentone animate-pulse"/>
                     ))}
                 </div>
-                <div className="h-64 rounded-xl bg-muted animate-pulse"/>
+                <div className="h-64 rounded-lg bg-card screentone animate-pulse"/>
             </div>
         );
     }
@@ -40,7 +41,7 @@ export function AdminDashboardPage() {
 
     return (
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 space-y-6">
-            <h1 className="text-xl font-semibold">Dashboard</h1>
+            <PageHeader title="Dashboard" description="Usuários ativos e uso de armazenamento."/>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card>
@@ -51,7 +52,7 @@ export function AdminDashboardPage() {
                         <Users className="w-4 h-4 text-muted-foreground"/>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-3xl font-bold">{data.activeUsers}</p>
+                        <p className="m-0 font-mono text-[32px] font-medium tracking-[-0.02em]">{data.activeUsers}</p>
                     </CardContent>
                 </Card>
 
@@ -63,7 +64,7 @@ export function AdminDashboardPage() {
                         <HardDrive className="w-4 h-4 text-muted-foreground"/>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-3xl font-bold">{Number(data.totalStorageUsedGb).toFixed(2)} GB</p>
+                        <p className="m-0 font-mono text-[32px] font-medium tracking-[-0.02em]">{Number(data.totalStorageUsedGb).toFixed(2)} <span className="text-base text-muted-foreground">GB</span></p>
                     </CardContent>
                 </Card>
             </div>
@@ -87,17 +88,17 @@ export function AdminDashboardPage() {
                                 const barColor = pct >= 90
                                     ? "bg-destructive"
                                     : pct >= 70
-                                        ? "bg-yellow-500"
-                                        : "bg-primary";
+                                        ? "bg-shu"
+                                        : "bg-foreground/70";
 
                                 return (
                                     <div key={u.userId} className="flex items-center gap-3 px-6 py-3">
                                         <span className="text-sm font-medium w-32 truncate">
                                             {u.username}
                                         </span>
-                                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                                        <div className="flex-1 h-1 bg-muted overflow-hidden">
                                             <div
-                                                className={`h-full rounded-full transition-all ${barColor}`}
+                                                className={`h-full transition-all ${barColor}`}
                                                 style={{width: `${pct}%`}}
                                             />
                                         </div>

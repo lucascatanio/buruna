@@ -76,22 +76,17 @@ public class ReadingService {
     }
 
     @Transactional
-    public ProgressResponse saveProgress(UUID volumeId, int currentPage, UUID actorId) {
+    public ProgressResponse saveProgress(UUID volumeId, int currentPage, Integer totalPages, UUID actorId) {
         volumeAccessUseCase.validateAccess(volumeId, actorId);
 
         ReadingProgress progress = progressRepository
                 .findByUserIdAndVolumeId(actorId, volumeId)
-                .orElseGet(() -> {
-                    ReadingProgress p = new ReadingProgress();
-                    p.setUserId(actorId);
-                    p.setVolumeId(volumeId);
-                    return p;
-                });
+                .orElseGet(() -> ReadingProgress.start(actorId, volumeId));
 
-        progress.setCurrentPage(currentPage);
-        progressRepository.save(progress);
+        progress.recordPage(currentPage, totalPages);
+        progressRepository.saveAndFlush(progress);
 
-        return new ProgressResponse(volumeId, progress.getCurrentPage(), progress.getUpdatedAt());
+        return ProgressResponse.from(progress);
     }
 
     @Transactional(readOnly = true)
@@ -106,7 +101,7 @@ public class ReadingService {
         // Picks the progress on the highest-numbered volume (volumeIds is ordered DESC)
         return progressRepository.findByUserIdAndVolumeIdIn(actorId, volumeIds).stream()
                 .min(Comparator.comparingInt(p -> volumeIds.indexOf(p.getVolumeId())))
-                .map(p -> new ProgressResponse(p.getVolumeId(), p.getCurrentPage(), p.getUpdatedAt()));
+                .map(ProgressResponse::from);
     }
 
     @Transactional(readOnly = true)
@@ -140,18 +135,15 @@ public class ReadingService {
     }
 
     @Transactional(readOnly = true)
-    public Map<UUID, Integer> getBatchProgress(List<UUID> volumeIds, UUID actorId) {
+    public Map<UUID, ProgressResponse> getBatchProgress(List<UUID> volumeIds, UUID actorId) {
         return progressRepository.findByUserIdAndVolumeIdIn(actorId, volumeIds)
                 .stream()
-                .collect(Collectors.toMap(
-                        ReadingProgress::getVolumeId,
-                        ReadingProgress::getCurrentPage
-                ));
+                .collect(Collectors.toMap(ReadingProgress::getVolumeId, ProgressResponse::from));
     }
 
     @Transactional(readOnly = true)
     public Optional<ProgressResponse> findProgressByVolume(UUID volumeId, UUID actorId) {
         return progressRepository.findByUserIdAndVolumeId(actorId, volumeId)
-                .map(p -> new ProgressResponse(p.getVolumeId(), p.getCurrentPage(), p.getUpdatedAt()));
+                .map(ProgressResponse::from);
     }
 }

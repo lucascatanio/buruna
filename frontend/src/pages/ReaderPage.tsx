@@ -5,6 +5,8 @@ import type {PDFDocumentProxy, RenderTask} from "pdfjs-dist";
 import {getManga} from "@/api/mangaApi";
 import {getVolumeProgress, getVolumeUrl, saveProgress as saveProgressApi} from "@/api/readingApi";
 import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
+import {Loading} from "@/components/Loading";
+import {LogoMark} from "@/components/Logo";
 import {
     ArrowLeft,
     ChevronLeft,
@@ -14,7 +16,6 @@ import {
     SlidersHorizontal,
     X,
     Loader2,
-    CheckCircle2,
 } from "lucide-react";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
@@ -32,10 +33,10 @@ interface ReaderState {
 // salva progresso com debounce de 1.5s
 let progressTimer: ReturnType<typeof setTimeout> | null = null;
 
-function saveProgress(volumeId: string, page: number) {
+function saveProgress(volumeId: string, page: number, totalPages: number) {
     if (progressTimer) clearTimeout(progressTimer);
     progressTimer = setTimeout(() => {
-        saveProgressApi(volumeId, page)
+        saveProgressApi(volumeId, page, totalPages)
             .catch((e) => console.warn("Failed to save progress:", e));
     }, 1500);
 }
@@ -65,13 +66,24 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
     const [rendering, setRendering] = useState(false);
     const touchStartX = useRef<number | null>(null);
 
+    const renderSeqRef = useRef(0);
+
     const renderPage = useCallback(async (pageNum: number) => {
         if (!canvasRef.current) return;
+        // O pdf.js não aceita dois render() no mesmo canvas ao mesmo tempo: o segundo
+        // redimensiona o canvas no meio do primeiro e a página sai girada/espelhada.
+        // Cada chamada leva um número; só a mais recente desenha, e só depois que a
+        // renderização anterior terminou de cancelar.
+        const seq = ++renderSeqRef.current;
         setRendering(true);
         try {
-            // cancela render anterior se ainda estiver em andamento
-            renderTaskRef.current?.cancel();
             const page = await pdf.getPage(pageNum);
+            const previous = renderTaskRef.current;
+            if (previous) {
+                previous.cancel();
+                await previous.promise.catch(() => undefined);
+            }
+            if (seq !== renderSeqRef.current || !canvasRef.current) return;
             const container = canvasRef.current.parentElement!;
             const containerWidth = container.clientWidth;
             const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -95,15 +107,15 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
                 console.error("Render error:", e);
             }
         } finally {
-            setRendering(false);
+            if (seq === renderSeqRef.current) setRendering(false);
         }
     }, [pdf]);
 
     useEffect(() => {
         renderPage(currentPage);
         onPageChange(currentPage);
-        saveProgress(volumeId, currentPage);
-    }, [currentPage, renderPage, volumeId, onPageChange]);
+        saveProgress(volumeId, currentPage, pdf.numPages);
+    }, [currentPage, renderPage, volumeId, onPageChange, pdf.numPages]);
 
     function goTo(page: number) {
         const clamped = Math.max(1, Math.min(pdf.numPages, page));
@@ -177,18 +189,20 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
 
             <div className="flex items-center justify-center gap-4 py-3 bg-black/40 backdrop-blur-sm shrink-0">
                 <button
-                    className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors"
+                    className="flex size-11 items-center justify-center rounded-sm hover:bg-paper/10 disabled:opacity-30 transition-colors"
                     onClick={() => goTo(currentPage - 1)}
                     disabled={currentPage <= 1}
+                    aria-label="Página anterior"
                 >
                     <ChevronLeft className="w-6 h-6 text-white"/>
                 </button>
-                <span className="text-white text-sm min-w-[80px] text-center tabular-nums">
+                <span className="min-w-[80px] text-center font-mono text-sm text-paper">
                     {currentPage} / {pdf.numPages}
                 </span>
                 <button
-                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                    className="flex size-11 items-center justify-center rounded-sm hover:bg-paper/10 transition-colors"
                     onClick={tryAdvance}
+                    aria-label="Próxima página"
                 >
                     <ChevronRight className="w-6 h-6 text-white"/>
                 </button>
@@ -293,9 +307,9 @@ function ScrollReader({pdf, initialPage, volumeId, brightness, contrast, onPageC
         if (pageNum !== currentPageRef.current) {
             currentPageRef.current = pageNum;
             onPageChange(pageNum);
-            saveProgress(volumeId, pageNum);
+            saveProgress(volumeId, pageNum, pdf.numPages);
         }
-    }, [volumeId, onPageChange]);
+    }, [volumeId, onPageChange, pdf.numPages]);
 
     useEffect(() => {
         if (initialScrollRef.current || initialPage <= 1) return;
@@ -379,27 +393,24 @@ function CompletionOverlay({state}: CompletionOverlayProps) {
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-            <div className="bg-[#1c1c1e] rounded-2xl p-8 flex flex-col items-center gap-6 max-w-xs w-full mx-4 shadow-2xl border border-white/10">
-                <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-                    <CheckCircle2 className="w-8 h-8 text-white/80"/>
-                </div>
-                <div className="text-center space-y-1">
-                    <p className="text-white text-lg font-semibold">Volume concluído!</p>
+            <div className="relative mx-4 flex w-full max-w-xs flex-col items-center gap-6 overflow-hidden rounded-lg border border-paper/10 bg-ink p-8 shadow-2xl">
+                <span aria-hidden="true" className="screentone absolute inset-0 mask-[linear-gradient(to_bottom,#000,transparent_60%)]"/>
+                <LogoMark className="relative h-12 w-auto text-paper" decorative/>
+                <div className="relative text-center space-y-1">
+                    <p className="text-paper text-lg font-semibold">Volume concluído</p>
                     {(state.mangaTitle || state.volumeNumber != null) && (
-                        <p className="text-white/40 text-sm">
+                        <p className="text-paper/50 text-sm">
                             {[state.mangaTitle, state.volumeNumber != null && `Vol. ${state.volumeNumber}`]
                                 .filter(Boolean).join(" — ")}
                         </p>
                     )}
                 </div>
-                <div className="flex flex-col gap-3 w-full">
+                <div className="relative flex flex-col gap-3 w-full">
                     {nextVol === undefined ? (
-                        <div className="h-10 flex items-center justify-center">
-                            <Loader2 className="w-5 h-5 animate-spin text-white/30"/>
-                        </div>
+                        <Loading className="py-1"/>
                     ) : nextVol !== null && (
                         <button
-                            className="w-full py-2.5 bg-white text-black rounded-xl text-sm font-medium hover:bg-white/90 transition-colors"
+                            className="w-full h-11 bg-paper text-ink rounded-sm text-sm font-semibold hover:bg-paper/90 transition-colors"
                             onClick={() => navigate(`/leitor/${nextVol.id}`, {
                                 state: {
                                     mangaId: state.mangaId,
@@ -414,7 +425,7 @@ function CompletionOverlay({state}: CompletionOverlayProps) {
                         </button>
                     )}
                     <button
-                        className="w-full py-2.5 bg-white/10 text-white rounded-xl text-sm hover:bg-white/20 transition-colors"
+                        className="w-full h-11 border border-paper/20 text-paper rounded-sm text-sm hover:bg-paper/10 transition-colors"
                         onClick={() => navigate(state.backUrl ?? "/")}
                     >
                         Voltar aos detalhes
@@ -478,7 +489,8 @@ export function ReaderPage() {
                 if (!cached) setSignedUrl(volumeId!, signedUrl);
 
                 let startPage = 1;
-                if (progressRes.status === "fulfilled" && progressRes.value) {
+                // Volume já concluído reabre do começo; o "Lido" continua registrado.
+                if (progressRes.status === "fulfilled" && progressRes.value && !progressRes.value.finished) {
                     startPage = progressRes.value.currentPage ?? 1;
                 }
                 setInitialPage(startPage);
@@ -523,7 +535,7 @@ export function ReaderPage() {
     function handleBack() {
         if (progressTimer) {
             clearTimeout(progressTimer);
-            saveProgressApi(volumeId!, currentPage)
+            saveProgressApi(volumeId!, currentPage, pdf?.numPages)
                 .catch((e) => console.warn("Failed to save progress:", e));
         }
         navigate(state.backUrl ?? -1 as any);
@@ -535,8 +547,11 @@ export function ReaderPage() {
             progressTimer = null;
         }
         setShowCompletion(true);
-        saveProgressApi(volumeId!, 1)
-            .catch((e) => console.warn("Failed to reset progress:", e));
+        // Grava a última página: o volume fica como lido. Reabrir começa da página 1.
+        if (pdf) {
+            saveProgressApi(volumeId!, pdf.numPages, pdf.numPages)
+                .catch((e) => console.warn("Failed to save progress:", e));
+        }
     }
 
     function handlePageJump(page: number) {
@@ -553,10 +568,7 @@ export function ReaderPage() {
     if (loadingPdf || !progressLoaded) {
         return (
             <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
-                <div className="flex flex-col items-center gap-3 text-white/60">
-                    <Loader2 className="w-8 h-8 animate-spin"/>
-                    <p className="text-sm">Carregando…</p>
-                </div>
+                <Loading className="text-paper" label="Carregando volume"/>
             </div>
         );
     }
@@ -565,9 +577,9 @@ export function ReaderPage() {
         return (
             <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
                 <div className="flex flex-col items-center gap-4 text-center px-6">
-                    <p className="text-white/80">{loadError ?? "Erro desconhecido."}</p>
+                    <p className="text-paper/80">{loadError ?? "Erro desconhecido."}</p>
                     <button
-                        className="text-sm text-white/50 underline"
+                        className="min-h-11 px-3 text-sm text-paper/60 underline underline-offset-4 hover:text-paper"
                         onClick={handleBack}
                     >
                         Voltar
@@ -588,7 +600,7 @@ export function ReaderPage() {
                 <div
                     className={`
                         flex flex-col
-                        bg-black/60 backdrop-blur-sm
+                        bg-ink/85 backdrop-blur-sm border-b border-paper/10
                         transition-all duration-200
                         ${showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
                     `}
@@ -597,19 +609,25 @@ export function ReaderPage() {
                     {/* row 1: back + mode/settings */}
                     <div className="flex items-center justify-between px-3 py-2">
                         <button
-                            className="flex items-center gap-2 text-white/80 hover:text-white transition-colors p-1.5"
+                            className="flex min-h-11 min-w-0 items-center gap-2.5 px-1.5 text-paper/85 transition-colors hover:text-paper"
                             onClick={handleBack}
+                            aria-label={`Voltar${state.mangaTitle ? ` para ${state.mangaTitle}` : ""}`}
                         >
-                            <ArrowLeft className="w-5 h-5"/>
-                            <span className="text-sm hidden sm:block truncate max-w-[200px]">
+                            <ArrowLeft className="size-5 shrink-0"/>
+                            <span className="truncate text-sm font-medium max-w-[45vw] sm:max-w-[320px]">
                                 {state.mangaTitle ?? "Voltar"}
-                                {state.volumeNumber != null && ` — Vol. ${state.volumeNumber}`}
                             </span>
+                            {state.volumeNumber != null && (
+                                <span className="shrink-0 font-mono text-xs text-paper/50">
+                                    VOL. {String(state.volumeNumber).padStart(2, "0")}
+                                </span>
+                            )}
                         </button>
 
                         <div className="flex items-center gap-1">
                             <button
-                                className="p-2 rounded-md hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+                                className="flex size-11 items-center justify-center rounded-sm text-paper/70 transition-colors hover:bg-paper/10 hover:text-paper"
+                                aria-label={mode === "paged" ? "Mudar para scroll contínuo" : "Mudar para página a página"}
                                 title={mode === "paged" ? "Mudar para scroll contínuo" : "Mudar para página a página"}
                                 onClick={() => setMode(m => m === "paged" ? "scroll" : "paged")}
                             >
@@ -620,7 +638,9 @@ export function ReaderPage() {
                             </button>
 
                             <button
-                                className={`p-2 rounded-md hover:bg-white/10 transition-colors ${showSettings ? "bg-white/10 text-white" : "text-white/70 hover:text-white"}`}
+                                className={`flex size-11 items-center justify-center rounded-sm transition-colors hover:bg-paper/10 ${showSettings ? "bg-paper/10 text-paper" : "text-paper/70 hover:text-paper"}`}
+                                aria-label="Ajustes de imagem"
+                                aria-expanded={showSettings}
                                 onClick={() => setShowSettings(s => !s)}
                             >
                                 <SlidersHorizontal className="w-5 h-5"/>
@@ -630,16 +650,14 @@ export function ReaderPage() {
 
                     {/* row 2: page slider + numeric input */}
                     <div className="flex items-center gap-2 px-4 pb-2.5">
-                        <span className="text-white/40 text-xs tabular-nums w-6 text-right shrink-0">
-                            {currentPage}
-                        </span>
                         <input
                             type="range"
+                            aria-label="Página"
                             min={1}
                             max={pdf.numPages}
                             value={currentPage}
                             onChange={(e) => handlePageJump(Number(e.target.value))}
-                            className="flex-1 accent-white cursor-pointer"
+                            className="flex-1 accent-shu cursor-pointer"
                         />
                         <div className="flex items-center gap-1 shrink-0">
                             <input
@@ -651,9 +669,10 @@ export function ReaderPage() {
                                 onFocus={() => setPageInputFocused(true)}
                                 onBlur={() => { setPageInputFocused(false); handlePageInputConfirm(); }}
                                 onKeyDown={(e) => { if (e.key === "Enter") { handlePageInputConfirm(); (e.target as HTMLInputElement).blur(); } }}
-                                className="w-12 bg-white/10 text-white text-xs text-center rounded px-1 py-0.5 focus:outline-none focus:bg-white/20"
+                                aria-label="Ir para a página"
+                                className="w-12 rounded-sm bg-paper/10 px-1 py-1 text-center font-mono text-xs text-paper focus:bg-paper/20 focus:outline-none"
                             />
-                            <span className="text-white/30 text-xs">/{pdf.numPages}</span>
+                            <span className="font-mono text-xs text-paper/40">/ {pdf.numPages}</span>
                         </div>
                     </div>
                 </div>
@@ -661,21 +680,21 @@ export function ReaderPage() {
                 {showSettings && (
                     <div
                         className={`
-                            bg-black/80 backdrop-blur-sm px-4 py-3 space-y-3
+                            bg-ink/90 backdrop-blur-sm border-b border-paper/10 px-4 py-3 space-y-3
                             transition-all duration-200
                             ${showControls ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
                         `}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-white/60 text-xs uppercase tracking-wide">Ajustes de imagem</span>
-                            <button onClick={() => setShowSettings(false)}>
-                                <X className="w-4 h-4 text-white/40 hover:text-white transition-colors"/>
+                            <span className="font-mono text-[11px] uppercase tracking-widest text-paper/60">Ajustes de imagem</span>
+                            <button aria-label="Fechar ajustes" className="flex size-9 items-center justify-center" onClick={() => setShowSettings(false)}>
+                                <X className="size-4 text-paper/40 transition-colors hover:text-paper"/>
                             </button>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <label className="space-y-1.5">
-                                <span className="text-white/60 text-xs">Brilho {brightness}%</span>
+                                <span className="font-mono text-xs text-paper/60">Brilho {brightness}%</span>
                                 <input
                                     type="range" min={30} max={200} value={brightness}
                                     onChange={(e) => setBrightness(Number(e.target.value))}
@@ -683,7 +702,7 @@ export function ReaderPage() {
                                 />
                             </label>
                             <label className="space-y-1.5">
-                                <span className="text-white/60 text-xs">Contraste {contrast}%</span>
+                                <span className="font-mono text-xs text-paper/60">Contraste {contrast}%</span>
                                 <input
                                     type="range" min={30} max={200} value={contrast}
                                     onChange={(e) => setContrast(Number(e.target.value))}
@@ -718,6 +737,13 @@ export function ReaderPage() {
                     pageJump={pageJump}
                 />
             )}
+
+            <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-0.5 bg-paper/10"
+            >
+                <div className="h-full bg-shu transition-[width] duration-200" style={{width: `${(currentPage / pdf.numPages) * 100}%`}}/>
+            </div>
 
             {showCompletion && <CompletionOverlay state={state}/>}
         </div>

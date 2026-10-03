@@ -8,8 +8,11 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {TagSelector} from "@/components/TagSelector";
+import {NativeSelect} from "@/components/ui/native-select";
+import {PageHeader} from "@/components/PageHeader";
+import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
-import {ArrowLeft, Plus, X, Upload, Trash2} from "lucide-react";
+import {Plus, X, Upload, Trash2} from "lucide-react";
 
 const FORMAT_OPTIONS = [
     {value: "MANGA", label: "Mangá"},
@@ -210,30 +213,25 @@ export function MangaEditPage() {
 
     return (
         <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-8">
-            <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-                    <ArrowLeft className="w-4 h-4"/>
-                </Button>
-                <h1 className="text-2xl font-bold">Editar mangá</h1>
-            </div>
+            <PageHeader title="Editar mangá" back={{to: manga ? `/biblioteca/${manga.slug}` : "/biblioteca", label: "Voltar ao mangá"}}/>
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                    <Label>Capa</Label>
+                    <Label htmlFor="cover">Capa</Label>
                     <div className="flex gap-4 items-start">
                         {coverPreview && (
                             <div className="relative w-24 shrink-0">
                                 <img src={coverPreview} alt="Capa" className="w-24 aspect-[2/3] object-cover rounded-md border"/>
                                 <button
                                     type="button"
-                                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-sm w-5 h-5 flex items-center justify-center"
                                     onClick={() => {setCoverBase64(null); setCoverPreview(null);}}
                                 >
                                     <X className="w-3 h-3"/>
                                 </button>
                             </div>
                         )}
-                        <Input type="file" accept="image/*" onChange={handleCoverChange}/>
+                        <FileInput id="cover" accept="image/*" onChange={handleCoverChange} buttonLabel="Escolher imagem"/>
                     </div>
                 </div>
 
@@ -286,24 +284,24 @@ export function MangaEditPage() {
                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-2">
                         <Label>Formato</Label>
-                        <select className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                        <NativeSelect
                                 value={form.format} onChange={(e) => setForm((p) => ({...p, format: e.target.value}))}>
                             {FORMAT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        </NativeSelect>
                     </div>
                     <div className="space-y-2">
                         <Label>Status de publicação</Label>
-                        <select className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                        <NativeSelect
                                 value={form.statusOrigin} onChange={(e) => setForm((p) => ({...p, statusOrigin: e.target.value}))}>
                             {STATUS_ORIGIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        </NativeSelect>
                     </div>
                     <div className="space-y-2">
                         <Label>Status no site</Label>
-                        <select className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                        <NativeSelect
                                 value={form.statusSite} onChange={(e) => setForm((p) => ({...p, statusSite: e.target.value}))}>
                             {STATUS_SITE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                        </select>
+                        </NativeSelect>
                     </div>
                     <div className="space-y-2">
                         <Label>Ano</Label>
@@ -389,12 +387,7 @@ export function MangaEditPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="vol-file">Arquivo</Label>
-                                <Input
-                                    id="vol-file"
-                                    type="file"
-                                    accept=".pdf,.epub,.mobi"
-                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
-                                />
+                                <FileInput id="vol-file" accept=".pdf,.epub,.mobi" onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}/>
                             </div>
                         </div>
                         <Button

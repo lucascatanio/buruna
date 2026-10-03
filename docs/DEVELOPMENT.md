@@ -63,9 +63,16 @@ Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
   [ADR-42](adr/ADR-42-forgot-password-via-pubsub.md).
 
 O profile `local` ativa `LocalStorageClient` (`LocalStorageConfig`, `@Profile("local")`),
-que exige `app.storage.local.path`. O default em `application-local.yml`
-(`/app/storage`) é o caminho **dentro do container** do `docker-compose` — não existe
-no host, então rodando fora do Docker é obrigatório sobrescrever via argumento:
+que exige `app.storage.local.path` e `app.storage.local.base-url`. Os defaults em
+`application-local.yml` valem para o `docker-compose`, não para o host:
+
+- `path` (`/app/storage`) é o caminho **dentro do container** e não existe no host;
+- `base-url` (`http://localhost`) é a porta 80 do nginx do compose. O backend monta com
+  ela as URLs de upload e de leitura dos volumes (`<base-url>/api/local-storage/...`);
+  fora do Docker ninguém escuta na 80, e upload e leitor falham. Aponte para o Vite
+  (`http://localhost:5173`), que já faz proxy de `/api` para o backend.
+
+Rodando fora do Docker, sobrescreva os dois via argumento:
 
 ```
 DB_URL=jdbc:postgresql://localhost:5433/<DB_NAME do .env> \
@@ -78,7 +85,7 @@ GCS_CREDENTIALS_PATH=dummy \
 APP_JOBS_SECRET=<qualquer-string-para-dev> \
 ./mvnw spring-boot:run \
   -Dspring-boot.run.profiles=local \
-  -Dspring-boot.run.arguments=--app.storage.local.path=/tmp/buruna-storage
+  "-Dspring-boot.run.arguments=--app.storage.local.path=/tmp/buruna-storage --app.storage.local.base-url=http://localhost:5173"
 ```
 
 ## Rodar o frontend local
@@ -102,5 +109,6 @@ Convenções de teste (pirâmide, AAA, nomenclatura): [TESTING.md](TESTING.md).
 - E-mail sai dentro da própria requisição (`EmailService`, sem `@Async` — ver ADR-03); sem
   `RESEND_API_KEY`, `ResendEmailSender` só loga `[EMAIL SKIP]` e retorna — não bloqueia o fluxo (registro, aprovação, reset de senha).
 - Upload de volume depende de storage: `GcsStorageClient` em prod, `LocalStorageClient`
-  em `local` (arquivos servidos via `/local-storage/**`, `permitAll` só em dev). Pendência
-  conhecida: smoke test local do fluxo de upload em 2 fases não foi verificado nesta sessão.
+  em `local` (arquivos servidos via `/local-storage/**`, `permitAll` só em dev). O fluxo
+  de upload em 2 fases (URL de upload → PUT → finalize) e a leitura do volume no leitor
+  foram verificados localmente fora do Docker com o `base-url` acima.

@@ -1,11 +1,13 @@
 import {useEffect, useState, useCallback} from "react";
-import {useNavigate} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import {deleteMyManga, getMyQuota, listMyMangas} from "@/api/privateMangaApi";
 import type {PrivateManga, QuotaInfo} from "@/types/manga";
 import {Button} from "@/components/ui/button";
-import {Card, CardContent} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
+import {EmptyState} from "@/components/EmptyState";
+import {MangaCover} from "@/components/MangaCover";
 import {toast} from "sonner";
-import {Plus, BookOpen, HardDrive, ChevronRight, Trash2, Upload} from "lucide-react";
+import {Plus, HardDrive, ChevronRight, Trash2, Upload} from "lucide-react";
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return "0 B";
@@ -65,19 +67,22 @@ export function MyCollectionPage() {
 
     const quotaColor =
         usedPercent >= 90 ? "bg-destructive" :
-            usedPercent >= 70 ? "bg-yellow-500" :
-                "bg-primary";
+            usedPercent >= 70 ? "bg-shu" :
+                "bg-foreground/70";
 
     return (
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 space-y-6">
 
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">Minha Coleção</h1>
-                <Button size="sm" onClick={() => navigate("/colecao/novo")}>
-                    <Plus className="w-4 h-4 mr-1.5"/>
-                    Adicionar
-                </Button>
-            </div>
+            <PageHeader
+                title="Minha Coleção"
+                description="Mangás particulares, visíveis só para você."
+                actions={
+                    <Button onClick={() => navigate("/colecao/novo")}>
+                        <Plus className="size-4"/>
+                        Adicionar
+                    </Button>
+                }
+            />
 
             {quota && (
                 <div className="space-y-1.5">
@@ -90,9 +95,9 @@ export function MyCollectionPage() {
                             {formatBytes(quota.usedBytes)} / {formatBytes(quota.quotaBytes)}
                         </span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div className="h-1 w-full bg-muted overflow-hidden">
                         <div
-                            className={`h-full rounded-full transition-all ${quotaColor}`}
+                            className={`h-full transition-all ${quotaColor}`}
                             style={{width: `${usedPercent}%`}}
                         />
                     </div>
@@ -102,70 +107,52 @@ export function MyCollectionPage() {
             {loading ? (
                 <div className="space-y-3">
                     {[...Array(3)].map((_, i) => (
-                        <div key={i} className="h-20 rounded-lg bg-muted animate-pulse"/>
+                        <div key={i} className="h-20 rounded-lg bg-card screentone animate-pulse"/>
                     ))}
                 </div>
             ) : mangas.length === 0 ? (
-                <div className="text-center py-16 space-y-3">
-                    <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/40"/>
-                    <p className="text-muted-foreground">Nenhum mangá na coleção ainda.</p>
-                    <Button variant="outline" onClick={() => navigate("/colecao/novo")}>
-                        <Upload className="w-4 h-4 mr-1.5"/>
-                        Fazer primeiro upload
-                    </Button>
-                </div>
+                <EmptyState
+                    title="Nenhum mangá na coleção ainda"
+                    description="Envie seus próprios volumes; eles ficam só com você."
+                    action={
+                        <Button onClick={() => navigate("/colecao/novo")}>
+                            <Upload className="size-4"/>
+                            Fazer o primeiro upload
+                        </Button>
+                    }
+                />
             ) : (
-                <div className="space-y-2">
-                    {mangas.map((manga) => (
-                        <Card
-                            key={manga.id}
-                            className="cursor-pointer hover:bg-muted/40 transition-colors"
-                            onClick={() => navigate(`/colecao/${manga.id}`)}
-                        >
-                            <CardContent className="p-4 flex items-center gap-4">
-                                <div
-                                    className="w-12 h-16 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
-                                    {manga.coverUrl ? (
-                                        <img
-                                            src={manga.coverUrl}
-                                            alt={manga.title}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <BookOpen className="w-5 h-5 text-muted-foreground"/>
-                                    )}
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-medium truncate">{manga.title}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {manga.volumes.length === 0
-                                            ? "Sem volumes"
-                                            : `${manga.volumes.length} volume${manga.volumes.length !== 1 ? "s" : ""}`}
-                                        {manga.volumes.length > 0 && (
-                                            <span className="ml-1.5 text-xs">
-                                                · {formatBytes(manga.volumes.reduce((acc, v) => acc + v.fileSizeBytes, 0))}
-                                            </span>
-                                        )}
-                                    </p>
-                                </div>
-
-                                <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                                        disabled={deletingId === manga.id}
-                                        onClick={() => handleDelete(manga)}
-                                    >
-                                        <Trash2 className="w-4 h-4"/>
-                                    </Button>
-                                    <ChevronRight className="w-4 h-4 text-muted-foreground"/>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                <ul className="m-0 list-none divide-y border-y p-0">
+                    {mangas.map((manga) => {
+                        const size = manga.volumes.reduce((acc, v) => acc + v.fileSizeBytes, 0);
+                        return (
+                            <li key={manga.id} className="flex items-center gap-2">
+                                <Link to={`/colecao/${manga.id}`} className="group flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors hover:bg-muted/40">
+                                    <MangaCover title={manga.title} coverUrl={manga.coverUrl} compact className="w-12 shrink-0 shadow-none"/>
+                                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                        <span className="truncate text-[15px] font-medium">{manga.title}</span>
+                                        <span className="font-mono text-xs text-muted-foreground">
+                                            {manga.volumes.length === 0
+                                                ? "Sem volumes"
+                                                : `${manga.volumes.length} ${manga.volumes.length === 1 ? "volume" : "volumes"} · ${formatBytes(size)}`}
+                                        </span>
+                                    </div>
+                                    <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"/>
+                                </Link>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label={`Excluir ${manga.title}`}
+                                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                                    disabled={deletingId === manga.id}
+                                    onClick={() => handleDelete(manga)}
+                                >
+                                    <Trash2 className="size-4"/>
+                                </Button>
+                            </li>
+                        );
+                    })}
+                </ul>
             )}
         </div>
     );
