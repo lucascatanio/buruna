@@ -51,7 +51,7 @@ Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-in
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
 e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-## 3. Migrations Flyway (V1–V23)
+## 3. Migrations Flyway (V1–V25)
 
 > Verificado em `backend/src/main/resources/db/migration/` — atualize esta tabela ao
 > adicionar uma migration nova.
