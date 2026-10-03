@@ -5,7 +5,7 @@ import {register} from "@/api/identityApi";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
+import {PasswordInput} from "@/components/PasswordInput";
 import {AuthLayout} from "@/components/AuthLayout";
 
 declare global {
@@ -77,76 +77,68 @@ export function RegisterPage() {
     }
 
     return (
-        <AuthLayout>
-            <Card className="w-full max-w-md">
-                <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Criar conta</CardTitle>
-                    <CardDescription>Sua solicitação será revisada pelo admin</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">E-mail</Label>
-                            <Input
-                                id="email"
-                                name="email"
-                                type="email"
-                                placeholder="voce@exemplo.com"
-                                value={form.email}
-                                onChange={handleChange}
-                                required
-                                autoFocus
-                            />
+        <AuthLayout title="Solicitar acesso" description="Sua solicitação será revisada pelo admin.">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                        <div className="flex flex-col gap-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="voce@exemplo.com"
+                    value={form.email}
+                    onChange={handleChange}
+                    required
+                    autoFocus
+                />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="username">Nome de usuário</Label>
-                            <Input
-                                id="username"
-                                name="username"
-                                placeholder="seunome"
-                                minLength={3}
-                                maxLength={50}
-                                value={form.username}
-                                onChange={handleChange}
-                                required
-                            />
+                        <div className="flex flex-col gap-2">
+                <Label htmlFor="username">Nome de usuário</Label>
+                <Input
+                    id="username"
+                    name="username"
+                    placeholder="seunome"
+                    minLength={3}
+                    maxLength={50}
+                    value={form.username}
+                    onChange={handleChange}
+                    required
+                />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Senha</Label>
-                            <Input
-                                id="password"
-                                name="password"
-                                type="password"
-                                placeholder="Mín. 8 caracteres"
-                                value={form.password}
-                                onChange={handleChange}
-                                required
-                            />
+                        <div className="flex flex-col gap-2">
+                <Label htmlFor="password">Senha</Label>
+                <PasswordInput
+                    id="password"
+                    name="password"
+                    autoComplete="new-password"
+                    placeholder="Mín. 8 caracteres"
+                    value={form.password}
+                    onChange={handleChange}
+                    required
+                />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="presentationMessage">Por que quer entrar?</Label>
-                            <Input
-                                id="presentationMessage"
-                                name="presentationMessage"
-                                placeholder="Conte um pouco sobre você"
-                                value={form.presentationMessage}
-                                onChange={handleChange}
-                                required
-                            />
+                        <div className="flex flex-col gap-2">
+                <Label htmlFor="presentationMessage">Por que quer entrar?</Label>
+                <Input
+                    id="presentationMessage"
+                    name="presentationMessage"
+                    placeholder="Conte um pouco sobre você"
+                    value={form.presentationMessage}
+                    onChange={handleChange}
+                    required
+                />
                         </div>
                         {HAS_CAPTCHA && <div id="hcaptcha-container" className="flex justify-center" />}
-                        <Button type="submit" className="w-full" disabled={loading || (HAS_CAPTCHA && !captchaToken)}>
-                            {loading ? "Enviando…" : "Solicitar acesso"}
+                        <Button type="submit" className="w-full mt-2" disabled={loading || (HAS_CAPTCHA && !captchaToken)}>
+                {loading ? "Enviando…" : "Solicitar acesso"}
                         </Button>
                     </form>
-                    <p className="text-center text-sm text-muted-foreground mt-4">
-                        Já tem uma conta?{" "}
-                        <Link to="/login" className="underline underline-offset-4 hover:text-primary">
-                            Entrar
-                        </Link>
-                    </p>
-                </CardContent>
-            </Card>
+            <p className="m-0 text-sm text-muted-foreground">
+                Já tem uma conta?{" "}
+                <Link to="/login" className="font-medium text-foreground underline-offset-4 hover:underline">
+                    Entrar
+                </Link>
+            </p>
         </AuthLayout>
     );
 }

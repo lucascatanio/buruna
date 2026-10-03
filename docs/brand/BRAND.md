@@ -40,6 +40,16 @@ telas de autenticação usam `AuthLayout`, que já traz o logotipo.
 O shu é a assinatura da marca. Ele aparece no mácron e em nenhum outro elemento do logo.
 Na versão em uma cor, o mácron acompanha a cor das letras.
 
+No frontend as três cores são tokens (`--ink`, `--paper`, `--shu` em `index.css`) e
+classes do Tailwind (`bg-ink`, `text-paper`, `fill-shu`…). O tema escuro do app é
+construído sobre elas: fundo tinta, texto papel, foco em shu.
+
+## Linguagem visual
+
+Além do logo, a marca fala a língua da página de mangá: quadros com traço de tinta,
+calha inclinada a 15°, retícula de pontos e linhas de velocidade. A referência é a
+arte das telas de autenticação (`frontend/src/components/MangaPageArt.tsx`).
+
 ## Regras de uso
 
 - **Área de proteção:** deixe livre, em volta de qualquer versão, pelo menos a altura do mácron.
