@@ -6,6 +6,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
+import {AuthLayout} from "@/components/AuthLayout";
 
 declare global {
     interface Window {
@@ -76,7 +77,7 @@ export function RegisterPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <AuthLayout>
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Criar conta</CardTitle>
@@ -146,6 +147,6 @@ export function RegisterPage() {
                     </p>
                 </CardContent>
             </Card>
-        </div>
+        </AuthLayout>
     );
 }

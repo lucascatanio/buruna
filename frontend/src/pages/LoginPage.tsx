@@ -7,7 +7,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
-import {Wordmark} from "@/components/Wordmark";
+import {AuthLayout} from "@/components/AuthLayout";
 
 declare const __APP_VERSION__: string
 
@@ -58,7 +58,7 @@ export function LoginPage() {
 
     if (requires2FA) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 gap-3">
+            <AuthLayout>
                 <Card className="w-full max-w-md">
                     <CardHeader className="text-center">
                         <CardTitle className="text-2xl">Verificação 2FA</CardTitle>
@@ -104,18 +104,16 @@ export function LoginPage() {
                 <p className="text-xs text-muted-foreground/50 text-center">
                     v{__APP_VERSION__}
                 </p>
-            </div>
+            </AuthLayout>
         );
     }
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 gap-3">
+        <AuthLayout>
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
-                    <CardTitle className="flex justify-center py-2">
-                        <Wordmark className="h-9 w-auto"/>
-                    </CardTitle>
-                    <CardDescription>Entre na sua conta</CardDescription>
+                    <CardTitle className="text-2xl">Entrar</CardTitle>
+                    <CardDescription>Acesse sua biblioteca de mangás</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -159,6 +157,6 @@ export function LoginPage() {
             <p className="text-xs text-muted-foreground/50 text-center">
                 v{__APP_VERSION__}
             </p>
-        </div>
+        </AuthLayout>
     );
 }

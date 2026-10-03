@@ -26,7 +26,8 @@ logo não há licença de fonte envolvida.
 `-reversed` é para fundo escuro e `-black` é para impressão em uma cor. Os ícones web
 (`favicon.ico`, `favicon.svg`, `apple-touch-icon.png`, `icon-*.png`, `site.webmanifest`)
 ficam em `frontend/public/`. No app, use o componente `Wordmark`
-(`frontend/src/components/Wordmark.tsx`): as letras herdam a cor do texto.
+e `LogoMark` (`frontend/src/components/Logo.tsx`): as letras herdam a cor do texto. As
+telas de autenticação usam `AuthLayout`, que já traz o logotipo.
 
 ## Cores
 

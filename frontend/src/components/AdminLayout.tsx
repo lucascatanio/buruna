@@ -3,7 +3,7 @@ import {Outlet, useNavigate, useLocation} from "react-router-dom";
 import {Button} from "@/components/ui/button";
 import {performLogout} from "@/lib/logout";
 import {Menu, X, BookOpen} from "lucide-react";
-import {Wordmark} from "@/components/Wordmark";
+import {Wordmark} from "@/components/Logo";
 
 const NAV_ITEMS = [
     {label: "Dashboard", path: "/admin/dashboard"},

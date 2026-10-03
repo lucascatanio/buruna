@@ -3,7 +3,7 @@ import {useAuthStore} from "@/store/authStore";
 import {performLogout} from "@/lib/logout";
 import {Button} from "@/components/ui/button";
 import {FeedbackButton} from "@/components/FeedbackDialog";
-import {Wordmark} from "@/components/Wordmark";
+import {Wordmark} from "@/components/Logo";
 import {BookOpen, Library, Settings, LogOut, History, BookMarked, Shield} from "lucide-react";
 
 export function AppLayout() {
