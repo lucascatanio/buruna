@@ -6,6 +6,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
+import {AuthLayout} from "@/components/AuthLayout";
 
 export function ForgotPasswordPage() {
     const [email, setEmail] = useState("");
@@ -27,7 +28,7 @@ export function ForgotPasswordPage() {
 
     if (sent) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background px-4">
+            <AuthLayout>
                 <Card className="w-full max-w-md">
                     <CardHeader className="text-center">
                         <CardTitle className="text-2xl">E-mail enviado</CardTitle>
@@ -43,12 +44,12 @@ export function ForgotPasswordPage() {
                         </Link>
                     </CardContent>
                 </Card>
-            </div>
+            </AuthLayout>
         );
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <AuthLayout>
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Esqueci minha senha</CardTitle>
@@ -79,6 +80,6 @@ export function ForgotPasswordPage() {
                     </p>
                 </CardContent>
             </Card>
-        </div>
+        </AuthLayout>
     );
 }

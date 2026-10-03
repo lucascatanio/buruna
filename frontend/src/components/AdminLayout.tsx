@@ -3,6 +3,7 @@ import {Outlet, useNavigate, useLocation} from "react-router-dom";
 import {Button} from "@/components/ui/button";
 import {performLogout} from "@/lib/logout";
 import {Menu, X, BookOpen} from "lucide-react";
+import {Wordmark} from "@/components/Logo";
 
 const NAV_ITEMS = [
     {label: "Dashboard", path: "/admin/dashboard"},
@@ -33,7 +34,11 @@ export function AdminLayout() {
         <div className="min-h-screen bg-background">
             <header className="border-b px-4 md:px-6 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <h1 className="text-base md:text-xl font-semibold">Burūna Admin</h1>
+                    {/* items-baseline: o SVG termina na linha de base das letras, então alinha com "Admin" */}
+                    <h1 className="flex items-baseline gap-2 md:gap-2.5 text-base md:text-xl font-medium">
+                        <Wordmark className="h-4 md:h-5 w-auto"/>
+                        <span className="text-muted-foreground">Admin</span>
+                    </h1>
 
                     {/* Desktop nav */}
                     <nav className="hidden md:flex gap-1">

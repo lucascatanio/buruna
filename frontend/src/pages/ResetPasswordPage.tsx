@@ -6,6 +6,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
+import {AuthLayout} from "@/components/AuthLayout";
 
 export function ResetPasswordPage() {
     const [searchParams] = useSearchParams();
@@ -53,7 +54,7 @@ export function ResetPasswordPage() {
 
     if (!token) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background px-4">
+            <AuthLayout>
                 <Card className="w-full max-w-md">
                     <CardHeader className="text-center">
                         <CardTitle>Link inválido</CardTitle>
@@ -65,20 +66,20 @@ export function ResetPasswordPage() {
                         </Link>
                     </CardContent>
                 </Card>
-            </div>
+            </AuthLayout>
         );
     }
 
     if (checkingToken) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background px-4">
+            <AuthLayout>
                 <p className="text-muted-foreground">Verificando link…</p>
-            </div>
+            </AuthLayout>
         );
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background px-4">
+        <AuthLayout>
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <CardTitle className="text-2xl">Redefinir senha</CardTitle>
@@ -129,6 +130,6 @@ export function ResetPasswordPage() {
                     </p>
                 </CardContent>
             </Card>
-        </div>
+        </AuthLayout>
     );
 }

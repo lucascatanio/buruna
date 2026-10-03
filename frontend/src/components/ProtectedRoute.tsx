@@ -1,5 +1,6 @@
 import {Navigate, Outlet} from "react-router-dom";
 import {useAuthStore} from "@/store/authStore";
+import {LogoMark} from "@/components/Logo";
 
 const ROLE_LEVEL = {READER: 1, COLLABORATOR: 2, ADMIN: 3} as const;
 
@@ -13,7 +14,13 @@ export function ProtectedRoute({requiredRole}: Props) {
     // Aguarda o bootstrap (troca do cookie httpOnly por accessToken) antes de decidir
     // redirecionar — sem isso, um F5 manda todo mundo para /login antes da resposta
     // do /auth/refresh chegar.
-    if (!initialized) return null;
+    if (!initialized) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <LogoMark className="h-12 w-auto animate-pulse" label="Carregando Burūna"/>
+            </div>
+        );
+    }
 
     if (!accessToken || !user) return <Navigate to="/login" replace/>;
 
