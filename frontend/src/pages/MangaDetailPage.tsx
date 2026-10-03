@@ -14,6 +14,7 @@ import {
 } from "@/api/engagementApi";
 import type {MangaDetail, Tag, Volume} from "@/types/manga";
 import type {ReadingStatus} from "@/types/engagement";
+import type {ProgressResponse} from "@/types/reading";
 import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
@@ -50,6 +51,13 @@ const READING_STATUS_LABELS: Record<ReadingStatus, string> = {
 
 const READING_STATUS_OPTIONS: ReadingStatus[] = ["WANT_TO_READ", "READING", "COMPLETED", "DROPPED"];
 
+function progressLabel(progress: ProgressResponse): string {
+    if (progress.finished) return "Lido";
+    return progress.totalPages
+        ? `Pág. ${progress.currentPage} de ${progress.totalPages}`
+        : `Pág. ${progress.currentPage}`;
+}
+
 function formatBytes(bytes: number): string {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -67,7 +75,7 @@ export function MangaDetailPage() {
 
     const [manga, setManga] = useState<MangaDetail | null>(null);
     const [volumes, setVolumes] = useState<Volume[]>([]);
-    const [volumeProgress, setVolumeProgress] = useState<Record<string, number>>({});
+    const [volumeProgress, setVolumeProgress] = useState<Record<string, ProgressResponse>>({});
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
 
@@ -534,7 +542,7 @@ export function MangaDetailPage() {
                                     <p className="text-xs text-muted-foreground">{formatBytes(vol.fileSizeBytes)}</p>
                                     {volumeProgress[vol.id] !== undefined && (
                                         <p className="text-xs text-primary mt-0.5">
-                                            Pág. {volumeProgress[vol.id]}
+                                            {progressLabel(volumeProgress[vol.id])}
                                         </p>
                                     )}
                                 </div>
@@ -550,7 +558,7 @@ export function MangaDetailPage() {
                                         }
                                     })}
                                 >
-                                    {volumeProgress[vol.id] !== undefined ? "Continuar" : "Ler"}
+                                    {volumeProgress[vol.id]?.finished ? "Reler" : volumeProgress[vol.id] !== undefined ? "Continuar" : "Ler"}
                                 </Button>
                             </CardContent>
                         </Card>

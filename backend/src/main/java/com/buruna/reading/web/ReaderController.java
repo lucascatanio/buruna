@@ -36,7 +36,7 @@ public class ReaderController {
             @PathVariable UUID volumeId,
             @Valid @RequestBody ProgressRequest request,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(readingService.saveProgress(volumeId, request.currentPage(), user.getId()));
+        return ResponseEntity.ok(readingService.saveProgress(volumeId, request.currentPage(), request.totalPages(), user.getId()));
     }
 
     @GetMapping("/progress/{mangaId}")
@@ -56,7 +56,7 @@ public class ReaderController {
     }
 
     @GetMapping("/progress/batch")
-    public ResponseEntity<Map<UUID, Integer>> getBatchProgress(
+    public ResponseEntity<Map<UUID, ProgressResponse>> getBatchProgress(
             @RequestParam List<UUID> volumeIds,
             @AuthenticationPrincipal User user) {
         return ResponseEntity.ok(readingService.getBatchProgress(volumeIds, user.getId()));

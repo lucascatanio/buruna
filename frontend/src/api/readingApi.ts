@@ -6,8 +6,8 @@ export function getVolumeUrl(volumeId: string): Promise<VolumeUrlResponse> {
     return api.get<VolumeUrlResponse>(`/reader/${volumeId}/url`).then((r) => r.data);
 }
 
-export function saveProgress(volumeId: string, currentPage: number): Promise<ProgressResponse> {
-    return api.post<ProgressResponse>(`/reader/${volumeId}/progress`, {currentPage}).then((r) => r.data);
+export function saveProgress(volumeId: string, currentPage: number, totalPages?: number): Promise<ProgressResponse> {
+    return api.post<ProgressResponse>(`/reader/${volumeId}/progress`, {currentPage, totalPages}).then((r) => r.data);
 }
 
 export function getVolumeProgress(volumeId: string): Promise<ProgressResponse | null> {
@@ -15,8 +15,8 @@ export function getVolumeProgress(volumeId: string): Promise<ProgressResponse | 
         .then((r) => (r.status === 200 ? r.data : null));
 }
 
-export function getBatchProgress(volumeIds: string[]): Promise<Record<string, number>> {
-    return api.get<Record<string, number>>(`/reader/progress/batch?volumeIds=${volumeIds.join(",")}`).then((r) => r.data);
+export function getBatchProgress(volumeIds: string[]): Promise<Record<string, ProgressResponse>> {
+    return api.get<Record<string, ProgressResponse>>(`/reader/progress/batch?volumeIds=${volumeIds.join(",")}`).then((r) => r.data);
 }
 
 export function getHistory(page: number, size = 20): Promise<Page<HistoryEntry>> {
