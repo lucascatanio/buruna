@@ -32,10 +32,10 @@ interface ReaderState {
 // salva progresso com debounce de 1.5s
 let progressTimer: ReturnType<typeof setTimeout> | null = null;
 
-function saveProgress(volumeId: string, page: number) {
+function saveProgress(volumeId: string, page: number, totalPages: number) {
     if (progressTimer) clearTimeout(progressTimer);
     progressTimer = setTimeout(() => {
-        saveProgressApi(volumeId, page)
+        saveProgressApi(volumeId, page, totalPages)
             .catch((e) => console.warn("Failed to save progress:", e));
     }, 1500);
 }
@@ -113,8 +113,8 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
     useEffect(() => {
         renderPage(currentPage);
         onPageChange(currentPage);
-        saveProgress(volumeId, currentPage);
-    }, [currentPage, renderPage, volumeId, onPageChange]);
+        saveProgress(volumeId, currentPage, pdf.numPages);
+    }, [currentPage, renderPage, volumeId, onPageChange, pdf.numPages]);
 
     function goTo(page: number) {
         const clamped = Math.max(1, Math.min(pdf.numPages, page));
@@ -304,9 +304,9 @@ function ScrollReader({pdf, initialPage, volumeId, brightness, contrast, onPageC
         if (pageNum !== currentPageRef.current) {
             currentPageRef.current = pageNum;
             onPageChange(pageNum);
-            saveProgress(volumeId, pageNum);
+            saveProgress(volumeId, pageNum, pdf.numPages);
         }
-    }, [volumeId, onPageChange]);
+    }, [volumeId, onPageChange, pdf.numPages]);
 
     useEffect(() => {
         if (initialScrollRef.current || initialPage <= 1) return;
@@ -489,7 +489,8 @@ export function ReaderPage() {
                 if (!cached) setSignedUrl(volumeId!, signedUrl);
 
                 let startPage = 1;
-                if (progressRes.status === "fulfilled" && progressRes.value) {
+                // Volume já concluído reabre do começo; o "Lido" continua registrado.
+                if (progressRes.status === "fulfilled" && progressRes.value && !progressRes.value.finished) {
                     startPage = progressRes.value.currentPage ?? 1;
                 }
                 setInitialPage(startPage);
@@ -534,7 +535,7 @@ export function ReaderPage() {
     function handleBack() {
         if (progressTimer) {
             clearTimeout(progressTimer);
-            saveProgressApi(volumeId!, currentPage)
+            saveProgressApi(volumeId!, currentPage, pdf?.numPages)
                 .catch((e) => console.warn("Failed to save progress:", e));
         }
         navigate(state.backUrl ?? -1 as any);
@@ -546,8 +547,11 @@ export function ReaderPage() {
             progressTimer = null;
         }
         setShowCompletion(true);
-        saveProgressApi(volumeId!, 1)
-            .catch((e) => console.warn("Failed to reset progress:", e));
+        // Grava a última página: o volume fica como lido. Reabrir começa da página 1.
+        if (pdf) {
+            saveProgressApi(volumeId!, pdf.numPages, pdf.numPages)
+                .catch((e) => console.warn("Failed to save progress:", e));
+        }
     }
 
     function handlePageJump(page: number) {
