@@ -1,27 +1,33 @@
 import {useEffect, useState} from "react";
-import {useNavigate} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import {getHistory} from "@/api/readingApi";
 import type {HistoryEntry} from "@/types/reading";
 import {Button} from "@/components/ui/button";
-import {Card, CardContent} from "@/components/ui/card";
 import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
+import {MangaCover} from "@/components/MangaCover";
 import {toast} from "sonner";
-import {BookOpen, ChevronRight} from "lucide-react";
+import {ChevronRight} from "lucide-react";
 
-function formatDate(iso: string): string {
-    const d = new Date(iso);
+function dayLabel(d: Date): string {
     const now = new Date();
-    const isToday = d.toDateString() === now.toDateString();
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
-    const isYesterday = d.toDateString() === yesterday.toDateString();
+    if (d.toDateString() === now.toDateString()) return "Hoje";
+    if (d.toDateString() === yesterday.toDateString()) return "Ontem";
+    return d.toLocaleDateString("pt-BR", {day: "2-digit", month: "short", year: "numeric"});
+}
 
-    const time = d.toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"});
-
-    if (isToday) return `Hoje, ${time}`;
-    if (isYesterday) return `Ontem, ${time}`;
-    return d.toLocaleDateString("pt-BR", {day: "2-digit", month: "short", year: "numeric"}) + `, ${time}`;
+/** Agrupa as entradas (já ordenadas da mais recente) por dia de leitura. */
+function groupByDay(entries: HistoryEntry[]): {day: string; items: HistoryEntry[]}[] {
+    const groups: {day: string; items: HistoryEntry[]}[] = [];
+    for (const entry of entries) {
+        const day = dayLabel(new Date(entry.readAt));
+        const last = groups[groups.length - 1];
+        if (last?.day === day) last.items.push(entry);
+        else groups.push({day, items: [entry]});
+    }
+    return groups;
 }
 
 export function ReadingHistoryPage() {
@@ -52,13 +58,13 @@ export function ReadingHistoryPage() {
     }, []);
 
     return (
-        <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
+        <div className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-10 flex flex-col gap-7">
             <PageHeader title="Histórico de leitura" description="Os volumes que você abriu, do mais recente."/>
 
             {loading ? (
                 <div className="space-y-2">
                     {[...Array(5)].map((_, i) => (
-                        <div key={i} className="h-16 rounded-lg bg-card screentone animate-pulse"/>
+                        <div key={i} className="h-[74px] bg-card screentone animate-pulse"/>
                     ))}
                 </div>
             ) : entries.length === 0 ? (
@@ -68,54 +74,43 @@ export function ReadingHistoryPage() {
                     action={<Button onClick={() => navigate("/biblioteca")}>Explorar a biblioteca</Button>}
                 />
             ) : (
-                <div className="space-y-2">
-                    {entries.map((entry, idx) => (
-                        <Card
-                            key={`${entry.volumeId}-${idx}`}
-                            className="cursor-pointer hover:bg-muted/40 transition-colors"
-                            onClick={() => navigate(`/leitor/${entry.volumeId}`, {
-                                state: {
-                                    mangaTitle: entry.mangaTitle,
-                                    mangaId: entry.mangaId,
-                                    volumeNumber: entry.volumeNumber,
-                                    backUrl: "/historico",
-                                }
-                            })}
-                        >
-                            <CardContent className="p-3 flex items-center gap-3">
-                                <div
-                                    className="w-10 h-14 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
-                                    {entry.mangaCoverUrl ? (
-                                        <img
-                                            src={entry.mangaCoverUrl}
-                                            alt={entry.mangaTitle}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <BookOpen className="w-4 h-4 text-muted-foreground"/>
-                                    )}
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-sm truncate">{entry.mangaTitle}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Volume {entry.volumeNumber}
-                                    </p>
-                                </div>
-
-                                {/* data + chevron */}
-                                <div className="shrink-0 flex items-center gap-1.5 text-muted-foreground">
-                                    <span className="text-xs">{formatDate(entry.readAt)}</span>
-                                    <ChevronRight className="w-4 h-4"/>
-                                </div>
-                            </CardContent>
-                        </Card>
+                <div className="flex flex-col gap-8">
+                    {groupByDay(entries).map(({day, items}) => (
+                        <section key={day} className="flex flex-col gap-2">
+                            <h2 className="m-0 font-mono text-xs font-medium uppercase tracking-widest text-muted-foreground">{day}</h2>
+                            <ul className="m-0 list-none divide-y border-y p-0">
+                                {items.map((entry, idx) => (
+                                    <li key={`${entry.volumeId}-${idx}`}>
+                                        <Link
+                                            to={`/leitor/${entry.volumeId}`}
+                                            state={{
+                                                mangaTitle: entry.mangaTitle,
+                                                mangaId: entry.mangaId,
+                                                volumeNumber: entry.volumeNumber,
+                                                backUrl: "/historico",
+                                            }}
+                                            className="group flex items-center gap-4 py-3 pr-1 transition-colors hover:bg-muted/40"
+                                        >
+                                            <MangaCover title={entry.mangaTitle} coverUrl={entry.mangaCoverUrl} compact className="w-11 shrink-0 shadow-none"/>
+                                            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                                                <span className="truncate text-[15px] font-medium">{entry.mangaTitle}</span>
+                                                <span className="font-mono text-xs text-muted-foreground">Vol. {String(entry.volumeNumber).padStart(2, "0")}</span>
+                                            </div>
+                                            <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                                                {new Date(entry.readAt).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"})}
+                                            </span>
+                                            <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"/>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
                     ))}
 
                     {page < totalPages - 1 && (
                         <Button
                             variant="outline"
-                            className="w-full"
+                            className="h-11 self-center px-6"
                             onClick={() => fetchPage(page + 1, true)}
                             disabled={loadingMore}
                         >

@@ -1,14 +1,13 @@
 import {useEffect, useState} from "react";
-import {useNavigate} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import {getReadingList, removeFromReadingList} from "@/api/engagementApi";
 import type {ReadingListEntry, ReadingStatus} from "@/types/engagement";
 import {Button} from "@/components/ui/button";
-import {Badge} from "@/components/ui/badge";
-import {Card, CardContent} from "@/components/ui/card";
 import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
+import {MangaCover} from "@/components/MangaCover";
 import {toast} from "sonner";
-import {BookOpen, X} from "lucide-react";
+import {X} from "lucide-react";
 
 const STATUS_LABELS: Record<ReadingStatus, string> = {
     WANT_TO_READ: "Quero ler",
@@ -18,13 +17,6 @@ const STATUS_LABELS: Record<ReadingStatus, string> = {
 };
 
 const STATUS_ORDER: ReadingStatus[] = ["READING", "WANT_TO_READ", "COMPLETED", "DROPPED"];
-
-const STATUS_BADGE_VARIANT: Record<ReadingStatus, "default" | "secondary" | "outline" | "destructive"> = {
-    READING: "default",
-    WANT_TO_READ: "secondary",
-    COMPLETED: "outline",
-    DROPPED: "destructive",
-};
 
 export function ReadingListPage() {
     const navigate = useNavigate();
@@ -59,7 +51,7 @@ export function ReadingListPage() {
     }, {} as Record<ReadingStatus, ReadingListEntry[]>);
 
     return (
-        <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 space-y-8">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-10 flex flex-col gap-7">
             <PageHeader
                 title="Lista de leitura"
                 description={!loading && entries.length > 0
@@ -68,15 +60,13 @@ export function ReadingListPage() {
             />
 
             {loading ? (
-                <div className="space-y-6">
-                    {[...Array(2)].map((_, i) => (
-                        <div key={i} className="space-y-2">
-                            <div className="h-4 w-24 bg-card screentone rounded animate-pulse"/>
-                            {[...Array(3)].map((_, j) => (
-                                <div key={j} className="h-16 bg-card screentone rounded-lg animate-pulse"/>
-                            ))}
-                        </div>
-                    ))}
+                <div className="flex flex-col gap-4 animate-pulse">
+                    <div className="h-5 w-24 bg-card"/>
+                    <div className="grid grid-cols-3 gap-x-3 sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] sm:gap-x-5">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="aspect-[2/3] rounded-lg bg-card screentone"/>
+                        ))}
+                    </div>
                 </div>
             ) : entries.length === 0 ? (
                 <EmptyState
@@ -85,67 +75,47 @@ export function ReadingListPage() {
                     action={<Button onClick={() => navigate("/biblioteca")}>Explorar a biblioteca</Button>}
                 />
             ) : (
-                <div className="space-y-8">
+                <div className="flex flex-col gap-10">
                     {STATUS_ORDER.map(status => {
                         const items = grouped[status];
                         if (items.length === 0) return null;
                         return (
-                            <div key={status} className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                    <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                                        {STATUS_LABELS[status]}
-                                    </h2>
-                                    <Badge variant={STATUS_BADGE_VARIANT[status]} className="text-xs">
-                                        {items.length}
-                                    </Badge>
+                            <section key={status} className="flex flex-col gap-4">
+                                <div className="flex items-baseline gap-2.5 border-b pb-2.5">
+                                    {status === "READING" && <span aria-hidden="true" className="h-1 w-3 self-center -skew-x-15 bg-shu"/>}
+                                    <h2 className="m-0 text-lg font-semibold tracking-[-0.01em]">{STATUS_LABELS[status]}</h2>
+                                    <span className="font-mono text-xs text-muted-foreground">{items.length}</span>
                                 </div>
 
-                                <div className="space-y-2">
+                                <ul className="m-0 grid list-none grid-cols-3 gap-x-3 gap-y-6 p-0 sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] sm:gap-x-5">
                                     {items.map(entry => (
-                                        <Card
-                                            key={entry.mangaId}
-                                            className="cursor-pointer hover:bg-muted/40 transition-colors"
-                                            onClick={() => navigate(`/biblioteca/${entry.mangaSlug}`)}
-                                        >
-                                            <CardContent className="p-3 flex items-center gap-3">
-                                                <div className="w-10 h-14 shrink-0 rounded overflow-hidden bg-muted flex items-center justify-center">
-                                                    {entry.mangaCoverUrl ? (
-                                                        <img
-                                                            src={entry.mangaCoverUrl}
-                                                            alt={entry.mangaTitle}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <BookOpen className="w-4 h-4 text-muted-foreground"/>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-sm truncate">
-                                                        {entry.mangaTitle}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {new Date(entry.updatedAt).toLocaleDateString("pt-BR", {
-                                                            day: "2-digit", month: "short", year: "numeric"
-                                                        })}
-                                                    </p>
-                                                </div>
-
+                                        <li key={entry.mangaId} className="flex flex-col gap-1">
+                                            <Link to={`/biblioteca/${entry.mangaSlug}`} className="group flex flex-col gap-2">
+                                                <MangaCover
+                                                    title={entry.mangaTitle}
+                                                    coverUrl={entry.mangaCoverUrl}
+                                                    className="transition-transform duration-200 group-hover:-translate-y-[3px]"
+                                                />
+                                                <span className="text-[13px] sm:text-sm font-medium leading-snug line-clamp-2">{entry.mangaTitle}</span>
+                                            </Link>
+                                            <div className="flex items-center justify-between gap-1">
+                                                <span className="font-mono text-[11px] text-muted-foreground">
+                                                    {new Date(entry.updatedAt).toLocaleDateString("pt-BR", {day: "2-digit", month: "short"})}
+                                                </span>
                                                 <button
-                                                    className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleRemove(entry.mangaId, entry.mangaTitle);
-                                                    }}
+                                                    type="button"
+                                                    aria-label={`Remover ${entry.mangaTitle} da lista`}
+                                                    className="-mr-1.5 flex size-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                                                    onClick={() => handleRemove(entry.mangaId, entry.mangaTitle)}
                                                     disabled={removing === entry.mangaId}
                                                 >
-                                                    <X className="w-4 h-4"/>
+                                                    <X className="size-4"/>
                                                 </button>
-                                            </CardContent>
-                                        </Card>
+                                            </div>
+                                        </li>
                                     ))}
-                                </div>
-                            </div>
+                                </ul>
+                            </section>
                         );
                     })}
                 </div>
