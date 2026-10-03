@@ -1,14 +1,15 @@
 import {useEffect, useState, useCallback} from "react";
-import {useNavigate} from "react-router-dom";
+import {Link} from "react-router-dom";
 import {listMangas} from "@/api/mangaApi";
 import type {Page} from "@/types/common";
 import type {MangaCard} from "@/types/manga";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
-import {Badge} from "@/components/ui/badge";
-import {Card, CardContent} from "@/components/ui/card";
 import {TagSelector} from "@/components/TagSelector";
-import {Search, SlidersHorizontal, X, BookOpen, Plus} from "lucide-react";
+import {PageHeader} from "@/components/PageHeader";
+import {EmptyState} from "@/components/EmptyState";
+import {MangaCover} from "@/components/MangaCover";
+import {Search, SlidersHorizontal, X, Plus, Star, ChevronLeft, ChevronRight} from "lucide-react";
 import {useAuthStore} from "@/store/authStore";
 
 const FORMAT_OPTIONS = [
@@ -36,7 +37,6 @@ const FORMAT_LABELS: Record<string, string> = {
 };
 
 export function LibraryPage() {
-    const navigate = useNavigate();
     const user = useAuthStore((s) => s.user);
     const isCollab = user?.role === "COLLABORATOR" || user?.role === "ADMIN";
     const [data, setData] = useState<Page<MangaCard> | null>(null);
@@ -85,33 +85,38 @@ export function LibraryPage() {
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-
-            <div className="flex gap-2">
-                <form onSubmit={handleSearch} className="flex gap-2 flex-1">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
-                        <Input
-                            className="pl-9"
-                            placeholder="Buscar por título…"
-                            value={titleInput}
-                            onChange={(e) => setTitleInput(e.target.value)}
-                        />
-                    </div>
-                    <Button type="submit" variant="secondary">Buscar</Button>
-                </form>
-                <Button
-                    variant={showFilters ? "secondary" : "outline"}
-                    size="icon"
-                    onClick={() => setShowFilters((v) => !v)}
-                    className="relative"
-                >
-                    <SlidersHorizontal className="w-4 h-4"/>
-                    {hasActiveFilters && (
-                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary"/>
-                    )}
-                </Button>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-10 flex flex-col gap-7">
+            <PageHeader
+                title="Biblioteca"
+                description="Todos os mangás disponíveis no Burūna."
+                actions={
+                    <>
+                        <form onSubmit={handleSearch} role="search" className="relative flex-1 min-w-60">
+                            <Search aria-hidden="true" className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"/>
+                            <Input
+                                type="search"
+                                aria-label="Buscar por título"
+                                className="h-11 pl-10 text-[15px]"
+                                placeholder="Buscar por título…"
+                                value={titleInput}
+                                onChange={(e) => setTitleInput(e.target.value)}
+                            />
+                        </form>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowFilters((v) => !v)}
+                            aria-expanded={showFilters}
+                            className="relative h-11 px-4"
+                        >
+                            <SlidersHorizontal className="size-4"/>
+                            Filtros
+                            {hasActiveFilters && (
+                                <span aria-label="Filtros ativos" className="absolute -top-1 -right-1 size-2.5 -skew-x-15 bg-shu"/>
+                            )}
+                        </Button>
+                    </>
+                }
+            />
 
             {showFilters && (
                 <div className="border rounded-lg p-4 space-y-4 bg-card">
@@ -119,7 +124,7 @@ export function LibraryPage() {
                         <span className="text-sm font-medium">Filtros</span>
                         {hasActiveFilters && (
                             <Button variant="ghost" size="sm" onClick={clearFilters}>
-                                <X className="w-3 h-3 mr-1"/> Limpar
+                                <X className="size-3"/> Limpar
                             </Button>
                         )}
                     </div>
@@ -156,114 +161,104 @@ export function LibraryPage() {
                 </div>
             )}
 
-            {data && (
-                <p className="text-sm text-muted-foreground">
-                    {data.totalElements} {data.totalElements === 1 ? "resultado" : "resultados"}
-                </p>
-            )}
+            <div className="flex items-center justify-between gap-3 border-t pt-4">
+                <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                    {data ? `${data.totalElements} ${data.totalElements === 1 ? "resultado" : "resultados"}` : "\u00a0"}
+                </span>
+            </div>
 
             {loading && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 items-start">
+                <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:gap-x-5 sm:gap-y-8">
                     {Array.from({length: 12}).map((_, i) => (
-                        <div key={i} className="space-y-2">
-                            <div className="aspect-[2/3] rounded-md bg-muted animate-pulse"/>
-                            <div className="h-3 bg-muted rounded animate-pulse w-3/4"/>
+                        <div key={i} className="flex flex-col gap-2.5 animate-pulse">
+                            <div className="aspect-[2/3] rounded-lg bg-card screentone"/>
+                            <div className="h-3 w-3/4 bg-card"/>
                         </div>
                     ))}
                 </div>
             )}
 
             {!loading && data?.content.length === 0 && (
-                <Card>
-                    <CardContent className="py-16 flex flex-col items-center gap-3 text-muted-foreground">
-                        <BookOpen className="w-10 h-10 opacity-30"/>
-                        <p className="text-sm">Nenhum mangá encontrado</p>
-                        {(title || hasActiveFilters) && (
-                            <Button variant="ghost" size="sm" onClick={() => {
+                <EmptyState
+                    title="Nenhum mangá encontrado"
+                    description={title || hasActiveFilters ? "Tente outro título ou tire alguns filtros." : "A biblioteca ainda não tem mangás publicados."}
+                    action={(title || hasActiveFilters) && (
+                        <Button
+                            onClick={() => {
                                 setTitleInput("");
                                 setTitle("");
                                 clearFilters();
-                            }}>
-                                Limpar busca
-                            </Button>
-                        )}
-                    </CardContent>
-                </Card>
+                            }}
+                        >
+                            Limpar busca
+                        </Button>
+                    )}
+                />
             )}
 
             {!loading && data && data.content.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 items-start">
+                <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:gap-x-5 sm:gap-y-8">
                     {data.content.map((manga) => (
-                        <MangaCardItem key={manga.id} manga={manga}
-                                       onClick={() => navigate(`/biblioteca/${manga.slug}`)}/>
+                        <MangaCardItem key={manga.id} manga={manga}/>
                     ))}
                 </div>
             )}
 
-            {/* Pagination */}
             {data && data.totalPages > 1 && (
-                <div className="flex justify-center gap-2 pt-4">
-                    <Button variant="outline" size="sm"
-                            disabled={page === 0}
-                            onClick={() => changePage(page - 1)}>
+                <nav aria-label="Paginação" className="flex items-center justify-center gap-3 pt-2 pb-8">
+                    <Button variant="outline" className="h-10" disabled={page === 0} onClick={() => changePage(page - 1)}>
+                        <ChevronLeft className="size-4"/>
                         Anterior
                     </Button>
-                    <span className="text-sm self-center text-muted-foreground">
-                        {page + 1} / {data.totalPages}
+                    <span className="font-mono text-[13px] text-muted-foreground">
+                        p. <span className="text-foreground">{page + 1}</span> / {data.totalPages}
                     </span>
-                    <Button variant="outline" size="sm"
-                            disabled={page + 1 >= data.totalPages}
-                            onClick={() => changePage(page + 1)}>
+                    <Button variant="outline" className="h-10" disabled={page + 1 >= data.totalPages} onClick={() => changePage(page + 1)}>
                         Próxima
+                        <ChevronRight className="size-4"/>
                     </Button>
-                </div>
+                </nav>
             )}
+
             {isCollab && (
-                <button
-                    onClick={() => navigate("/mangas/novo")}
-                    className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-50 w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:bg-primary/90 transition-colors"
+                <Link
+                    to="/mangas/novo"
                     aria-label="Publicar mangá"
+                    className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-50 size-14 rounded-lg bg-primary text-primary-foreground shadow-[0_10px_30px_rgba(0,0,0,.5)] flex items-center justify-center hover:bg-primary/90 transition-colors"
                 >
-                    <Plus className="w-6 h-6"/>
-                </button>
+                    <Plus className="size-6"/>
+                </Link>
             )}
         </div>
     );
 }
 
-function MangaCardItem({manga, onClick}: { manga: MangaCard; onClick: () => void }) {
+function formatRating(value: number): string {
+    return value.toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1});
+}
+
+function MangaCardItem({manga}: {manga: MangaCard}) {
     return (
-        <button
-            className="group text-left space-y-2 focus:outline-none"
-            onClick={onClick}
-        >
-            <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-muted border">
-                {manga.coverUrl ? (
-                    <img
-                        src={manga.coverUrl}
-                        alt={manga.title}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        loading="lazy"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <BookOpen className="w-8 h-8 text-muted-foreground/30"/>
-                    </div>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 px-1.5 py-1">
-                    <Badge variant="secondary" className="text-[10px] px-1 py-0 opacity-90">
-                        {FORMAT_LABELS[manga.format] ?? manga.format}
-                    </Badge>
-                </div>
+        <Link to={`/biblioteca/${manga.slug}`} className="group flex flex-col gap-2.5">
+            <MangaCover
+                title={manga.title}
+                coverUrl={manga.coverUrl}
+                formatLabel={FORMAT_LABELS[manga.format] ?? manga.format}
+                className="transition-transform duration-200 group-hover:-translate-y-[3px]"
+            />
+            <div className="flex flex-col gap-0.5">
+                <span className="text-[13px] sm:text-sm font-medium leading-snug line-clamp-2">{manga.title}</span>
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {manga.year}
+                    {manga.year && manga.ratingCount > 0 && <span aria-hidden="true">·</span>}
+                    {manga.ratingCount > 0 && (
+                        <>
+                            <Star aria-hidden="true" className="size-3 fill-shu text-shu"/>
+                            <span>{formatRating(Number(manga.avgRating))}<span className="sr-only"> de 5</span></span>
+                        </>
+                    )}
+                </span>
             </div>
-            <div>
-                <p className="text-xs font-medium leading-snug line-clamp-2 group-hover:text-primary transition-colors">
-                    {manga.title}
-                </p>
-                {manga.year && (
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{manga.year}</p>
-                )}
-            </div>
-        </button>
+        </Link>
     );
 }

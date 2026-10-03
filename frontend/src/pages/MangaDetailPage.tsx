@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from "react";
-import {useParams, useNavigate} from "react-router-dom";
+import {Link, useParams, useNavigate} from "react-router-dom";
 import {deleteManga, finalizeVolumeUpload, getManga, getVolumeUploadUrl} from "@/api/mangaApi";
 import {uploadVolumeFile} from "@/api/volumeUpload";
 import {getBatchProgress, getVolumeUrl} from "@/api/readingApi";
@@ -18,11 +18,12 @@ import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
-import {Card, CardContent} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
+import {EmptyState} from "@/components/EmptyState";
+import {MangaCover} from "@/components/MangaCover";
 import {toast} from "sonner";
-import {ArrowLeft, BookOpen, Pencil, Trash2, Upload, X, Star, BookMarked, ChevronDown} from "lucide-react";
+import {BookOpen, ChevronLeft, Pencil, Trash2, Upload, X, Star, BookMarked, ChevronDown} from "lucide-react";
 
 const FORMAT_LABELS: Record<string, string> = {
     MANGA: "Mangá", MANHWA: "Manhwa", MANHUA: "Manhua",
@@ -252,14 +253,12 @@ export function MangaDetailPage() {
 
     if (loading) {
         return (
-            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 space-y-6 animate-pulse">
-                <div className="h-6 bg-muted rounded w-32"/>
-                <div className="flex gap-6">
-                    <div className="w-40 aspect-[2/3] bg-muted rounded-md shrink-0"/>
-                    <div className="flex-1 space-y-3">
-                        <div className="h-8 bg-muted rounded w-3/4"/>
-                        <div className="h-4 bg-muted rounded w-1/2"/>
-                    </div>
+            <div className="max-w-7xl mx-auto px-4 md:px-8 pt-12 pb-10 grid gap-8 md:grid-cols-[240px_minmax(0,1fr)] md:gap-11 animate-pulse">
+                <div className="aspect-[2/3] w-full max-w-[200px] md:max-w-none rounded-lg bg-card screentone"/>
+                <div className="flex flex-col gap-3 md:pt-8">
+                    <div className="h-3 w-40 bg-card"/>
+                    <div className="h-10 w-3/4 bg-card"/>
+                    <div className="h-4 w-1/2 bg-card"/>
                 </div>
             </div>
         );
@@ -274,12 +273,29 @@ export function MangaDetailPage() {
         return acc;
     }, {});
 
-    return (
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 space-y-6">
+    const formatLabel = FORMAT_LABELS[manga.format] ?? manga.format;
+    // Retomar a leitura pelo volume mais avançado com progresso salvo; sem progresso, o primeiro.
+    const resumeVolume = [...volumes].reverse().find((v) => volumeProgress[v.id] !== undefined);
+    const firstVolume = volumes[0];
 
+    const {id: mangaId, title: mangaTitle, slug: mangaSlug} = manga;
+    function openReader(vol: Volume) {
+        navigate(`/leitor/${vol.id}`, {
+            state: {
+                mangaId,
+                mangaTitle,
+                mangaSlug,
+                volumeNumber: vol.volumeNumber,
+                backUrl: `/biblioteca/${mangaSlug}`,
+            }
+        });
+    }
+
+    return (
+        <div className="flex flex-col">
             {showUploadModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-                    <div className="bg-background border rounded-xl w-full max-w-md p-6 space-y-4 shadow-xl">
+                    <div className="bg-card border rounded-lg w-full max-w-md p-6 space-y-4 shadow-xl">
                         <div className="flex items-center justify-between">
                             <h2 className="text-base font-semibold">Adicionar volume</h2>
                             <button onClick={closeUploadModal}>
@@ -333,230 +349,221 @@ export function MangaDetailPage() {
                 </div>
             )}
 
-            <div className="flex items-center justify-between gap-2">
-                <Button variant="ghost" size="sm" onClick={() => navigate("/biblioteca")}>
-                    <ArrowLeft className="w-4 h-4 mr-1.5"/>
-                    Biblioteca
-                </Button>
-                {canModify && (
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/mangas/${manga.id}/editar`)}
-                        >
-                            <Pencil className="w-4 h-4 mr-1.5"/>
-                            Editar
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={handleDelete}
-                            disabled={deleting}
-                        >
-                            <Trash2 className="w-4 h-4 mr-1.5"/>
-                            {deleting ? "Deletando…" : "Deletar"}
-                        </Button>
-                    </div>
-                )}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-6">
-                <div className="w-full sm:w-44 shrink-0">
-                    <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted border">
-                        {manga.coverUrl ? (
-                            <img src={manga.coverUrl} alt={manga.title} className="w-full h-full object-cover"/>
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                                <BookOpen className="w-10 h-10 text-muted-foreground/30"/>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="flex-1 space-y-3">
-                    <div>
-                        <h1 className="text-2xl font-bold leading-snug">{manga.title}</h1>
-                        {manga.alternativeTitles.length > 0 && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {manga.alternativeTitles.join(" · ")}
-                            </p>
-                        )}
+            {/* Herói: a capa emoldurada como página, sobre linhas de velocidade discretas */}
+            <section className="border-b bg-[radial-gradient(ellipse_at_20%_50%,transparent_0_18%,var(--background)_70%),repeating-conic-gradient(from_0deg_at_20%_50%,color-mix(in_oklch,var(--paper)_5%,transparent)_0deg_1.2deg,transparent_1.2deg_4.5deg)]">
+                <div className="max-w-7xl mx-auto px-4 md:px-8 pt-5 pb-10 grid gap-8 md:grid-cols-[240px_minmax(0,1fr)] md:gap-11">
+                    <div className="flex flex-col gap-3.5">
+                        <div className="flex items-center justify-between gap-2">
+                            <Link to="/biblioteca" className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground">
+                                <ChevronLeft className="size-3.5"/>
+                                Biblioteca
+                            </Link>
+                        </div>
+                        <div className="w-full max-w-[200px] md:max-w-none rounded-lg bg-paper p-2 shadow-[0_24px_60px_rgba(0,0,0,.6)]">
+                            <MangaCover
+                                title={manga.title}
+                                coverUrl={manga.coverUrl}
+                                alt={`Capa de ${manga.title}`}
+                                className="rounded-none border-[3px] border-ink shadow-none"
+                            />
+                        </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 text-sm">
-                        <Badge variant="secondary">{FORMAT_LABELS[manga.format] ?? manga.format}</Badge>
-                        <Badge
-                            variant="outline">{STATUS_ORIGIN_LABELS[manga.statusOrigin] ?? manga.statusOrigin}</Badge>
-                        {manga.year && <Badge variant="outline">{manga.year}</Badge>}
-                        {manga.originCountry && <Badge variant="outline">{manga.originCountry}</Badge>}
-                    </div>
+                    <div className="flex flex-col gap-5 md:pt-8">
+                        <div className="flex flex-col gap-2">
+                            <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                                {[formatLabel, manga.originCountry, manga.year].filter(Boolean).join(" · ")}
+                            </span>
+                            <h1 className="m-0 text-[32px] md:text-[48px] leading-none font-bold tracking-[-0.035em]">{manga.title}</h1>
+                            {manga.alternativeTitles.length > 0 && (
+                                <p className="m-0 text-[15px] text-muted-foreground">{manga.alternativeTitles.join(" · ")}</p>
+                            )}
+                        </div>
 
-                    {manga.contentWarnings.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="stamp" className="h-6 px-2.5 text-[11px]">{formatLabel}</Badge>
+                            <Badge variant="meta" className="h-6">{STATUS_ORIGIN_LABELS[manga.statusOrigin] ?? manga.statusOrigin}</Badge>
+                            {manga.year && <Badge variant="meta" className="h-6">{manga.year}</Badge>}
+                            {manga.originCountry && <Badge variant="meta" className="h-6">{manga.originCountry}</Badge>}
                             {manga.contentWarnings.map((w) => (
-                                <Badge key={w} variant="destructive" className="text-xs">
+                                <Badge key={w} variant="meta" className="h-6 border-shu text-shu">
                                     {CONTENT_WARNING_LABELS[w] ?? w}
                                 </Badge>
                             ))}
                         </div>
-                    )}
 
-                    {manga.synopsis && (
-                        <p className="text-sm text-foreground/80 leading-relaxed">{manga.synopsis}</p>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-3 pt-1">
-
-                        <div className="relative">
-                            <button
-                                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md border transition-colors
-                                    ${readingStatus
-                                    ? "bg-primary text-primary-foreground border-primary"
-                                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
-                                }
-                                    ${savingStatus ? "opacity-60 cursor-not-allowed" : ""}
-                                `}
-                                onClick={() => setShowStatusMenu(s => !s)}
-                                disabled={savingStatus}
-                            >
-                                <BookMarked className="w-3.5 h-3.5"/>
-                                {readingStatus ? READING_STATUS_LABELS[readingStatus] : "Adicionar à lista"}
-                                <ChevronDown className="w-3 h-3"/>
-                            </button>
-
-                            {showStatusMenu && (
-                                <div className="absolute top-full left-0 mt-1 z-20 bg-popover border rounded-md shadow-md py-1 min-w-[160px]">
-                                    {READING_STATUS_OPTIONS.map(s => (
-                                        <button
-                                            key={s}
-                                            className={`w-full text-left text-xs px-3 py-2 hover:bg-muted transition-colors
-                                                ${readingStatus === s ? "text-primary font-medium" : "text-foreground"}
-                                            `}
-                                            onClick={() => handleStatusChange(s)}
-                                        >
-                                            {READING_STATUS_LABELS[s]}
-                                        </button>
-                                    ))}
-                                    {readingStatus && (
-                                        <>
-                                            <div className="border-t my-1"/>
-                                            <button
-                                                className="w-full text-left text-xs px-3 py-2 text-destructive hover:bg-muted transition-colors"
-                                                onClick={handleRemoveFromList}
-                                            >
-                                                Remover da lista
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map(star => (
-                                <button
-                                    key={star}
-                                    className={`transition-colors ${savingRating ? "cursor-not-allowed" : "cursor-pointer"}`}
-                                    onMouseEnter={() => setHoverRating(star)}
-                                    onMouseLeave={() => setHoverRating(null)}
-                                    onClick={() => userRating === star ? handleRemoveRating() : handleRate(star)}
-                                    disabled={savingRating}
-                                >
-                                    <Star
-                                        className={`w-5 h-5 transition-colors
-                                            ${(hoverRating ?? userRating ?? 0) >= star
-                                            ? "fill-yellow-400 text-yellow-400"
-                                            : "text-muted-foreground/40"
-                                        }
-                                        `}
-                                    />
-                                </button>
-                            ))}
-                            {userRating && (
-                                <span className="text-xs text-muted-foreground ml-1">sua nota</span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                        {ratingCount > 0 && (
-                            <span>⭐ {avgRating.toFixed(1)} ({ratingCount} avaliações)</span>
+                        {manga.synopsis && (
+                            <p className="m-0 max-w-[680px] text-base leading-relaxed text-foreground/85">{manga.synopsis}</p>
                         )}
-                        <span>👁 {manga.viewCount} visualizações</span>
-                    </div>
 
-                    {Object.entries(tagsByCategory).map(([cat, tags]) => (
-                        <div key={cat}>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{cat}</p>
-                            <div className="flex flex-wrap gap-1">
-                                {tags.map((t) => (
-                                    <Badge key={t.id} variant="outline" className="text-xs">
-                                        {t.name}
-                                    </Badge>
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            {firstVolume && (
+                                <Button className="h-12 px-5 text-[15px] font-semibold" onClick={() => openReader(resumeVolume ?? firstVolume)}>
+                                    <BookOpen className="size-[18px]"/>
+                                    {resumeVolume ? `Continuar · Vol. ${resumeVolume.volumeNumber}` : "Começar a ler"}
+                                </Button>
+                            )}
+
+                            <div className="relative">
+                                <Button
+                                    variant="outline"
+                                    className="h-12 px-4"
+                                    aria-haspopup="menu"
+                                    aria-expanded={showStatusMenu}
+                                    onClick={() => setShowStatusMenu((s) => !s)}
+                                    disabled={savingStatus}
+                                >
+                                    {readingStatus
+                                        ? <span aria-hidden="true" className="h-1 w-3 -skew-x-15 bg-shu"/>
+                                        : <BookMarked className="size-4"/>}
+                                    {readingStatus ? READING_STATUS_LABELS[readingStatus] : "Adicionar à lista"}
+                                    <ChevronDown className="size-3.5"/>
+                                </Button>
+                                {showStatusMenu && (
+                                    <div role="menu" className="absolute top-full left-0 mt-1 z-20 min-w-[180px] rounded-lg border bg-popover py-1 shadow-md">
+                                        {READING_STATUS_OPTIONS.map((s) => (
+                                            <button
+                                                key={s}
+                                                role="menuitemradio"
+                                                aria-checked={readingStatus === s}
+                                                className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted"
+                                                onClick={() => handleStatusChange(s)}
+                                            >
+                                                <span aria-hidden="true" className={`h-1 w-3 -skew-x-15 ${readingStatus === s ? "bg-shu" : "bg-transparent"}`}/>
+                                                {READING_STATUS_LABELS[s]}
+                                            </button>
+                                        ))}
+                                        {readingStatus && (
+                                            <>
+                                                <div className="my-1 border-t"/>
+                                                <button
+                                                    role="menuitem"
+                                                    className="w-full px-3 py-2.5 pl-8 text-left text-sm text-destructive hover:bg-muted"
+                                                    onClick={handleRemoveFromList}
+                                                >
+                                                    Remover da lista
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div role="group" aria-label="Sua nota" className="ml-1 flex items-center">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        aria-label={userRating === star ? `Remover nota ${star}` : `Dar nota ${star}`}
+                                        aria-pressed={userRating === star}
+                                        className={`flex h-11 w-9 items-center justify-center ${savingRating ? "cursor-not-allowed" : "cursor-pointer"}`}
+                                        onMouseEnter={() => setHoverRating(star)}
+                                        onMouseLeave={() => setHoverRating(null)}
+                                        onClick={() => userRating === star ? handleRemoveRating() : handleRate(star)}
+                                        disabled={savingRating}
+                                    >
+                                        <Star
+                                            aria-hidden="true"
+                                            className={`size-[22px] transition-colors ${(hoverRating ?? userRating ?? 0) >= star
+                                                ? "fill-shu text-shu"
+                                                : "text-muted-foreground/40"}`}
+                                        />
+                                    </button>
                                 ))}
+                                {userRating && <span className="ml-1 text-xs text-muted-foreground">sua nota</span>}
                             </div>
                         </div>
-                    ))}
-                </div>
-            </div>
 
-            <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">
-                        Volumes{" "}
-                        <span className="text-muted-foreground font-normal text-base">
-                            ({volumes.length})
-                        </span>
-                    </h2>
+                        <div className="flex flex-wrap gap-4 font-mono text-xs text-muted-foreground">
+                            {ratingCount > 0 && (
+                                <span>média {avgRating.toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1})} · {ratingCount} {ratingCount === 1 ? "avaliação" : "avaliações"}</span>
+                            )}
+                            <span>{manga.viewCount} {manga.viewCount === 1 ? "visualização" : "visualizações"}</span>
+                        </div>
+
+                        {Object.keys(tagsByCategory).length > 0 && (
+                            <div className="flex flex-wrap gap-7 pt-1">
+                                {Object.entries(tagsByCategory).map(([cat, tags]) => (
+                                    <div key={cat} className="flex flex-col gap-2">
+                                        <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">{cat}</span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {tags.map((t) => (
+                                                <span key={t.id} className="rounded-sm bg-muted px-2.5 py-1 text-[13px]">{t.name}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {canModify && (
+                            <div className="flex flex-wrap gap-2 border-t pt-5">
+                                <Button variant="outline" onClick={() => navigate(`/mangas/${manga.id}/editar`)}>
+                                    <Pencil className="size-4"/>
+                                    Editar
+                                </Button>
+                                <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                                    <Trash2 className="size-4"/>
+                                    {deleting ? "Deletando…" : "Deletar"}
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {/* Volumes: cada um é um painel; o que tem progresso salvo fica em destaque */}
+            <section className="max-w-7xl w-full mx-auto px-4 md:px-8 pt-9 pb-16 flex flex-col gap-5">
+                <div className="flex items-end justify-between gap-4">
+                    <div className="flex flex-col gap-2">
+                        <span aria-hidden="true" className="h-1 w-6 -skew-x-15 bg-shu"/>
+                        <h2 className="m-0 text-[22px] font-semibold tracking-[-0.02em]">
+                            Volumes <span className="font-mono text-sm font-medium text-muted-foreground">{volumes.length}</span>
+                        </h2>
+                    </div>
                     {canModify && (
-                        <Button variant="outline" size="sm" onClick={openUploadModal}>
-                            <Upload className="w-4 h-4 mr-1.5"/>
+                        <Button variant="outline" className="h-10" onClick={openUploadModal}>
+                            <Upload className="size-4"/>
                             Adicionar volume
                         </Button>
                     )}
                 </div>
 
-                {volumes.length === 0 && (
-                    <Card>
-                        <CardContent className="py-8 text-center text-sm text-muted-foreground">
-                            Nenhum volume disponível
-                        </CardContent>
-                    </Card>
-                )}
-
-                <div className="space-y-2">
-                    {volumes.map((vol) => (
-                        <Card key={vol.id}>
-                            <CardContent className="py-3 px-4 flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium">Volume {vol.volumeNumber}</p>
-                                    <p className="text-xs text-muted-foreground">{formatBytes(vol.fileSizeBytes)}</p>
-                                    {volumeProgress[vol.id] !== undefined && (
-                                        <p className="text-xs text-primary mt-0.5">
-                                            Pág. {volumeProgress[vol.id]}
-                                        </p>
-                                    )}
-                                </div>
-                                <Button
-                                    size="sm"
-                                    onClick={() => navigate(`/leitor/${vol.id}`, {
-                                        state: {
-                                            mangaId: manga.id,
-                                            mangaTitle: manga.title,
-                                            mangaSlug: manga.slug,
-                                            volumeNumber: vol.volumeNumber,
-                                            backUrl: `/biblioteca/${manga.slug}`,
-                                        }
-                                    })}
+                {volumes.length === 0 ? (
+                    <EmptyState title="Nenhum volume disponível" description="Os volumes aparecem aqui assim que forem enviados."/>
+                ) : (
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
+                        {volumes.map((vol) => {
+                            const page = volumeProgress[vol.id];
+                            const started = page !== undefined;
+                            return (
+                                <div
+                                    key={vol.id}
+                                    className={`flex flex-col gap-3.5 rounded-lg border bg-card p-4 ${started ? "border-shu/55" : ""}`}
                                 >
-                                    {volumeProgress[vol.id] !== undefined ? "Continuar" : "Ler"}
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </div>
+                                    <div className="flex items-baseline justify-between gap-2">
+                                        <span className="text-[13px] text-muted-foreground">Volume</span>
+                                        <span className="font-mono text-[28px] font-medium tracking-[-0.02em]">
+                                            {String(vol.volumeNumber).padStart(2, "0")}
+                                        </span>
+                                    </div>
+                                    <span className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                                        {started && <span aria-hidden="true" className="h-1 w-3 -skew-x-15 bg-shu"/>}
+                                        {started ? `Parou na pág. ${page}` : formatBytes(vol.fileSizeBytes)}
+                                    </span>
+                                    <Button
+                                        variant={started ? "default" : "outline"}
+                                        className="h-10"
+                                        onClick={() => openReader(vol)}
+                                    >
+                                        {started ? "Continuar" : "Ler"}
+                                        <span className="sr-only"> o volume {vol.volumeNumber}</span>
+                                    </Button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </section>
         </div>
     );
 }
