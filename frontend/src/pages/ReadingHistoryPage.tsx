@@ -4,8 +4,10 @@ import {getHistory} from "@/api/readingApi";
 import type {HistoryEntry} from "@/types/reading";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
+import {EmptyState} from "@/components/EmptyState";
 import {toast} from "sonner";
-import {BookOpen, ArrowLeft, ChevronRight} from "lucide-react";
+import {BookOpen, ChevronRight} from "lucide-react";
 
 function formatDate(iso: string): string {
     const d = new Date(iso);
@@ -51,27 +53,20 @@ export function ReadingHistoryPage() {
 
     return (
         <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
-            <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-                    <ArrowLeft className="w-4 h-4"/>
-                </Button>
-                <h1 className="text-2xl font-bold">Histórico de leitura</h1>
-            </div>
+            <PageHeader title="Histórico de leitura" description="Os volumes que você abriu, do mais recente."/>
 
             {loading ? (
                 <div className="space-y-2">
                     {[...Array(5)].map((_, i) => (
-                        <div key={i} className="h-16 rounded-lg bg-muted animate-pulse"/>
+                        <div key={i} className="h-16 rounded-lg bg-card screentone animate-pulse"/>
                     ))}
                 </div>
             ) : entries.length === 0 ? (
-                <div className="text-center py-16 space-y-3">
-                    <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/40"/>
-                    <p className="text-muted-foreground">Nenhuma leitura registrada ainda.</p>
-                    <Button variant="outline" onClick={() => navigate("/biblioteca")}>
-                        Ir para a biblioteca
-                    </Button>
-                </div>
+                <EmptyState
+                    title="Nenhuma leitura registrada ainda"
+                    description="Os volumes que você abrir aparecem aqui, com a página onde parou."
+                    action={<Button onClick={() => navigate("/biblioteca")}>Explorar a biblioteca</Button>}
+                />
             ) : (
                 <div className="space-y-2">
                     {entries.map((entry, idx) => (

@@ -5,6 +5,7 @@ import type {PDFDocumentProxy, RenderTask} from "pdfjs-dist";
 import {getManga} from "@/api/mangaApi";
 import {getVolumeProgress, getVolumeUrl, saveProgress as saveProgressApi} from "@/api/readingApi";
 import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
+import {Loading} from "@/components/Loading";
 import {
     ArrowLeft,
     ChevronLeft,
@@ -553,10 +554,7 @@ export function ReaderPage() {
     if (loadingPdf || !progressLoaded) {
         return (
             <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
-                <div className="flex flex-col items-center gap-3 text-white/60">
-                    <Loader2 className="w-8 h-8 animate-spin"/>
-                    <p className="text-sm">Carregando…</p>
-                </div>
+                <Loading className="text-paper" label="Carregando volume"/>
             </div>
         );
     }

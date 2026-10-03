@@ -5,8 +5,10 @@ import type {ReadingListEntry, ReadingStatus} from "@/types/engagement";
 import {Button} from "@/components/ui/button";
 import {Badge} from "@/components/ui/badge";
 import {Card, CardContent} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
+import {EmptyState} from "@/components/EmptyState";
 import {toast} from "sonner";
-import {BookOpen, ArrowLeft, X} from "lucide-react";
+import {BookOpen, X} from "lucide-react";
 
 const STATUS_LABELS: Record<ReadingStatus, string> = {
     WANT_TO_READ: "Quero ler",
@@ -58,37 +60,30 @@ export function ReadingListPage() {
 
     return (
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 space-y-8">
-            <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-                    <ArrowLeft className="w-4 h-4"/>
-                </Button>
-                <h1 className="text-2xl font-bold">Lista de leitura</h1>
-                {!loading && entries.length > 0 && (
-                    <span className="text-sm text-muted-foreground">
-                        {entries.length} {entries.length === 1 ? "título" : "títulos"}
-                    </span>
-                )}
-            </div>
+            <PageHeader
+                title="Lista de leitura"
+                description={!loading && entries.length > 0
+                    ? `${entries.length} ${entries.length === 1 ? "título" : "títulos"}, organizados pelo status de leitura.`
+                    : "Organize o que quer ler, está lendo e já leu."}
+            />
 
             {loading ? (
                 <div className="space-y-6">
                     {[...Array(2)].map((_, i) => (
                         <div key={i} className="space-y-2">
-                            <div className="h-4 w-24 bg-muted rounded animate-pulse"/>
+                            <div className="h-4 w-24 bg-card screentone rounded animate-pulse"/>
                             {[...Array(3)].map((_, j) => (
-                                <div key={j} className="h-16 bg-muted rounded-lg animate-pulse"/>
+                                <div key={j} className="h-16 bg-card screentone rounded-lg animate-pulse"/>
                             ))}
                         </div>
                     ))}
                 </div>
             ) : entries.length === 0 ? (
-                <div className="text-center py-20 space-y-3">
-                    <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/30"/>
-                    <p className="text-muted-foreground">Sua lista está vazia.</p>
-                    <Button variant="outline" onClick={() => navigate("/biblioteca")}>
-                        Ir para a biblioteca
-                    </Button>
-                </div>
+                <EmptyState
+                    title="Sua lista está vazia"
+                    description="Na página de um mangá, use “Adicionar à lista” para acompanhar a leitura."
+                    action={<Button onClick={() => navigate("/biblioteca")}>Explorar a biblioteca</Button>}
+                />
             ) : (
                 <div className="space-y-8">
                     {STATUS_ORDER.map(status => {

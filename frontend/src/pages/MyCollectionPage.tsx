@@ -4,6 +4,8 @@ import {deleteMyManga, getMyQuota, listMyMangas} from "@/api/privateMangaApi";
 import type {PrivateManga, QuotaInfo} from "@/types/manga";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
+import {EmptyState} from "@/components/EmptyState";
 import {toast} from "sonner";
 import {Plus, BookOpen, HardDrive, ChevronRight, Trash2, Upload} from "lucide-react";
 
@@ -65,19 +67,22 @@ export function MyCollectionPage() {
 
     const quotaColor =
         usedPercent >= 90 ? "bg-destructive" :
-            usedPercent >= 70 ? "bg-yellow-500" :
-                "bg-primary";
+            usedPercent >= 70 ? "bg-shu" :
+                "bg-foreground/70";
 
     return (
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 space-y-6">
 
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">Minha Coleção</h1>
-                <Button size="sm" onClick={() => navigate("/colecao/novo")}>
-                    <Plus className="w-4 h-4 mr-1.5"/>
-                    Adicionar
-                </Button>
-            </div>
+            <PageHeader
+                title="Minha Coleção"
+                description="Mangás particulares, visíveis só para você."
+                actions={
+                    <Button onClick={() => navigate("/colecao/novo")}>
+                        <Plus className="size-4"/>
+                        Adicionar
+                    </Button>
+                }
+            />
 
             {quota && (
                 <div className="space-y-1.5">
@@ -102,18 +107,20 @@ export function MyCollectionPage() {
             {loading ? (
                 <div className="space-y-3">
                     {[...Array(3)].map((_, i) => (
-                        <div key={i} className="h-20 rounded-lg bg-muted animate-pulse"/>
+                        <div key={i} className="h-20 rounded-lg bg-card screentone animate-pulse"/>
                     ))}
                 </div>
             ) : mangas.length === 0 ? (
-                <div className="text-center py-16 space-y-3">
-                    <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/40"/>
-                    <p className="text-muted-foreground">Nenhum mangá na coleção ainda.</p>
-                    <Button variant="outline" onClick={() => navigate("/colecao/novo")}>
-                        <Upload className="w-4 h-4 mr-1.5"/>
-                        Fazer primeiro upload
-                    </Button>
-                </div>
+                <EmptyState
+                    title="Nenhum mangá na coleção ainda"
+                    description="Envie seus próprios volumes; eles ficam só com você."
+                    action={
+                        <Button onClick={() => navigate("/colecao/novo")}>
+                            <Upload className="size-4"/>
+                            Fazer o primeiro upload
+                        </Button>
+                    }
+                />
             ) : (
                 <div className="space-y-2">
                     {mangas.map((manga) => (

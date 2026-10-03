@@ -8,6 +8,8 @@ import {Badge} from "@/components/ui/badge";
 import {Card, CardContent} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
+import {PageHeader} from "@/components/PageHeader";
+import {Loading} from "@/components/Loading";
 
 const ROLE_OPTIONS = ["READER", "COLLABORATOR", "ADMIN"];
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "PENDING"];
@@ -79,9 +81,9 @@ export function UsersPage() {
 
     return (
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
-            <h2 className="text-2xl font-bold mb-6">Todos os usuários</h2>
+            <div className="mb-6"><PageHeader title="Todos os usuários"/></div>
 
-            {loading && <p className="text-muted-foreground">Carregando…</p>}
+            {loading && <Loading/>}
 
             {!loading && (
                 <>

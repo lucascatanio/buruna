@@ -1,105 +1,109 @@
-import {Outlet, useNavigate, useLocation} from "react-router-dom";
+import type {ComponentType} from "react";
+import {Link, NavLink, Outlet, useNavigate} from "react-router-dom";
 import {useAuthStore} from "@/store/authStore";
 import {performLogout} from "@/lib/logout";
 import {Button} from "@/components/ui/button";
 import {FeedbackButton} from "@/components/FeedbackDialog";
 import {Wordmark} from "@/components/Logo";
-import {BookOpen, Library, Settings, LogOut, History, BookMarked, Shield} from "lucide-react";
+import {BookOpen, Library, LayoutDashboard, LogOut, History, BookMarked, Shield} from "lucide-react";
+import {cn} from "@/lib/utils";
+
+interface NavItem {
+    to: string;
+    label: string;
+    shortLabel?: string;
+    icon: ComponentType<{className?: string}>;
+}
+
+const NAV: NavItem[] = [
+    {to: "/biblioteca", label: "Biblioteca", icon: BookOpen},
+    {to: "/colecao", label: "Minha Coleção", shortLabel: "Coleção", icon: Library},
+    {to: "/lista", label: "Lista", icon: BookMarked},
+    {to: "/historico", label: "Histórico", icon: History},
+];
+
+const ADMIN_NAV: NavItem = {to: "/admin/dashboard", label: "Admin", icon: LayoutDashboard};
+
+/** Traço vermelhão inclinado acima do item ativo — o mácron do ū. */
+function Macron({className}: {className?: string}) {
+    return <span aria-hidden="true" className={cn("absolute left-1/2 -ml-[9px] h-1 w-[18px] -skew-x-15 bg-shu", className)}/>;
+}
 
 export function AppLayout() {
     const navigate = useNavigate();
-    const location = useLocation();
     const user = useAuthStore((s) => s.user);
+    const mobileNav = user?.role === "ADMIN" ? [...NAV, ADMIN_NAV] : NAV;
 
     async function handleLogout() {
         await performLogout();
         navigate("/login");
     }
 
-    const isActive = (path: string) => location.pathname.startsWith(path);
-    const isAdmin = user?.role === "ADMIN";
-
     return (
         <div className="min-h-screen bg-background flex flex-col">
-            <header className="border-b px-6 py-3 hidden md:flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                    <span
-                        className="cursor-pointer select-none"
-                        onClick={() => navigate("/biblioteca")}
-                    >
-                        <Wordmark className="h-5 w-auto"/>
-                    </span>
-                    <nav className="flex gap-1">
-                        <Button
-                            variant={isActive("/biblioteca") ? "secondary" : "ghost"}
-                            size="sm"
-                            onClick={() => navigate("/biblioteca")}
-                        >
-                            <BookOpen className="w-4 h-4 mr-1.5"/>
-                            Biblioteca
-                        </Button>
-                        <Button
-                            variant={isActive("/colecao") ? "secondary" : "ghost"}
-                            size="sm"
-                            onClick={() => navigate("/colecao")}
-                        >
-                            <Library className="w-4 h-4 mr-1.5"/>
-                            Minha Coleção
-                        </Button>
-                        <Button
-                            variant={isActive("/lista") ? "secondary" : "ghost"}
-                            size="sm"
-                            onClick={() => navigate("/lista")}
-                        >
-                            <BookMarked className="w-4 h-4 mr-1.5"/>
-                            Lista
-                        </Button>
-                        <Button
-                            variant={isActive("/historico") ? "secondary" : "ghost"}
-                            size="sm"
-                            onClick={() => navigate("/historico")}
-                        >
-                            <History className="w-4 h-4 mr-1.5"/>
-                            Histórico
-                        </Button>
-                        {isAdmin && (
-                            <>
-                                <Button
-                                    variant={isActive("/admin/users") ? "secondary" : "ghost"}
-                                    size="sm"
-                                    onClick={() => navigate("/admin/dashboard")}
-                                >
-                                    <Settings className="w-4 h-4 mr-1.5"/>
-                                    Admin
-                                </Button>
-                            </>
-                        )}
+            <header className="hidden md:flex h-16 border-b px-8 items-stretch justify-between gap-6">
+                <div className="flex items-stretch gap-9">
+                    <Link to="/biblioteca" aria-label="Burūna, ir para a biblioteca" className="flex items-center">
+                        <Wordmark className="h-[21px] w-auto"/>
+                    </Link>
+                    <nav aria-label="Principal" className="flex items-stretch gap-1">
+                        {NAV.map(({to, label, icon: Icon}) => (
+                            <NavLink
+                                key={to}
+                                to={to}
+                                className={({isActive}) => cn(
+                                    "relative flex items-center gap-2 px-3.5 text-sm font-medium transition-colors",
+                                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                {({isActive}) => (
+                                    <>
+                                        {isActive && <Macron className="top-3.5"/>}
+                                        <Icon className="size-4"/>
+                                        {label}
+                                    </>
+                                )}
+                            </NavLink>
+                        ))}
                     </nav>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant={isActive("/seguranca") ? "secondary" : "ghost"}
-                        size="sm"
-                        onClick={() => navigate("/seguranca")}
+                <div className="flex items-center gap-1">
+                    {user?.role === "ADMIN" && (
+                        <NavLink
+                            to={ADMIN_NAV.to}
+                            className="flex h-9 items-center gap-2 px-3 text-sm text-muted-foreground hover:text-foreground"
+                        >
+                            <LayoutDashboard className="size-4"/>
+                            Admin
+                        </NavLink>
+                    )}
+                    <NavLink
+                        to="/seguranca"
+                        className={({isActive}) => cn(
+                            "flex h-9 items-center gap-2 px-3 text-sm hover:text-foreground",
+                            isActive ? "text-foreground" : "text-muted-foreground"
+                        )}
                     >
-                        <Shield className="w-4 h-4 mr-1.5"/>
+                        <Shield className="size-4"/>
                         Segurança
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleLogout}>
-                        <LogOut className="w-4 h-4 mr-1.5"/>
+                    </NavLink>
+                    <Button variant="outline" onClick={handleLogout} className="ml-2 h-9">
+                        <LogOut className="size-4"/>
                         Sair
                     </Button>
                 </div>
             </header>
 
-            <header className="border-b px-4 py-3 flex md:hidden items-center justify-between">
-                <Wordmark className="h-5 w-auto select-none"/>
-                <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => navigate("/seguranca")}>
-                        <Shield className="w-4 h-4"/>
+            <header className="flex md:hidden h-14 border-b pl-4 pr-2 items-center justify-between">
+                <Link to="/biblioteca" aria-label="Burūna, ir para a biblioteca">
+                    <Wordmark className="h-[18px] w-auto"/>
+                </Link>
+                <div className="flex items-center">
+                    <Button variant="ghost" size="icon" aria-label="Segurança" onClick={() => navigate("/seguranca")} className="size-11">
+                        <Shield className="size-5"/>
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={handleLogout}>
-                        <LogOut className="w-4 h-4"/>
+                    <Button variant="ghost" size="icon" aria-label="Sair" onClick={handleLogout} className="size-11">
+                        <LogOut className="size-5"/>
                     </Button>
                 </div>
             </header>
@@ -110,64 +114,26 @@ export function AppLayout() {
 
             <FeedbackButton/>
 
-            <nav className="fixed bottom-0 left-0 right-0 border-t bg-background flex md:hidden z-40">
-                <MobileNavItem
-                    icon={<BookOpen className="w-5 h-5"/>}
-                    label="Biblioteca"
-                    active={isActive("/biblioteca")}
-                    onClick={() => navigate("/biblioteca")}
-                />
-                <MobileNavItem
-                    icon={<Library className="w-5 h-5"/>}
-                    label="Coleção"
-                    active={isActive("/colecao")}
-                    onClick={() => navigate("/colecao")}
-                />
-                <MobileNavItem
-                    icon={<BookMarked className="w-5 h-5"/>}
-                    label="Lista"
-                    active={isActive("/lista")}
-                    onClick={() => navigate("/lista")}
-                />
-                <MobileNavItem
-                    icon={<History className="w-5 h-5"/>}
-                    label="Histórico"
-                    active={isActive("/historico")}
-                    onClick={() => navigate("/historico")}
-                />
-                {isAdmin && (
-                    <MobileNavItem
-                        icon={<Settings className="w-5 h-5"/>}
-                        label="Admin"
-                        active={isActive("/admin")}
-                        onClick={() => navigate("/admin/dashboard")}
-                    />
-                )}
+            <nav aria-label="Principal" className="fixed bottom-0 left-0 right-0 z-40 flex h-16 border-t bg-card md:hidden">
+                {mobileNav.map(({to, label, shortLabel, icon: Icon}) => (
+                    <NavLink
+                        key={to}
+                        to={to}
+                        className={({isActive}) => cn(
+                            "relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+                            isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {({isActive}) => (
+                            <>
+                                {isActive && <Macron className="top-0 w-[22px] -ml-[11px]"/>}
+                                <Icon className="size-5"/>
+                                {shortLabel ?? label}
+                            </>
+                        )}
+                    </NavLink>
+                ))}
             </nav>
         </div>
-    );
-}
-
-interface MobileNavItemProps {
-    icon: React.ReactNode;
-    label: string;
-    active: boolean;
-    onClick?: () => void;
-    disabled?: boolean;
-}
-
-function MobileNavItem({icon, label, active, onClick, disabled}: MobileNavItemProps) {
-    return (
-        <button
-            className={`flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 text-[11px] font-medium transition-colors
-                ${active ? "text-primary" : "text-muted-foreground"}
-                ${disabled ? "opacity-35 cursor-not-allowed" : "hover:text-foreground"}
-            `}
-            onClick={disabled ? undefined : onClick}
-            disabled={disabled}
-        >
-            {icon}
-            {label}
-        </button>
     );
 }

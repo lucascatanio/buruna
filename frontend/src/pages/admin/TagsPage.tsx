@@ -5,6 +5,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
 import {toast} from "sonner";
 import {Pencil, Trash2, Plus, X, Check} from "lucide-react";
 
@@ -102,7 +103,7 @@ export function TagsPage() {
 
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-8">
-            <h1 className="text-2xl font-bold">Gerenciar Tags</h1>
+            <PageHeader title="Gerenciar tags" description="Categorias e tags usadas para filtrar a biblioteca."/>
 
             <Card>
                 <CardHeader><CardTitle className="text-base">Nova Categoria</CardTitle></CardHeader>

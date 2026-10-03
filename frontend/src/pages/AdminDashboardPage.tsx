@@ -2,6 +2,7 @@ import {useEffect, useState} from "react";
 import {getDashboard} from "@/api/adminApi";
 import type {DashboardData} from "@/types/admin";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
 import {Users, HardDrive, Database} from "lucide-react";
 
 export function AdminDashboardPage() {
@@ -19,13 +20,13 @@ export function AdminDashboardPage() {
     if (loading) {
         return (
             <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 space-y-6">
-                <h1 className="text-xl font-semibold">Dashboard</h1>
+                <PageHeader title="Dashboard" description="Usuários ativos e uso de armazenamento."/>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {[1, 2].map(i => (
-                        <div key={i} className="h-28 rounded-xl bg-muted animate-pulse"/>
+                        <div key={i} className="h-28 rounded-xl bg-card screentone animate-pulse"/>
                     ))}
                 </div>
-                <div className="h-64 rounded-xl bg-muted animate-pulse"/>
+                <div className="h-64 rounded-xl bg-card screentone animate-pulse"/>
             </div>
         );
     }
@@ -40,7 +41,7 @@ export function AdminDashboardPage() {
 
     return (
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 space-y-6">
-            <h1 className="text-xl font-semibold">Dashboard</h1>
+            <PageHeader title="Dashboard" description="Usuários ativos e uso de armazenamento."/>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Card>
@@ -87,8 +88,8 @@ export function AdminDashboardPage() {
                                 const barColor = pct >= 90
                                     ? "bg-destructive"
                                     : pct >= 70
-                                        ? "bg-yellow-500"
-                                        : "bg-primary";
+                                        ? "bg-shu"
+                                        : "bg-foreground/70";
 
                                 return (
                                     <div key={u.userId} className="flex items-center gap-3 px-6 py-3">

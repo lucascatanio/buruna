@@ -6,6 +6,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
 import {ShieldCheck, ShieldOff} from "lucide-react";
 
 export function SecuritySettingsPage() {
@@ -68,7 +69,7 @@ export function SecuritySettingsPage() {
 
     return (
         <div className="max-w-2xl mx-auto p-6 space-y-6">
-            <h1 className="text-2xl font-semibold">Segurança</h1>
+            <PageHeader title="Segurança" description="Autenticação em dois fatores e acesso à sua conta."/>
 
             <Card>
                 <CardHeader>
