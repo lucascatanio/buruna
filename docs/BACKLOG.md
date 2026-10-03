@@ -4,18 +4,24 @@ Itens fora do escopo das issues já executadas. Nada aqui deve ser feito sem iss
 
 ## Bugs
 
-### Adicionar volume a mangá público recém-criado retorna 500
-
-Reportado antes da refatoração. **Verificar se ainda ocorre.** O Epic 4 corrigiu um 500 nesse
-mesmo caminho: a `InsufficientStorageQuotaException` devolvia 500 porque o
-`GlobalExceptionHandler` ignorava o `@ResponseStatus`. Hoje devolve 422. Pode ter sido o mesmo
-bug. Se ainda reproduzir, o fluxo agora tem cobertura de integração em `MangaIntegrationTest`,
-o que facilita o diagnóstico.
-
 ### UI para deletar conta
 
 `DELETE /auth/account` existe e tem teste no backend, mas não há UI no frontend que o chame.
 Achado no [6.3], investigação read-only.
+
+### Título com mais de 255 caracteres em `POST /mangas` responde 409 "unicidade"
+
+O `MangaRequest` público não tem `@Size(max = 255)` (o `PrivateMangaRequest` tem), então o
+título longo chega ao banco, estoura o `varchar(255)` e o `DataIntegrityViolationException` é
+traduzido como violação de unicidade. Deveria ser 400 com a mensagem de tamanho. Sem
+vazamento de dado. Achado no teste ativo de 2026-09-24.
+
+### Finalizar o mesmo upload duas vezes responde 500
+
+Na segunda chamada de `finalize` com o mesmo `objectName` (ou no perdedor de dois finalizes
+concorrentes), o arquivo já saiu de `pending/` e o `getFileMetadata` lança `StorageException`,
+que cai no handler genérico. Deveria ser 404 ou 409. Não há duplicação de volume nem
+vazamento; é só o status. Achado no teste ativo de 2026-09-24.
 
 ## Dívida técnica
 
@@ -90,6 +96,49 @@ O `gcs-cors.json` (espelho do bucket de produção) aceita `http://localhost` e
 `http://192.168.100.192`, que só servem para testar contra o bucket de produção a partir da
 máquina ou rede de desenvolvimento. Remover se não forem mais usados.
 
+### Último `@Scheduled`: limpeza do `RateLimitFilter`
+
+A limpeza das entradas vencidas do rate limit roda por `@Scheduled(fixedDelay = 1h)`. Não dá
+para levar para o Cloud Scheduler: o contador vive na memória de cada instância, e uma chamada
+HTTP limparia só uma delas. Trocar por limpeza feita pelo próprio filtro (ex.: a cada N
+requisições) e remover o `@EnableScheduling`, para ninguém voltar a usar `@Scheduled` achando
+que funciona no Cloud Run com `cpu-throttling` (ADR-03).
+
+### CLAUDE.md cita "ADR-01 a ADR-41"
+
+Já existe o ADR-42. O CLAUDE.md evolui por PR próprio.
+
+## Segurança (hardening)
+
+Achados de baixa severidade do teste ativo de 2026-09-24 e do ADR-42. Nenhum é explorável
+hoje; são defesa em profundidade.
+
+### XSS armazenado em `title` e `synopsis`
+
+Os campos são gravados e devolvidos sem sanitização. Não é explorável no frontend atual (o
+React escapa e nenhuma página usa `dangerouslySetInnerHTML`), mas qualquer consumidor que
+renderize HTML ficaria exposto. A defesa adequada é um `Content-Security-Policy` no nginx do
+frontend, não escapar no backend.
+
+### `?sort=` aceita qualquer campo da entidade
+
+`GET /mangas?sort=<campo>` ordena por campos internos não expostos no DTO (ex.:
+`rejectionReason`), sem lista de campos permitidos. Dá para inferir a ordem relativa de dados
+de moderação, sem ler os valores.
+
+### Possível corrida na cota de storage
+
+O `QuotaService` soma o uso a cada finalize, sem reserva atômica nem lock. Dois finalizes
+concorrentes, cada um dentro da cota, poderiam ultrapassá-la juntos. Não reproduzido: a cota
+mínima ajustável pela API (0,1 GB) é grande demais para o teste. Escrever primeiro um teste de
+integração que reproduza a corrida; corrigir só se ele falhar.
+
+### Cadastro revela e-mail já cadastrado
+
+`POST /auth/register` responde 409 "Already exists an user with this email". É enumeração de
+conta por outro caminho que o ADR-42 não cobre, mais cara que o antigo timing do forgot porque
+exige hCaptcha a cada tentativa.
+
 ## Features
 
 - [ ] Trocar volumes por capítulos. Decidir entre criar tabela de capítulo vinculada ao volume,
@@ -106,6 +155,10 @@ máquina ou rede de desenvolvimento. Remover se não forem mais usados.
 
 ## Concluído
 
+- [x] Reset de senha em tempo constante via Pub/Sub push com OIDC e job de inatividade
+  disparado pelo Cloud Scheduler, em vez de `@Scheduled` (PRs #19 e #20, ADR-42).
+- [x] Adicionar volume a mangá público recém-criado não retorna mais 500: verificado em
+  produção em 2026-09-24 (`POST /mangas` → 201, `upload-url` → 200, `finalize` → 201).
 - [x] Revisão de segurança de 2026-09-23: bypass de 2FA, deleção de arquivos de outros
   usuários, rate limit burlável, força bruta e replay de TOTP, segredos com default, captcha
   desligado em produção, tokens em claro e em `localStorage` (PR #9, ADR-40, ADR-41).
