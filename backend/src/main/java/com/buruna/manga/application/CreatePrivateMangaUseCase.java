@@ -1,7 +1,6 @@
 package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Manga;
-import com.buruna.manga.dto.PrivateMangaResponse;
 import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.shared.storage.StorageUploadHelper;

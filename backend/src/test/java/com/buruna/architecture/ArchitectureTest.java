@@ -32,7 +32,18 @@ class ArchitectureTest {
             "engagement",
             "reading",
             "identity",
-            "manga"
+            "manga",
+            "admin"
+    };
+
+    /**
+     * Contextos já sem dependência application → web (seta do ADR-31). identity, engagement
+     * e reading ainda importam DTOs de web/ na application — ver docs/BACKLOG.md; entram
+     * aqui quando forem alinhados.
+     */
+    private static final String[] WEB_INDEPENDENT_CONTEXTS = {
+            "manga",
+            "admin"
     };
 
     private static final String BASE = "com.buruna";
@@ -66,27 +77,21 @@ class ArchitectureTest {
         }
     }
 
-    /**
-     * Guard específico para o contexto admin (casca, ADR-35 §2.3): como admin não tem
-     * domain/application próprios, o guard genérico acima não o protege. admin.service
-     * só pode ler outros contextos via application (use case público) — nunca domain/
-     * persistence direto. admin.controller fica de fora porque @AuthenticationPrincipal
-     * User é um padrão aceito na camada web (mesma exceção do guard genérico).
-     */
     @Test
-    void adminServiceLayer_shouldOnlyUseApplicationLayerOfOtherContexts() {
-        ArchRule rule = noClasses()
-                .that().resideInAPackage(BASE + ".admin.service..")
-                .should().dependOnClassesThat()
-                .resideInAnyPackage(
-                        BASE + ".identity.domain..", BASE + ".identity.persistence..",
-                        BASE + ".manga.domain..", BASE + ".manga.persistence..",
-                        BASE + ".reading.domain..", BASE + ".reading.persistence..",
-                        BASE + ".engagement.domain..", BASE + ".engagement.persistence..")
-                .because("admin é casca: acesso a outros contextos só via application " +
-                         "(use case público) (ADR-35 §2.3)");
+    void domainAndApplication_shouldNotDependOnWebLayer() {
+        for (String context : WEB_INDEPENDENT_CONTEXTS) {
+            DescribedPredicate<JavaClass> inContext =
+                    resideInAPackage(BASE + "." + context + ".domain..")
+                            .or(resideInAPackage(BASE + "." + context + ".application.."));
 
-        rule.check(classes);
+            noClasses()
+                    .that(inContext)
+                    .should().dependOnClassesThat()
+                    .resideInAPackage(BASE + "." + context + ".web..")
+                    .because("a dependência aponta só para dentro: DTO que o use case recebe " +
+                             "ou devolve mora na application (ADR-31)")
+                    .check(classes);
+        }
     }
 
     /**
@@ -125,6 +130,8 @@ class ArchitectureTest {
                     .that().areDeclaredInClassesThat()
                     .resideInAPackage(BASE + "." + context + ".persistence..")
                     .should(noNativeQuery)
+                    // admin é casca e não tem persistence/
+                    .allowEmptyShould(true)
                     .because("native SQL escapa à análise de imports e pode acoplar contextos " +
                              "silenciosamente (ADR-39)")
                     .check(classes);

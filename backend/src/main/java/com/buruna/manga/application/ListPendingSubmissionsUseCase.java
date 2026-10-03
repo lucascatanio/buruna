@@ -4,7 +4,6 @@ import com.buruna.identity.application.GetUserSummaryUseCase;
 import com.buruna.identity.application.UserSummary;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaSubmissionStatus;
-import com.buruna.manga.dto.PendingSubmissionResponse;
 import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.shared.storage.StorageClient;
 import org.springframework.data.domain.Page;

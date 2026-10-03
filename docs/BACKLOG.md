@@ -31,14 +31,15 @@ aprovação não tem estado próprio: `Manga.approve` marca `isPublic=true` e ze
 Escopo: enum `{PENDING, APPROVED, REJECTED}`, migration, ajuste em `ReviewSubmissionUseCase` e
 `Manga.approve`, teste de regressão.
 
-### Rename `controller/` para `web/` e `service/` para `application/`
+### `application/` importando DTO da `web/` em identity, engagement e reading
 
-`manga/controller/` (MangaController, PrivateMangaController, VolumeController) convive com
-`manga/web/` (só TagController). `admin/controller/` e `admin/service/` nunca foram renomeados.
-Investigado no [6.3]: sem duplicação de rota, tudo vivo e chamado pelo frontend e pelos testes.
-É inconsistência de nomenclatura de migração incompleta, não código morto.
+O ADR-31 manda a dependência apontar só para dentro (`web → application`), mas 6 classes da
+`application/` desses contextos importam Request/Response da própria `web/` (3 em
+`identity`, 2 em `engagement`, 1 em `reading`). `manga` e `admin` já foram alinhados
+(issue #34).
 
-Escopo: rename puro, sem mudança de comportamento.
+Escopo: mover para a `application/` os DTOs que o use case recebe ou devolve e incluir os
+três contextos em `WEB_INDEPENDENT_CONTEXTS` no `ArchitectureTest`.
 
 ### Signed URL não é revogada imediatamente
 
@@ -135,6 +136,11 @@ exige hCaptcha a cada tentativa.
 
 ## Concluído
 
+- [x] Migração de pacotes de `manga` e `admin` concluída (issue #34): `controller/` → `web/`,
+  `service/` → `application/`, `manga/exception/` → `manga/domain/`, e os `dto/` separados
+  entre `application/` (o que o use case recebe ou devolve) e `web/` (só do controller).
+  `admin` entrou no `MIGRATED_CONTEXTS`, e o `ArchitectureTest` ganhou a regra
+  `domainAndApplication_shouldNotDependOnWebLayer`.
 - [x] Status HTTP do catálogo e do upload (issues #29, #30 e #31): título acima de 255
   caracteres e `originCountry` acima de 100 respondem 400 em vez de 409, e o sufixo do slug
   (`-2`, `-3`…) não estoura mais a coluna; `finalize` de upload já movido ou inexistente

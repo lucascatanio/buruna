@@ -3,7 +3,6 @@ package com.buruna.manga.application;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.MangaFormat;
 import com.buruna.manga.domain.MangaStatusOrigin;
-import com.buruna.manga.dto.MangaResponse;
 import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.manga.persistence.MangaSpecification;
 import org.springframework.data.domain.Page;

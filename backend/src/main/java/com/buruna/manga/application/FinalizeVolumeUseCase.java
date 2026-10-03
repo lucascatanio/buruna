@@ -6,8 +6,6 @@ import com.buruna.manga.domain.PendingUploadNotFoundException;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.domain.VolumeNumber;
 import com.buruna.manga.domain.VolumeObjectName;
-import com.buruna.manga.dto.PrivateMangaResponse;
-import com.buruna.manga.dto.VolumeFinalizeRequest;
 import com.buruna.manga.persistence.VolumeRepository;
 import com.buruna.shared.exception.StorageObjectNotFoundException;
 import com.buruna.shared.storage.StorageClient;

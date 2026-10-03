@@ -1,8 +1,6 @@
 package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Manga;
-import com.buruna.manga.dto.PrivateMangaResponse;
-import com.buruna.manga.dto.VolumeResponse;
 import com.buruna.shared.storage.StorageClient;
 import org.springframework.stereotype.Component;
 
