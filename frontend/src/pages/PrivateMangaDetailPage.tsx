@@ -16,8 +16,9 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
 import {toast} from "sonner";
-import {ArrowLeft, Upload, Trash2, Pencil, Check, X, Globe, BookOpen, Send, AlertCircle, Clock} from "lucide-react";
+import {Upload, Trash2, Pencil, Check, X, Globe, BookOpen, Send, AlertCircle, Clock} from "lucide-react";
 
 function formatBytes(bytes: number): string {
     if (bytes === 0) return "0 B";
@@ -170,12 +171,7 @@ export function PrivateMangaDetailPage() {
     return (
         <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
 
-            <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => navigate("/colecao")}>
-                    <ArrowLeft className="w-4 h-4"/>
-                </Button>
-                <h1 className="text-xl font-bold truncate flex-1">{manga.title}</h1>
-            </div>
+            <PageHeader title={manga.title} back={{to: "/colecao", label: "Minha Coleção"}}/>
 
             <Card>
                 <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -304,7 +300,7 @@ export function PrivateMangaDetailPage() {
                                 ))}
                         </div>
                     ) : (
-                        <p className="text-sm text-muted-foreground">Nenhum volume ainda.</p>
+                        <p className="m-0 font-mono text-xs text-muted-foreground">Nenhum volume ainda. Envie o primeiro abaixo.</p>
                     )}
 
                     <div className="pt-2 border-t space-y-3">
@@ -394,11 +390,11 @@ export function PrivateMangaDetailPage() {
 
             {/* status: pendente */}
             {manga.submissionStatus === "PENDING" && (
-                <Card className="border-dashed border-amber-500/50 bg-amber-500/5">
+                <Card className="border-dashed border-shu/50 bg-shu/5">
                     <CardContent className="pt-5 pb-5 flex items-start gap-3">
-                        <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5"/>
+                        <Clock className="w-5 h-5 text-shu shrink-0 mt-0.5"/>
                         <div>
-                            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                            <p className="text-sm font-medium text-foreground">
                                 Aguardando aprovação
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">

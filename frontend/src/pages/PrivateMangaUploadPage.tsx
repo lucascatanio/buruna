@@ -6,8 +6,9 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
 import {toast} from "sonner";
-import {ArrowLeft, Upload, X, Check} from "lucide-react";
+import {Upload, X, Check} from "lucide-react";
 
 interface CreatedManga {
     id: string;
@@ -100,8 +101,8 @@ export function PrivateMangaUploadPage() {
         return (
             <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <Check className="w-4 h-4 text-green-500"/>
+                    <div className="w-8 h-8 rounded-sm bg-paper/10 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-paper"/>
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold">{createdManga.title}</h2>
@@ -168,12 +169,7 @@ export function PrivateMangaUploadPage() {
 
     return (
         <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
-            <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => navigate("/colecao")}>
-                    <ArrowLeft className="w-4 h-4"/>
-                </Button>
-                <h1 className="text-2xl font-bold">Adicionar à coleção</h1>
-            </div>
+            <PageHeader title="Adicionar à coleção" back={{to: "/colecao", label: "Minha Coleção"}}/>
 
             <form onSubmit={handleSubmit} className="space-y-6">
 
@@ -189,7 +185,7 @@ export function PrivateMangaUploadPage() {
                                 />
                                 <button
                                     type="button"
-                                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-sm w-5 h-5 flex items-center justify-center"
                                     onClick={() => {
                                         setCoverBase64(null);
                                         setCoverPreview(null);

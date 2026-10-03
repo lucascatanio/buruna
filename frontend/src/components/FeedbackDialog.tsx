@@ -40,7 +40,7 @@ export function FeedbackButton() {
             <Dialog.Trigger asChild>
                 <button
                     aria-label="Enviar feedback"
-                    className="fixed bottom-24 left-4 md:bottom-6 md:left-6 z-50 flex items-center justify-center size-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+                    className="fixed bottom-24 left-4 md:bottom-6 md:left-6 z-50 flex items-center justify-center size-14 rounded-lg bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
                 >
                     <MessageSquare className="size-6"/>
                 </button>
@@ -48,7 +48,7 @@ export function FeedbackButton() {
 
             <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"/>
-                <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border bg-background p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+                <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-background p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
                     <div className="flex items-center justify-between mb-4">
                         <Dialog.Title className="text-base font-semibold">
                             Enviar feedback

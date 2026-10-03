@@ -6,6 +6,7 @@ import {Button} from "@/components/ui/button";
 import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
 import {MangaCover} from "@/components/MangaCover";
+import {Macron} from "@/components/Macron";
 import {toast} from "sonner";
 import {X} from "lucide-react";
 
@@ -82,7 +83,7 @@ export function ReadingListPage() {
                         return (
                             <section key={status} className="flex flex-col gap-4">
                                 <div className="flex items-baseline gap-2.5 border-b pb-2.5">
-                                    {status === "READING" && <span aria-hidden="true" className="h-1 w-3 self-center -skew-x-15 bg-shu"/>}
+                                    {status === "READING" && <Macron className="self-center"/>}
                                     <h2 className="m-0 text-lg font-semibold tracking-[-0.01em]">{STATUS_LABELS[status]}</h2>
                                     <span className="font-mono text-xs text-muted-foreground">{items.length}</span>
                                 </div>

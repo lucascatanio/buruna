@@ -178,18 +178,20 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
 
             <div className="flex items-center justify-center gap-4 py-3 bg-black/40 backdrop-blur-sm shrink-0">
                 <button
-                    className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors"
+                    className="flex size-11 items-center justify-center rounded-sm hover:bg-paper/10 disabled:opacity-30 transition-colors"
                     onClick={() => goTo(currentPage - 1)}
                     disabled={currentPage <= 1}
+                    aria-label="Página anterior"
                 >
                     <ChevronLeft className="w-6 h-6 text-white"/>
                 </button>
-                <span className="text-white text-sm min-w-[80px] text-center tabular-nums">
+                <span className="min-w-[80px] text-center font-mono text-sm text-paper">
                     {currentPage} / {pdf.numPages}
                 </span>
                 <button
-                    className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                    className="flex size-11 items-center justify-center rounded-sm hover:bg-paper/10 transition-colors"
                     onClick={tryAdvance}
+                    aria-label="Próxima página"
                 >
                     <ChevronRight className="w-6 h-6 text-white"/>
                 </button>

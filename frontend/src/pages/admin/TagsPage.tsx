@@ -6,6 +6,7 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {PageHeader} from "@/components/PageHeader";
+import {NativeSelect} from "@/components/ui/native-select";
 import {toast} from "sonner";
 import {Pencil, Trash2, Plus, X, Check} from "lucide-react";
 
@@ -125,8 +126,7 @@ export function TagsPage() {
                 <CardContent className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                     <div className="sm:col-span-1">
                         <Label>Categoria</Label>
-                        <select
-                            className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        <NativeSelect className="mt-1"
                             value={newTag.categoryId}
                             onChange={(e) => setNewTag((p) => ({...p, categoryId: e.target.value}))}
                         >
@@ -134,7 +134,7 @@ export function TagsPage() {
                             {categories.map((c) => (
                                 <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
-                        </select>
+                        </NativeSelect>
                     </div>
                     <div className="sm:col-span-1">
                         <Label>Nome</Label>

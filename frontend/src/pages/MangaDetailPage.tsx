@@ -22,6 +22,7 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {EmptyState} from "@/components/EmptyState";
 import {MangaCover} from "@/components/MangaCover";
+import {Macron} from "@/components/Macron";
 import {toast} from "sonner";
 import {BookOpen, ChevronLeft, Pencil, Trash2, Upload, X, Star, BookMarked, ChevronDown} from "lucide-react";
 
@@ -414,7 +415,7 @@ export function MangaDetailPage() {
                                     disabled={savingStatus}
                                 >
                                     {readingStatus
-                                        ? <span aria-hidden="true" className="h-1 w-3 -skew-x-15 bg-shu"/>
+                                        ? <Macron/>
                                         : <BookMarked className="size-4"/>}
                                     {readingStatus ? READING_STATUS_LABELS[readingStatus] : "Adicionar à lista"}
                                     <ChevronDown className="size-3.5"/>
@@ -429,7 +430,7 @@ export function MangaDetailPage() {
                                                 className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-muted"
                                                 onClick={() => handleStatusChange(s)}
                                             >
-                                                <span aria-hidden="true" className={`h-1 w-3 -skew-x-15 ${readingStatus === s ? "bg-shu" : "bg-transparent"}`}/>
+                                                <Macron className={readingStatus === s ? "" : "invisible"}/>
                                                 {READING_STATUS_LABELS[s]}
                                             </button>
                                         ))}
@@ -515,7 +516,7 @@ export function MangaDetailPage() {
             <section className="max-w-7xl w-full mx-auto px-4 md:px-8 pt-9 pb-16 flex flex-col gap-5">
                 <div className="flex items-end justify-between gap-4">
                     <div className="flex flex-col gap-2">
-                        <span aria-hidden="true" className="h-1 w-6 -skew-x-15 bg-shu"/>
+                        <Macron className="w-6"/>
                         <h2 className="m-0 text-[22px] font-semibold tracking-[-0.02em]">
                             Volumes <span className="font-mono text-sm font-medium text-muted-foreground">{volumes.length}</span>
                         </h2>
@@ -547,7 +548,7 @@ export function MangaDetailPage() {
                                         </span>
                                     </div>
                                     <span className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                                        {started && <span aria-hidden="true" className="h-1 w-3 -skew-x-15 bg-shu"/>}
+                                        {started && <Macron/>}
                                         {started ? `Parou na pág. ${page}` : formatBytes(vol.fileSizeBytes)}
                                     </span>
                                     <Button

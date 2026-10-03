@@ -74,7 +74,7 @@ export function SecuritySettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        {totpEnabled ? <ShieldCheck className="w-5 h-5 text-green-500"/> : <ShieldOff className="w-5 h-5 text-muted-foreground"/>}
+                        {totpEnabled ? <ShieldCheck className="w-5 h-5 text-foreground"/> : <ShieldOff className="w-5 h-5 text-muted-foreground"/>}
                         Autenticação em dois fatores (2FA)
                     </CardTitle>
                     <CardDescription>

@@ -65,3 +65,23 @@ completa no desktop e uma tira de dois quadros no celular.
   - não distorça, gire ou aplique sombra ou gradiente;
   - não reescreva "burūna" com uma fonte;
   - não remova o mácron.
+
+## No app
+
+O padrão visual do frontend sai de poucos componentes compartilhados. Use estes em vez
+de recriar o visual em cada página:
+
+| Componente | Para quê |
+| --- | --- |
+| `Macron` | O traço vermelhão a 15°: item ativo da navegação, título de página, status em destaque |
+| `PageHeader` | Título de página com o mácron, descrição, ações e link de volta opcional |
+| `EmptyState` | Lista ou tela vazia: quadro com retícula, o ū apagado e uma ação |
+| `Loading` | Carregamento: o ū pulsando |
+| `MangaCover` | Capa com lombada e selo de formato; sem imagem, vira retícula com o título |
+| `NativeSelect` | `<select>` com o mesmo visual do `Input` |
+
+Os cantos são quase retos (`--radius` de 2px), como quadros de mangá. A classe
+`screentone` aplica a retícula em skeletons e fundos. Vermelhão (`shu`) marca o que
+está ativo, em andamento ou exige atenção (nota, progresso, avisos de conteúdo); não
+use para decoração solta.
+

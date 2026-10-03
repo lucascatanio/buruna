@@ -5,6 +5,7 @@ import {performLogout} from "@/lib/logout";
 import {Button} from "@/components/ui/button";
 import {FeedbackButton} from "@/components/FeedbackDialog";
 import {Wordmark} from "@/components/Logo";
+import {Macron} from "@/components/Macron";
 import {BookOpen, Library, LayoutDashboard, LogOut, History, BookMarked, Shield} from "lucide-react";
 import {cn} from "@/lib/utils";
 
@@ -23,11 +24,6 @@ const NAV: NavItem[] = [
 ];
 
 const ADMIN_NAV: NavItem = {to: "/admin/dashboard", label: "Admin", icon: LayoutDashboard};
-
-/** Traço vermelhão inclinado acima do item ativo — o mácron do ū. */
-function Macron({className}: {className?: string}) {
-    return <span aria-hidden="true" className={cn("absolute left-1/2 -ml-[9px] h-1 w-[18px] -skew-x-15 bg-shu", className)}/>;
-}
 
 export function AppLayout() {
     const navigate = useNavigate();
@@ -58,7 +54,7 @@ export function AppLayout() {
                             >
                                 {({isActive}) => (
                                     <>
-                                        {isActive && <Macron className="top-3.5"/>}
+                                        {isActive && <Macron className="absolute left-1/2 top-3.5 -ml-[9px] w-[18px]"/>}
                                         <Icon className="size-4"/>
                                         {label}
                                     </>
@@ -126,7 +122,7 @@ export function AppLayout() {
                     >
                         {({isActive}) => (
                             <>
-                                {isActive && <Macron className="top-0 w-[22px] -ml-[11px]"/>}
+                                {isActive && <Macron className="absolute left-1/2 top-0 -ml-[11px] w-[22px]"/>}
                                 <Icon className="size-5"/>
                                 {shortLabel ?? label}
                             </>

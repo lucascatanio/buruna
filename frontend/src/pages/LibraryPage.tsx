@@ -9,6 +9,7 @@ import {TagSelector} from "@/components/TagSelector";
 import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
 import {MangaCover} from "@/components/MangaCover";
+import {NativeSelect} from "@/components/ui/native-select";
 import {Search, SlidersHorizontal, X, Plus, Star, ChevronLeft, ChevronRight} from "lucide-react";
 import {useAuthStore} from "@/store/authStore";
 
@@ -131,27 +132,25 @@ export function LibraryPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="text-xs text-muted-foreground mb-1 block">Formato</label>
-                            <select
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                            <NativeSelect
                                 value={format}
                                 onChange={(e) => setFormat(e.target.value)}
                             >
                                 {FORMAT_OPTIONS.map((o) => (
                                     <option key={o.value} value={o.value}>{o.label}</option>
                                 ))}
-                            </select>
+                            </NativeSelect>
                         </div>
                         <div>
                             <label className="text-xs text-muted-foreground mb-1 block">Status</label>
-                            <select
-                                className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                            <NativeSelect
                                 value={statusOrigin}
                                 onChange={(e) => setStatusOrigin(e.target.value)}
                             >
                                 {STATUS_OPTIONS.map((o) => (
                                     <option key={o.value} value={o.value}>{o.label}</option>
                                 ))}
-                            </select>
+                            </NativeSelect>
                         </div>
                     </div>
                     <div>
