@@ -99,3 +99,53 @@ export function MangaPageArt({className}: {className?: string}) {
         </div>
     );
 }
+
+/*
+ * Versão para telas estreitas: uma tira de dois quadros com a calha a 15°. A altura
+ * acompanha a largura (aspect ratio), então a inclinação --slant (fração da largura
+ * que corresponde a 15° na altura da tira) é fixa por breakpoint.
+ */
+const SPLIT = "58%";
+const gutterTop = `calc(${SPLIT} + var(--slant) / 2)`;
+const gutterBottom = `calc(${SPLIT} - var(--slant) / 2)`;
+const GUTTER = "10px";
+
+export function MangaStripArt({className}: {className?: string}) {
+    return (
+        <div
+            className={`relative bg-paper aspect-[2/1] sm:aspect-[3/1] [--slant:12.6%] sm:[--slant:8.3%] ${className ?? ""}`}
+            aria-hidden="true"
+        >
+            <div className="absolute inset-2.5 sm:inset-3.5 text-ink">
+
+                {/* Quadro 1 (direita): linhas de velocidade e o ū */}
+                <div className="bg-ink" style={{...fill, clipPath: `polygon(calc(${gutterTop} + ${GUTTER}) 0, 100% 0, 100% 100%, calc(${gutterBottom} + ${GUTTER}) 100%)`}}/>
+                <div
+                    style={{
+                        ...fill,
+                        background:
+                            "radial-gradient(circle at 80% 50%, var(--paper) 0 13%, transparent 30%)," +
+                            "repeating-conic-gradient(from 0deg at 80% 50%, var(--ink) 0deg 1.4deg, var(--paper) 1.4deg 5deg)",
+                        clipPath: `polygon(${inner(`calc(${gutterTop} + ${GUTTER})`, "0px", 1, 1)}, ${inner("100%", "0px", -1, 1)}, ${inner("100%", "100%", -1, -1)}, ${inner(`calc(${gutterBottom} + ${GUTTER})`, "100%", 1, -1)})`,
+                    }}
+                />
+                <div className="absolute left-[60%] right-0 inset-y-0 flex items-center justify-center">
+                    <svg viewBox="48 42 160 172" className="w-[clamp(56px,15vw,104px)] h-auto">
+                        <path className="fill-ink" d={MARK_U}/>
+                        <path className="fill-shu" d={MARK_MACRON}/>
+                    </svg>
+                </div>
+
+                {/* Quadro 2 (esquerda): chamada sobre retícula */}
+                <div className="bg-ink" style={{...fill, clipPath: `polygon(0 0, ${gutterTop} 0, ${gutterBottom} 100%, 0 100%)`}}/>
+                <div
+                    className="bg-[radial-gradient(#3A3A3A_30%,transparent_33%)] bg-size-[7px_7px] mask-[linear-gradient(to_top,#000_5%,transparent_70%)]"
+                    style={{...fill, clipPath: `polygon(0 0, ${gutterTop} 0, ${gutterBottom} 100%, 0 100%)`}}
+                />
+                <p className="absolute left-3.5 top-3 sm:left-5 sm:top-4 m-0 text-paper text-[clamp(22px,6vw,40px)] leading-[0.98] font-bold tracking-[-0.035em]">
+                    Leia de onde<br/>parou.
+                </p>
+            </div>
+        </div>
+    );
+}

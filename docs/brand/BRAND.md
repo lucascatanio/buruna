@@ -48,7 +48,8 @@ construído sobre elas: fundo tinta, texto papel, foco em shu.
 
 Além do logo, a marca fala a língua da página de mangá: quadros com traço de tinta,
 calha inclinada a 15°, retícula de pontos e linhas de velocidade. A referência é a
-arte das telas de autenticação (`frontend/src/components/MangaPageArt.tsx`).
+arte das telas de autenticação (`frontend/src/components/MangaPageArt.tsx`): a página
+completa no desktop e uma tira de dois quadros no celular.
 
 ## Regras de uso
 
