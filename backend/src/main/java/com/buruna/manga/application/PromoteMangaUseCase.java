@@ -4,7 +4,6 @@ import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.PublicTitleConflictException;
 import com.buruna.manga.domain.PublicVolumeConflictException;
 import com.buruna.manga.domain.Volume;
-import com.buruna.manga.dto.PrivateMangaResponse;
 import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.manga.persistence.VolumeRepository;
 import org.springframework.stereotype.Service;

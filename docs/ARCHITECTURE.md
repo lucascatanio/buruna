@@ -27,7 +27,7 @@ O frontend é uma SPA React sem Clean Architecture própria: apenas uma camada l
 | **manga** | `com.buruna.manga` | Catálogo público, coleção privada, volumes, tags, submissão/promoção |
 | **reading** | `com.buruna.reading` | Leitor (signed URLs), progresso de leitura, histórico |
 | **engagement** | `com.buruna.engagement` | Avaliações (ratings) e lista de leitura |
-| **admin** | `com.buruna.admin` | Casca administrativa — dashboard, jobs, revisão de submissões. Sem `domain`/`application` próprios; delega para os use cases públicos dos outros contextos |
+| **admin** | `com.buruna.admin` | Casca administrativa — dashboard, jobs, revisão de submissões. Sem `domain` próprio; a `application` (`DashboardService`) só orquestra os use cases públicos dos outros contextos |
 
 Dois pacotes adicionais fora desse modelo, por não serem bounded contexts de domínio:
 
@@ -36,8 +36,9 @@ Dois pacotes adicionais fora desse modelo, por não serem bounded contexts de do
 - `feedback/` — módulo utilitário isolado (`POST /feedback`), sem lógica de domínio
   suficiente para justificar camadas próprias.
 
-> `manga` e `admin` ainda têm pacotes `controller/`/`service/` remanescentes do padrão
-> antigo convivendo com `web/`/`application/` — rename pendente, ver
+> DTO que um use case recebe ou devolve mora na `application/` do contexto; na `web/` só
+> fica o que apenas o controller usa (ADR-31). `identity`, `engagement` e `reading` ainda
+> importam DTOs da `web/` na `application/` — alinhamento pendente, ver
 > [`docs/BACKLOG.md`](BACKLOG.md).
 
 ## 3. Camadas e regra de dependência
@@ -100,17 +101,18 @@ falha o build (`./mvnw clean test`) se a fronteira for violada. Três regras:
 1. **`domainAndApplication_shouldNotImportInternalsOfOtherContexts`** — nenhuma classe em
    `domain/`/`application/` de um contexto migrado pode depender de `domain/`/`persistence/`
    de outro.
-2. **`adminServiceLayer_shouldOnlyUseApplicationLayerOfOtherContexts`** — guard específico
-   para `admin` (que não tem `domain`/`application` próprios): `admin.service` só pode
-   consumir `application` de outros contextos.
+   `admin` está entre os contextos migrados: sua `application` só consome `application`
+   de outros contextos.
+2. **`domainAndApplication_shouldNotDependOnWebLayer`** — `domain/`/`application/` não
+   dependem da `web/` do próprio contexto (seta do ADR-31). Por ora vale para `manga` e
+   `admin`; os demais entram quando forem alinhados.
 3. **`persistenceLayer_shouldNotUseNativeQueries`** — detecta `@Query(nativeQuery=true)`
    nas camadas `persistence` de contextos migrados.
 
-A camada `web/` fica **deliberadamente de fora** das três regras: um controller recebe
+Nenhuma regra restringe o que a camada `web/` importa, de propósito: um controller recebe
 `identity.domain.User` via `@AuthenticationPrincipal` e extrai `user.getId()` antes de
 delegar (ex.: `engagement.web.RatingController`). Esse import cross-contexto na `web/` é
-o padrão aceito, não uma violação — o guard genérico e o de `admin` isentam a camada
-pelo mesmo motivo.
+o padrão aceito, não uma violação.
 
 O que nenhum guard cobre (JPQL referenciando entidade de outro contexto por nome de
 string) é review-only — ver a seção "Guard de arquitetura" em
@@ -184,7 +186,7 @@ Use cases: `GeneratePublicVolumeUploadUrlUseCase` (fase 1 — gera Signed URL de
 `manga.domain.VolumeObjectName`) e `FinalizePublicVolumeUseCase` (fase 2 — valida que o
 `objectName` recebido é um pendente do PRÓPRIO mangá, lê metadados do blob via
 `blob.getMd5()`, move o objeto para `volumes/{mangaId}/{uuid}.pdf` e persiste `Volume`).
-Controller `manga.controller.VolumeController`
+Controller `manga.web.VolumeController`
 (`POST /mangas/{id}/volumes/upload-url`, `POST /mangas/{id}/volumes/finalize`). O
 backend nunca toca os bytes do arquivo — ver [ADR-24](adr/ADR-24-upload-direto-gcs-signed-url.md),
 [ADR-25](adr/ADR-25-hash-blob-getmd5-gcs.md) e [ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)
@@ -192,7 +194,7 @@ backend nunca toca os bytes do arquivo — ver [ADR-24](adr/ADR-24-upload-direto
 
 ### 6.5 Upload privado + submissão/promoção
 
-Controller `manga.controller.PrivateMangaController` (`/my/mangas`). Use cases:
+Controller `manga.web.PrivateMangaController` (`/my/mangas`). Use cases:
 `CreatePrivateMangaUseCase` → `GenerateVolumeUploadUrlUseCase` → `FinalizeVolumeUseCase`
 para criar mangá + volume na coleção privada; `SubmitForApprovalUseCase` para submeter
 à revisão (`AdminSubmissionController`, `ReviewSubmissionUseCase` no approve/reject);
@@ -209,8 +211,8 @@ Validação de unicidade no promote/aprovação é só contra mangás públicos 
 ### 6.6 Inatividade automática
 
 Use case público: `identity.application.admin.RunInactivityUseCase`, disparado por
-`admin.controller.JobController` (`POST /admin/jobs/inactivity`, autenticado via
-`X-Job-Secret`) e também por `@Scheduled` interno como fallback. A política de "quantos
+`admin.web.JobController` (`POST /admin/jobs/inactivity`, autenticado via
+`X-Job-Secret`), chamado diariamente pelo Cloud Scheduler (ADR-42). A política de "quantos
 dias até aviso/desativação" é domínio puro (`InactivityPolicy`) testável sem framework,
 usando `java.time.Clock` injetável — ver [ADR-36](adr/ADR-36-clock-injetavel-e-inactivity-policy.md).
 Usuários `ACTIVE` são processados em páginas de 50 via `Pageable`.

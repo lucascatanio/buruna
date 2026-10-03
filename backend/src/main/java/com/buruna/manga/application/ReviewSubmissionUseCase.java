@@ -2,7 +2,7 @@ package com.buruna.manga.application;
 
 import com.buruna.identity.application.GetUserSummaryUseCase;
 import com.buruna.manga.domain.Manga;
-import com.buruna.manga.exception.MangaNotFoundException;
+import com.buruna.manga.domain.MangaNotFoundException;
 import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.shared.notification.EmailService;
 import org.springframework.stereotype.Service;

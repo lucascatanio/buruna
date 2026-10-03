@@ -1,7 +1,6 @@
 package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Volume;
-import com.buruna.manga.dto.VolumeResponse;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;

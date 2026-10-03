@@ -1,6 +1,5 @@
 package com.buruna.manga.application;
 
-import com.buruna.manga.dto.PrivateMangaResponse;
 import com.buruna.manga.persistence.MangaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

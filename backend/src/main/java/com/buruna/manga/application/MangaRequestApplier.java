@@ -2,7 +2,6 @@ package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Tag;
-import com.buruna.manga.dto.MangaRequest;
 import com.buruna.manga.persistence.TagRepository;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.shared.storage.StorageUploadHelper;
