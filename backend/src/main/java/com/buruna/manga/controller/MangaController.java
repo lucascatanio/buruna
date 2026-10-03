@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Set;
 import java.util.UUID;
@@ -27,6 +28,11 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/mangas")
 public class MangaController {
+
+    // sem allowlist o Pageable ordena por qualquer atributo da entidade, inclusive os de
+    // moderação fora do DTO (ex.: reviewedAt, ownerId), e vaza a ordem relativa deles
+    private static final Set<String> SORTABLE_FIELDS =
+            Set.of("title", "createdAt", "updatedAt", "avgRating", "viewCount", "year");
 
     private final CatalogQueryUseCase catalogQuery;
     private final GetMangaUseCase getManga;
@@ -54,6 +60,12 @@ public class MangaController {
             @RequestParam(required = false) Set<UUID> tagIds,
             @PageableDefault(size = 20, sort = "title") Pageable pageable
     ) {
+        pageable.getSort().forEach(order -> {
+            if (!SORTABLE_FIELDS.contains(order.getProperty())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Campo de ordenação inválido: " + order.getProperty());
+            }
+        });
         return ResponseEntity.ok(catalogQuery.handle(title, format, statusOrigin, tagIds, pageable));
     }
 

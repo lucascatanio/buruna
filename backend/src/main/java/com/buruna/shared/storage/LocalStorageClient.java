@@ -1,6 +1,7 @@
 package com.buruna.shared.storage;
 
 import com.buruna.shared.exception.StorageException;
+import com.buruna.shared.exception.StorageObjectNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.DigestInputStream;
@@ -98,6 +100,8 @@ public class LocalStorageClient implements StorageClient {
         try {
             Files.createDirectories(target.getParent());
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (NoSuchFileException e) {
+            throw new StorageObjectNotFoundException("Arquivo local não encontrado: " + from, e);
         } catch (IOException e) {
             throw new StorageException("Falha ao mover arquivo local de " + from + " para " + to, e);
         }
@@ -107,7 +111,7 @@ public class LocalStorageClient implements StorageClient {
     public FileMetadata getFileMetadata(String objectName) {
         Path target = resolve(objectName);
         if (!Files.exists(target)) {
-            throw new StorageException("Arquivo local não encontrado: " + objectName, null);
+            throw new StorageObjectNotFoundException("Arquivo local não encontrado: " + objectName);
         }
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");

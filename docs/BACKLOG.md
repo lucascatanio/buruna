@@ -9,20 +9,6 @@ Itens fora do escopo das issues já executadas. Nada aqui deve ser feito sem iss
 `DELETE /auth/account` existe e tem teste no backend, mas não há UI no frontend que o chame.
 Achado no [6.3], investigação read-only.
 
-### Título com mais de 255 caracteres em `POST /mangas` responde 409 "unicidade"
-
-O `MangaRequest` público não tem `@Size(max = 255)` (o `PrivateMangaRequest` tem), então o
-título longo chega ao banco, estoura o `varchar(255)` e o `DataIntegrityViolationException` é
-traduzido como violação de unicidade. Deveria ser 400 com a mensagem de tamanho. Sem
-vazamento de dado. Achado no teste ativo de 2026-09-24.
-
-### Finalizar o mesmo upload duas vezes responde 500
-
-Na segunda chamada de `finalize` com o mesmo `objectName` (ou no perdedor de dois finalizes
-concorrentes), o arquivo já saiu de `pending/` e o `getFileMetadata` lança `StorageException`,
-que cai no handler genérico. Deveria ser 404 ou 409. Não há duplicação de volume nem
-vazamento; é só o status. Achado no teste ativo de 2026-09-24.
-
 ## Dívida técnica
 
 ### Arquivos órfãos em `volumes/` quando a deleção no GCS falha
@@ -120,12 +106,6 @@ React escapa e nenhuma página usa `dangerouslySetInnerHTML`), mas qualquer cons
 renderize HTML ficaria exposto. A defesa adequada é um `Content-Security-Policy` no nginx do
 frontend, não escapar no backend.
 
-### `?sort=` aceita qualquer campo da entidade
-
-`GET /mangas?sort=<campo>` ordena por campos internos não expostos no DTO (ex.:
-`rejectionReason`), sem lista de campos permitidos. Dá para inferir a ordem relativa de dados
-de moderação, sem ler os valores.
-
 ### Possível corrida na cota de storage
 
 O `QuotaService` soma o uso a cada finalize, sem reserva atômica nem lock. Dois finalizes
@@ -155,6 +135,11 @@ exige hCaptcha a cada tentativa.
 
 ## Concluído
 
+- [x] Status HTTP do catálogo e do upload (issues #29, #30 e #31): título acima de 255
+  caracteres e `originCountry` acima de 100 respondem 400 em vez de 409, e o sufixo do slug
+  (`-2`, `-3`…) não estoura mais a coluna; `finalize` de upload já movido ou inexistente
+  responde 404 em vez de 500; `GET /mangas?sort=` só aceita `title`, `createdAt`,
+  `updatedAt`, `avgRating`, `viewCount` e `year`, e outro campo responde 400.
 - [x] Reset de senha em tempo constante via Pub/Sub push com OIDC e job de inatividade
   disparado pelo Cloud Scheduler, em vez de `@Scheduled` (PRs #19 e #20, ADR-42).
 - [x] Adicionar volume a mangá público recém-criado não retorna mais 500: verificado em
