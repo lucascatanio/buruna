@@ -44,7 +44,7 @@ Deploy em Cloud Run (GCP). Detalhes completos: [docs/ARCHITECTURE.md](docs/ARCHI
 ```bash
 docker compose up -d postgres   # Postgres em localhost:5433
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local \
-  -Dspring-boot.run.arguments=--app.storage.local.path=/tmp/buruna-storage
+  "-Dspring-boot.run.arguments=--app.storage.local.path=/tmp/buruna-storage --app.storage.local.base-url=http://localhost:5173"
 cd frontend && npm install && npm run dev
 ```
 

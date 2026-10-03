@@ -66,13 +66,24 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
     const [rendering, setRendering] = useState(false);
     const touchStartX = useRef<number | null>(null);
 
+    const renderSeqRef = useRef(0);
+
     const renderPage = useCallback(async (pageNum: number) => {
         if (!canvasRef.current) return;
+        // O pdf.js não aceita dois render() no mesmo canvas ao mesmo tempo: o segundo
+        // redimensiona o canvas no meio do primeiro e a página sai girada/espelhada.
+        // Cada chamada leva um número; só a mais recente desenha, e só depois que a
+        // renderização anterior terminou de cancelar.
+        const seq = ++renderSeqRef.current;
         setRendering(true);
         try {
-            // cancela render anterior se ainda estiver em andamento
-            renderTaskRef.current?.cancel();
             const page = await pdf.getPage(pageNum);
+            const previous = renderTaskRef.current;
+            if (previous) {
+                previous.cancel();
+                await previous.promise.catch(() => undefined);
+            }
+            if (seq !== renderSeqRef.current || !canvasRef.current) return;
             const container = canvasRef.current.parentElement!;
             const containerWidth = container.clientWidth;
             const dpr = Math.min(window.devicePixelRatio || 1, 3);
@@ -96,7 +107,7 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
                 console.error("Render error:", e);
             }
         } finally {
-            setRendering(false);
+            if (seq === renderSeqRef.current) setRendering(false);
         }
     }, [pdf]);
 
