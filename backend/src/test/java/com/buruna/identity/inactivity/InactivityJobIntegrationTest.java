@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -108,11 +108,11 @@ class InactivityJobIntegrationTest {
     @Autowired ObjectMapper objectMapper;
 
     /** Substituídos por mocks: o job só deve avisar (e-mail) e apagar GCS conforme o limiar. */
-    @MockBean EmailService emailService;
-    @MockBean StorageClient storageClient;
+    @MockitoBean EmailService emailService;
+    @MockitoBean StorageClient storageClient;
 
     /** Relógio fixo (ADR-36): torna as bordas 75/90 determinísticas. */
-    @MockBean Clock clock;
+    @MockitoBean Clock clock;
 
     @BeforeEach
     void setUp() {
