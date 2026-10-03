@@ -7,6 +7,7 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
+import {Wordmark} from "@/components/Wordmark";
 
 declare const __APP_VERSION__: string
 
@@ -111,7 +112,9 @@ export function LoginPage() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 gap-3">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">Burūna</CardTitle>
+                    <CardTitle className="flex justify-center py-2">
+                        <Wordmark className="h-9 w-auto"/>
+                    </CardTitle>
                     <CardDescription>Entre na sua conta</CardDescription>
                 </CardHeader>
                 <CardContent>

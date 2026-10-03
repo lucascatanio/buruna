@@ -3,6 +3,7 @@ import {useAuthStore} from "@/store/authStore";
 import {performLogout} from "@/lib/logout";
 import {Button} from "@/components/ui/button";
 import {FeedbackButton} from "@/components/FeedbackDialog";
+import {Wordmark} from "@/components/Wordmark";
 import {BookOpen, Library, Settings, LogOut, History, BookMarked, Shield} from "lucide-react";
 
 export function AppLayout() {
@@ -23,10 +24,10 @@ export function AppLayout() {
             <header className="border-b px-6 py-3 hidden md:flex items-center justify-between">
                 <div className="flex items-center gap-6">
                     <span
-                        className="text-lg font-semibold cursor-pointer select-none"
+                        className="cursor-pointer select-none"
                         onClick={() => navigate("/biblioteca")}
                     >
-                        Burūna
+                        <Wordmark className="h-5 w-auto"/>
                     </span>
                     <nav className="flex gap-1">
                         <Button
@@ -92,7 +93,7 @@ export function AppLayout() {
             </header>
 
             <header className="border-b px-4 py-3 flex md:hidden items-center justify-between">
-                <span className="text-lg font-semibold select-none">Burūna</span>
+                <Wordmark className="h-5 w-auto select-none"/>
                 <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" onClick={() => navigate("/seguranca")}>
                         <Shield className="w-4 h-4"/>
