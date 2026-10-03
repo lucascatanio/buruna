@@ -1,9 +1,11 @@
 import {useState} from "react";
-import {Outlet, useNavigate, useLocation} from "react-router-dom";
+import {Link, NavLink, Outlet, useNavigate} from "react-router-dom";
 import {Button} from "@/components/ui/button";
 import {performLogout} from "@/lib/logout";
-import {Menu, X, BookOpen} from "lucide-react";
+import {Menu, X, BookOpen, LogOut} from "lucide-react";
 import {Wordmark} from "@/components/Logo";
+import {Macron} from "@/components/Macron";
+import {cn} from "@/lib/utils";
 
 const NAV_ITEMS = [
     {label: "Dashboard", path: "/admin/dashboard"},
@@ -15,7 +17,6 @@ const NAV_ITEMS = [
 
 export function AdminLayout() {
     const navigate = useNavigate();
-    const location = useLocation();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     async function handleLogout() {
@@ -23,93 +24,93 @@ export function AdminLayout() {
         navigate("/login");
     }
 
-    function handleNav(path: string) {
-        navigate(path);
-        setMobileMenuOpen(false);
-    }
-
-    const isActive = (path: string) => location.pathname === path;
-
     return (
         <div className="min-h-screen bg-background">
-            <header className="border-b px-4 md:px-6 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <header className="flex h-14 md:h-16 items-stretch justify-between gap-6 border-b pl-4 pr-2 md:px-8">
+                <div className="flex items-stretch gap-9">
                     {/* items-baseline: o SVG termina na linha de base das letras, então alinha com "Admin" */}
-                    <h1 className="flex items-baseline gap-2 md:gap-2.5 text-base md:text-xl font-medium">
-                        <Wordmark className="h-4 md:h-5 w-auto"/>
-                        <span className="text-muted-foreground">Admin</span>
-                    </h1>
+                    <Link to="/admin/dashboard" className="flex items-center">
+                        <span className="flex items-baseline gap-2 md:gap-2.5 text-base md:text-xl font-medium">
+                            <Wordmark className="h-4 md:h-5 w-auto"/>
+                            <span className="text-muted-foreground">Admin</span>
+                        </span>
+                    </Link>
 
-                    {/* Desktop nav */}
-                    <nav className="hidden md:flex gap-1">
+                    <nav aria-label="Administração" className="hidden md:flex items-stretch gap-1">
                         {NAV_ITEMS.map((item) => (
-                            <Button
+                            <NavLink
                                 key={item.path}
-                                variant={isActive(item.path) ? "secondary" : "ghost"}
-                                size="sm"
-                                onClick={() => navigate(item.path)}
+                                to={item.path}
+                                end
+                                className={({isActive}) => cn(
+                                    "relative flex items-center px-3.5 text-sm font-medium transition-colors",
+                                    isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                                )}
                             >
-                                {item.label}
-                            </Button>
+                                {({isActive}) => (
+                                    <>
+                                        {isActive && <Macron className="absolute left-1/2 top-3.5 -ml-[9px] w-[18px]"/>}
+                                        {item.label}
+                                    </>
+                                )}
+                            </NavLink>
                         ))}
                     </nav>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hidden md:flex"
-                        onClick={() => navigate("/biblioteca")}
-                    >
-                        <BookOpen className="w-4 h-4 mr-1.5"/>
+                <div className="flex items-center gap-1">
+                    <Link to="/biblioteca" className="hidden md:flex h-9 items-center gap-2 px-3 text-sm text-muted-foreground hover:text-foreground">
+                        <BookOpen className="size-4"/>
                         Biblioteca
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleLogout} className="hidden md:flex">
+                    </Link>
+                    <Button variant="outline" onClick={handleLogout} className="ml-2 hidden h-9 md:flex">
+                        <LogOut className="size-4"/>
                         Sair
                     </Button>
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="md:hidden"
+                        className="size-11 md:hidden"
+                        aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+                        aria-expanded={mobileMenuOpen}
                         onClick={() => setMobileMenuOpen((v) => !v)}
                     >
-                        {mobileMenuOpen ? <X className="w-5 h-5"/> : <Menu className="w-5 h-5"/>}
+                        {mobileMenuOpen ? <X className="size-5"/> : <Menu className="size-5"/>}
                     </Button>
                 </div>
             </header>
 
             {mobileMenuOpen && (
-                <div className="md:hidden border-b bg-background px-4 py-2 flex flex-col gap-1">
+                <nav aria-label="Administração" className="flex flex-col border-b bg-card px-2 py-2 md:hidden">
                     {NAV_ITEMS.map((item) => (
-                        <Button
+                        <NavLink
                             key={item.path}
-                            variant={isActive(item.path) ? "secondary" : "ghost"}
-                            size="sm"
-                            className="w-full justify-start"
-                            onClick={() => handleNav(item.path)}
+                            to={item.path}
+                            end
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={({isActive}) => cn(
+                                "flex h-11 items-center gap-3 px-3 text-sm font-medium",
+                                isActive ? "text-foreground" : "text-muted-foreground"
+                            )}
                         >
-                            {item.label}
-                        </Button>
+                            {({isActive}) => (
+                                <>
+                                    <Macron className={isActive ? "" : "invisible"}/>
+                                    {item.label}
+                                </>
+                            )}
+                        </NavLink>
                     ))}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => handleNav("/biblioteca")}
-                    >
-                        <BookOpen className="w-4 h-4 mr-1.5"/>
+                    <div className="my-1 border-t"/>
+                    <Link to="/biblioteca" onClick={() => setMobileMenuOpen(false)} className="flex h-11 items-center gap-3 px-3 text-sm text-muted-foreground">
+                        <BookOpen className="size-4"/>
                         Biblioteca
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start text-destructive hover:text-destructive"
-                        onClick={handleLogout}
-                    >
+                    </Link>
+                    <button type="button" onClick={handleLogout} className="flex h-11 items-center gap-3 px-3 text-left text-sm text-destructive">
+                        <LogOut className="size-4"/>
                         Sair
-                    </Button>
-                </div>
+                    </button>
+                </nav>
             )}
 
             <main>

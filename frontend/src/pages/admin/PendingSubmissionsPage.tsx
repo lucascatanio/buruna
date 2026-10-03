@@ -3,8 +3,10 @@ import {toast} from "sonner";
 import {approveSubmission, listPendingSubmissions, rejectSubmission} from "@/api/adminApi";
 import type {PendingSubmission} from "@/types/manga";
 import {Button} from "@/components/ui/button";
-import {Badge} from "@/components/ui/badge";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
+import {Loading} from "@/components/Loading";
+import {EmptyState} from "@/components/EmptyState";
 
 export function PendingSubmissionsPage() {
     const [submissions, setSubmissions] = useState<PendingSubmission[]>([]);
@@ -58,19 +60,17 @@ export function PendingSubmissionsPage() {
 
     return (
         <div className="max-w-4xl mx-auto px-4 md:px-6 py-8">
-            <div className="flex items-center gap-3 mb-6">
-                <h2 className="text-2xl font-bold">Submissões pendentes</h2>
-                <Badge variant="secondary">{submissions.length}</Badge>
+            <div className="mb-6">
+                <PageHeader
+                    title="Submissões pendentes"
+                    description={loading ? undefined : `${submissions.length} aguardando revisão`}
+                />
             </div>
 
-            {loading && <p className="text-muted-foreground">Carregando…</p>}
+            {loading && <Loading/>}
 
             {!loading && submissions.length === 0 && (
-                <Card>
-                    <CardContent className="py-12 text-center text-muted-foreground">
-                        Nenhuma submissão pendente
-                    </CardContent>
-                </Card>
+                <EmptyState title="Nenhuma submissão pendente" description="Tudo revisado por enquanto."/>
             )}
 
             <div className="space-y-4">

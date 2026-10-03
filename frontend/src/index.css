@@ -32,7 +32,8 @@
     --chart-3: oklch(0.546 0.245 262.881);
     --chart-4: oklch(0.488 0.243 264.376);
     --chart-5: oklch(0.424 0.199 265.638);
-    --radius: 0.625rem;
+    /* Cantos quase retos: painéis e botões como quadros de mangá */
+    --radius: 0.125rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -134,3 +135,10 @@
     @apply font-sans;
     }
 }
+
+/* Retícula (screentone): pontos de mangá para capas sem imagem, vazios e skeletons */
+@utility screentone {
+    background-image: radial-gradient(color-mix(in oklch, var(--paper) 14%, transparent) 30%, transparent 33%);
+    background-size: 7px 7px;
+}
+

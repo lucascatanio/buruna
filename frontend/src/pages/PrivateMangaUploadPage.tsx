@@ -6,8 +6,10 @@ import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {PageHeader} from "@/components/PageHeader";
+import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
-import {ArrowLeft, Upload, X, Check} from "lucide-react";
+import {Upload, X, Check} from "lucide-react";
 
 interface CreatedManga {
     id: string;
@@ -100,8 +102,8 @@ export function PrivateMangaUploadPage() {
         return (
             <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <Check className="w-4 h-4 text-green-500"/>
+                    <div className="w-8 h-8 rounded-sm bg-paper/10 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-paper"/>
                     </div>
                     <div>
                         <h2 className="text-lg font-semibold">{createdManga.title}</h2>
@@ -136,12 +138,7 @@ export function PrivateMangaUploadPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="volume-file">Arquivo (PDF, EPUB, MOBI)</Label>
-                                <Input
-                                    id="volume-file"
-                                    type="file"
-                                    accept=".pdf,.epub,.mobi"
-                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
-                                />
+                                <FileInput id="volume-file" accept=".pdf,.epub,.mobi" onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}/>
                             </div>
                         </div>
                         <Button
@@ -168,17 +165,12 @@ export function PrivateMangaUploadPage() {
 
     return (
         <div className="max-w-2xl mx-auto px-4 md:px-6 py-8 space-y-6">
-            <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" onClick={() => navigate("/colecao")}>
-                    <ArrowLeft className="w-4 h-4"/>
-                </Button>
-                <h1 className="text-2xl font-bold">Adicionar à coleção</h1>
-            </div>
+            <PageHeader title="Adicionar à coleção" back={{to: "/colecao", label: "Minha Coleção"}}/>
 
             <form onSubmit={handleSubmit} className="space-y-6">
 
                 <div className="space-y-2">
-                    <Label>Capa (opcional)</Label>
+                    <Label htmlFor="cover">Capa (opcional)</Label>
                     <div className="flex gap-4 items-start">
                         {coverPreview && (
                             <div className="relative w-24 shrink-0">
@@ -189,7 +181,7 @@ export function PrivateMangaUploadPage() {
                                 />
                                 <button
                                     type="button"
-                                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center"
+                                    className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-sm w-5 h-5 flex items-center justify-center"
                                     onClick={() => {
                                         setCoverBase64(null);
                                         setCoverPreview(null);
@@ -199,7 +191,7 @@ export function PrivateMangaUploadPage() {
                                 </button>
                             </div>
                         )}
-                        <Input type="file" accept="image/*" onChange={handleCoverChange}/>
+                        <FileInput id="cover" accept="image/*" onChange={handleCoverChange} buttonLabel="Escolher imagem"/>
                     </div>
                 </div>
 
@@ -244,13 +236,7 @@ export function PrivateMangaUploadPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="volumeFile">Arquivo (PDF, EPUB, MOBI)</Label>
-                                <Input
-                                    id="volumeFile"
-                                    type="file"
-                                    accept=".pdf,.epub,.mobi"
-                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
-                                    required
-                                />
+                                <FileInput id="volumeFile" accept=".pdf,.epub,.mobi" onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)} required/>
                             </div>
                         </div>
                     </CardContent>

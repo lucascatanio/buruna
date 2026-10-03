@@ -39,10 +39,14 @@ export function Wordmark({className}: {className?: string}) {
 const MARK_U = "M48,90 H92 V134 A36,36 0 0 0 164,134 V90 H208 V214 H164 V205.4 A80,80 0 0 1 48,134 Z";
 const MARK_MACRON = "M56.57,42 H208 L199.43,74 H48 Z";
 
-/** Símbolo ū. O u herda a cor do texto (currentColor); o mácron é sempre shu (vermelhão), via token --shu do index.css. */
-export function LogoMark({className, label = "Burūna"}: {className?: string; label?: string}) {
+/**
+ * Símbolo ū. O u herda a cor do texto (currentColor); o mácron é sempre shu (vermelhão), via token --shu do index.css.
+ * Com `decorative`, fica fora da árvore de acessibilidade (quando o texto ao lado já diz tudo).
+ */
+export function LogoMark({className, label = "Burūna", decorative = false}: {className?: string; label?: string; decorative?: boolean}) {
+    const a11y = decorative ? {"aria-hidden": true} : {role: "img", "aria-label": label};
     return (
-        <svg viewBox="48 42 160 172" role="img" aria-label={label} className={className}>
+        <svg viewBox="48 42 160 172" {...a11y} className={className}>
             <path fill="currentColor" d={MARK_U}/>
             <path className="fill-shu" d={MARK_MACRON}/>
         </svg>

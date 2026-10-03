@@ -8,6 +8,9 @@ import {Badge} from "@/components/ui/badge";
 import {Card, CardContent} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
+import {PageHeader} from "@/components/PageHeader";
+import {Loading} from "@/components/Loading";
+import {NativeSelect} from "@/components/ui/native-select";
 
 const ROLE_OPTIONS = ["READER", "COLLABORATOR", "ADMIN"];
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE", "PENDING"];
@@ -79,9 +82,9 @@ export function UsersPage() {
 
     return (
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
-            <h2 className="text-2xl font-bold mb-6">Todos os usuários</h2>
+            <div className="mb-6"><PageHeader title="Todos os usuários"/></div>
 
-            {loading && <p className="text-muted-foreground">Carregando…</p>}
+            {loading && <Loading/>}
 
             {!loading && (
                 <>
@@ -139,25 +142,23 @@ export function UsersPage() {
                             <h3 className="font-semibold text-lg">Editar {editingUser.username}</h3>
                             <div className="space-y-2">
                                 <Label>Permissão</Label>
-                                <select
-                                    className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                                <NativeSelect
                                     value={editForm.role}
                                     onChange={(e) => setEditForm((p) => ({...p, role: e.target.value}))}>
                                     {ROLE_OPTIONS.map((r) => (
                                         <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>
                                     ))}
-                                </select>
+                                </NativeSelect>
                             </div>
                             <div className="space-y-2">
                                 <Label>Status</Label>
-                                <select
-                                    className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                                <NativeSelect
                                     value={editForm.status}
                                     onChange={(e) => setEditForm((p) => ({...p, status: e.target.value}))}>
                                     {STATUS_OPTIONS.map((s) => (
                                         <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>
                                     ))}
-                                </select>
+                                </NativeSelect>
                             </div>
                             <div className="space-y-2">
                                 <Label>Cota (GB)</Label>
