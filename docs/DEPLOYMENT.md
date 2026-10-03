@@ -181,7 +181,27 @@ gcloud run deploy buruna-frontend --image <artifact-registry-url>/buruna-fronten
 Em uso normal, o deploy é automático via GitHub Actions no push para `main` — o fluxo
 acima é só para reproduzir manualmente em caso de incidente com o pipeline.
 
-## 6. Pré-requisitos de infraestrutura
+## 6. Versão e tag
+
+Todo deploy na `main` sobe a versão. Ela fica em `frontend/package.json` e é a que o
+frontend exibe (`v{__APP_VERSION__}` no `AuthLayout`, injetada pelo `vite.config.ts`); a
+tag git `vX.Y.Z` marca o commit que foi para produção. O `backend/pom.xml` não é
+versionado (`0.0.1-SNAPSHOT`).
+
+1. No PR `dev` → `main`, escolha o número pelo semver a partir da última tag
+   (`git tag --sort=-v:refname | head -1`): só correções → patch, feature nova → minor,
+   quebra de contrato da API → major.
+2. Suba a versão num commit do próprio PR, `chore: bump versão para X.Y.Z`:
+   ```bash
+   cd frontend && npm version X.Y.Z --no-git-tag-version   # atualiza package.json e package-lock.json
+   ```
+3. Depois do merge na `main` e do deploy verde (`/api/health` respondendo), crie a tag no
+   commit de merge e publique:
+   ```bash
+   git fetch origin && git tag -a vX.Y.Z origin/main -m "vX.Y.Z" && git push origin vX.Y.Z
+   ```
+
+## 7. Pré-requisitos de infraestrutura
 
 - Bucket GCS criado, com `gcs-credentials.json` de uma Service Account com
   `roles/storage.objectAdmin`.
