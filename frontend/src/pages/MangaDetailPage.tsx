@@ -14,6 +14,7 @@ import {
 } from "@/api/engagementApi";
 import type {MangaDetail, Tag, Volume} from "@/types/manga";
 import type {ReadingStatus} from "@/types/engagement";
+import type {ProgressResponse} from "@/types/reading";
 import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
 import {useAuthStore} from "@/store/authStore";
 import {Button} from "@/components/ui/button";
@@ -52,6 +53,13 @@ const READING_STATUS_LABELS: Record<ReadingStatus, string> = {
 
 const READING_STATUS_OPTIONS: ReadingStatus[] = ["WANT_TO_READ", "READING", "COMPLETED", "DROPPED"];
 
+function progressLabel(progress: ProgressResponse): string {
+    if (progress.finished) return "Lido";
+    return progress.totalPages
+        ? `Página ${progress.currentPage} de ${progress.totalPages}`
+        : `Parou na pág. ${progress.currentPage}`;
+}
+
 function formatBytes(bytes: number): string {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -69,7 +77,7 @@ export function MangaDetailPage() {
 
     const [manga, setManga] = useState<MangaDetail | null>(null);
     const [volumes, setVolumes] = useState<Volume[]>([]);
-    const [volumeProgress, setVolumeProgress] = useState<Record<string, number>>({});
+    const [volumeProgress, setVolumeProgress] = useState<Record<string, ProgressResponse>>({});
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
 
@@ -275,9 +283,12 @@ export function MangaDetailPage() {
     }, {});
 
     const formatLabel = FORMAT_LABELS[manga.format] ?? manga.format;
-    // Retomar a leitura pelo volume mais avançado com progresso salvo; sem progresso, o primeiro.
-    const resumeVolume = [...volumes].reverse().find((v) => volumeProgress[v.id] !== undefined);
+    // Botão principal: retoma o volume mais avançado em andamento; se não houver, sugere
+    // o volume seguinte ao último concluído; sem progresso nenhum, o primeiro.
     const firstVolume = volumes[0];
+    const resumeVolume = [...volumes].reverse().find((v) => volumeProgress[v.id] && !volumeProgress[v.id].finished);
+    const lastFinishedIndex = volumes.map((v) => volumeProgress[v.id]?.finished ?? false).lastIndexOf(true);
+    const nextUnread = lastFinishedIndex >= 0 ? volumes[lastFinishedIndex + 1] : undefined;
 
     const {id: mangaId, title: mangaTitle, slug: mangaSlug} = manga;
     function openReader(vol: Volume) {
@@ -399,9 +410,13 @@ export function MangaDetailPage() {
 
                         <div className="flex flex-wrap items-center gap-2.5">
                             {firstVolume && (
-                                <Button className="h-12 px-5 text-[15px] font-semibold" onClick={() => openReader(resumeVolume ?? firstVolume)}>
+                                <Button className="h-12 px-5 text-[15px] font-semibold" onClick={() => openReader(resumeVolume ?? nextUnread ?? firstVolume)}>
                                     <BookOpen className="size-[18px]"/>
-                                    {resumeVolume ? `Continuar · Vol. ${resumeVolume.volumeNumber}` : "Começar a ler"}
+                                    {resumeVolume
+                                        ? `Continuar · Vol. ${resumeVolume.volumeNumber}`
+                                        : nextUnread
+                                            ? `Ler · Vol. ${nextUnread.volumeNumber}`
+                                            : "Começar a ler"}
                                 </Button>
                             )}
 
@@ -534,12 +549,16 @@ export function MangaDetailPage() {
                 ) : (
                     <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
                         {volumes.map((vol) => {
-                            const page = volumeProgress[vol.id];
-                            const started = page !== undefined;
+                            const progress = volumeProgress[vol.id];
+                            const finished = progress?.finished ?? false;
+                            const reading = progress !== undefined && !finished;
+                            const percent = progress?.totalPages
+                                ? Math.round((progress.currentPage / progress.totalPages) * 100)
+                                : undefined;
                             return (
                                 <div
                                     key={vol.id}
-                                    className={`flex flex-col gap-3.5 rounded-lg border bg-card p-4 ${started ? "border-shu/55" : ""}`}
+                                    className={`flex flex-col gap-3.5 rounded-lg border bg-card p-4 ${reading ? "border-shu/55" : ""}`}
                                 >
                                     <div className="flex items-baseline justify-between gap-2">
                                         <span className="text-[13px] text-muted-foreground">Volume</span>
@@ -547,16 +566,30 @@ export function MangaDetailPage() {
                                             {String(vol.volumeNumber).padStart(2, "0")}
                                         </span>
                                     </div>
-                                    <span className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                                        {started && <Macron/>}
-                                        {started ? `Parou na pág. ${page}` : formatBytes(vol.fileSizeBytes)}
-                                    </span>
+                                    <div className="flex flex-col gap-1.5">
+                                        {percent !== undefined && (
+                                            <div
+                                                role="progressbar"
+                                                aria-valuemin={0}
+                                                aria-valuemax={100}
+                                                aria-valuenow={percent}
+                                                aria-label={`Progresso do volume ${vol.volumeNumber}`}
+                                                className="h-1 bg-muted"
+                                            >
+                                                <div className={`h-full ${finished ? "bg-muted-foreground" : "bg-shu"}`} style={{width: `${percent}%`}}/>
+                                            </div>
+                                        )}
+                                        <span className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                                            {reading && percent === undefined && <Macron/>}
+                                            {progress ? progressLabel(progress) : formatBytes(vol.fileSizeBytes)}
+                                        </span>
+                                    </div>
                                     <Button
-                                        variant={started ? "default" : "outline"}
+                                        variant={reading ? "default" : "outline"}
                                         className="h-10"
                                         onClick={() => openReader(vol)}
                                     >
-                                        {started ? "Continuar" : "Ler"}
+                                        {finished ? "Reler" : reading ? "Continuar" : "Ler"}
                                         <span className="sr-only"> o volume {vol.volumeNumber}</span>
                                     </Button>
                                 </div>

@@ -270,6 +270,62 @@ class ReadingIntegrationTest {
                 .andExpect(jsonPath("$.currentPage").value(25));
     }
 
+    @Test
+    void shouldReturnTotalAndFinished_whenProgressIsSavedWithTotalPages() throws Exception {
+        // Act + Assert
+        mockMvc.perform(post("/reader/{id}/progress", publicVol1.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPage\":192,\"totalPages\":192}")
+                        .with(auth(readerA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentPage").value(192))
+                .andExpect(jsonPath("$.totalPages").value(192))
+                .andExpect(jsonPath("$.finished").value(true));
+    }
+
+    @Test
+    void shouldKeepTotalPages_whenLaterSaveOmitsIt() throws Exception {
+        // Arrange
+        mockMvc.perform(post("/reader/{id}/progress", publicVol1.getId())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"currentPage\":10,\"totalPages\":192}").with(auth(readerA)));
+
+        // Act + Assert
+        mockMvc.perform(post("/reader/{id}/progress", publicVol1.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPage\":20}")
+                        .with(auth(readerA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentPage").value(20))
+                .andExpect(jsonPath("$.totalPages").value(192))
+                .andExpect(jsonPath("$.finished").value(false));
+    }
+
+    @Test
+    void shouldReturn400_whenCurrentPageIsBeyondTotalPages() throws Exception {
+        mockMvc.perform(post("/reader/{id}/progress", publicVol1.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPage\":193,\"totalPages\":192}")
+                        .with(auth(readerA)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnPageAndTotalPerVolume_whenBatchProgressIsRequested() throws Exception {
+        // Arrange
+        mockMvc.perform(post("/reader/{id}/progress", publicVol1.getId())
+                .contentType(MediaType.APPLICATION_JSON).content("{\"currentPage\":88,\"totalPages\":192}").with(auth(readerA)));
+
+        // Act + Assert
+        mockMvc.perform(get("/reader/progress/batch")
+                        .param("volumeIds", publicVol1.getId().toString(), publicVol2.getId().toString())
+                        .with(auth(readerA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$['" + publicVol1.getId() + "'].currentPage").value(88))
+                .andExpect(jsonPath("$['" + publicVol1.getId() + "'].totalPages").value(192))
+                .andExpect(jsonPath("$['" + publicVol1.getId() + "'].finished").value(false))
+                .andExpect(jsonPath("$['" + publicVol2.getId() + "']").doesNotExist());
+    }
+
     // ══════════════════════════════════════════════════════════════════════════
     //  3. GET /reader/progress/{mangaId}
     // ══════════════════════════════════════════════════════════════════════════
