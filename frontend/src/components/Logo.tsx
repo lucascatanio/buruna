@@ -1,6 +1,3 @@
-/** Shu (vermelhão): a cor do mácron, assinatura da marca. Ver docs/brand/BRAND.md. */
-const SHU = "#E0482D";
-
 // Letras construídas como formas separadas: sobrepostas de propósito para não abrir frestas.
 const LETTERS = [
     "M0,60 H26 V200 H0 Z",
@@ -26,14 +23,14 @@ const LETTERS = [
 ];
 const WORDMARK_MACRON = "M346.43,60 H440 L433.57,84 H340 Z";
 
-/** Logotipo "burūna". As letras herdam a cor do texto (currentColor); o mácron é sempre shu. */
+/** Logotipo "burūna". As letras herdam a cor do texto (currentColor); o mácron é sempre shu (vermelhão), via token --shu do index.css. */
 export function Wordmark({className}: {className?: string}) {
     return (
         <svg viewBox="0 60 688 140" role="img" aria-label="Burūna" className={className}>
             <g fill="currentColor">
                 {LETTERS.map((d) => <path key={d} d={d}/>)}
             </g>
-            <path fill={SHU} d={WORDMARK_MACRON}/>
+            <path className="fill-shu" d={WORDMARK_MACRON}/>
         </svg>
     );
 }
@@ -42,12 +39,12 @@ export function Wordmark({className}: {className?: string}) {
 const MARK_U = "M48,90 H92 V134 A36,36 0 0 0 164,134 V90 H208 V214 H164 V205.4 A80,80 0 0 1 48,134 Z";
 const MARK_MACRON = "M56.57,42 H208 L199.43,74 H48 Z";
 
-/** Símbolo ū. O u herda a cor do texto (currentColor); o mácron é sempre shu. */
+/** Símbolo ū. O u herda a cor do texto (currentColor); o mácron é sempre shu (vermelhão), via token --shu do index.css. */
 export function LogoMark({className, label = "Burūna"}: {className?: string; label?: string}) {
     return (
         <svg viewBox="48 42 160 172" role="img" aria-label={label} className={className}>
             <path fill="currentColor" d={MARK_U}/>
-            <path fill={SHU} d={MARK_MACRON}/>
+            <path className="fill-shu" d={MARK_MACRON}/>
         </svg>
     );
 }
