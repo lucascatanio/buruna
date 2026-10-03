@@ -24,6 +24,7 @@ import {Label} from "@/components/ui/label";
 import {EmptyState} from "@/components/EmptyState";
 import {MangaCover} from "@/components/MangaCover";
 import {Macron} from "@/components/Macron";
+import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
 import {BookOpen, ChevronLeft, Pencil, Trash2, Upload, X, Star, BookMarked, ChevronDown} from "lucide-react";
 
@@ -328,13 +329,7 @@ export function MangaDetailPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="modal-vol-file">Arquivo (PDF, EPUB, MOBI)</Label>
-                                <Input
-                                    id="modal-vol-file"
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept=".pdf,application/pdf"
-                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
-                                />
+                                <FileInput id="modal-vol-file" ref={fileInputRef} accept=".pdf,application/pdf" onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}/>
                             </div>
                         </div>
 

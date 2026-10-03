@@ -7,6 +7,7 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {PageHeader} from "@/components/PageHeader";
+import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
 import {Upload, X, Check} from "lucide-react";
 
@@ -137,12 +138,7 @@ export function PrivateMangaUploadPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="volume-file">Arquivo (PDF, EPUB, MOBI)</Label>
-                                <Input
-                                    id="volume-file"
-                                    type="file"
-                                    accept=".pdf,.epub,.mobi"
-                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
-                                />
+                                <FileInput id="volume-file" accept=".pdf,.epub,.mobi" onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}/>
                             </div>
                         </div>
                         <Button
@@ -174,7 +170,7 @@ export function PrivateMangaUploadPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
 
                 <div className="space-y-2">
-                    <Label>Capa (opcional)</Label>
+                    <Label htmlFor="cover">Capa (opcional)</Label>
                     <div className="flex gap-4 items-start">
                         {coverPreview && (
                             <div className="relative w-24 shrink-0">
@@ -195,7 +191,7 @@ export function PrivateMangaUploadPage() {
                                 </button>
                             </div>
                         )}
-                        <Input type="file" accept="image/*" onChange={handleCoverChange}/>
+                        <FileInput id="cover" accept="image/*" onChange={handleCoverChange} buttonLabel="Escolher imagem"/>
                     </div>
                 </div>
 
@@ -240,13 +236,7 @@ export function PrivateMangaUploadPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="volumeFile">Arquivo (PDF, EPUB, MOBI)</Label>
-                                <Input
-                                    id="volumeFile"
-                                    type="file"
-                                    accept=".pdf,.epub,.mobi"
-                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
-                                    required
-                                />
+                                <FileInput id="volumeFile" accept=".pdf,.epub,.mobi" onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)} required/>
                             </div>
                         </div>
                     </CardContent>

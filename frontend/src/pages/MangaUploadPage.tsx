@@ -10,6 +10,7 @@ import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {TagSelector} from "@/components/TagSelector";
 import {NativeSelect} from "@/components/ui/native-select";
 import {PageHeader} from "@/components/PageHeader";
+import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
 import {Plus, X, Upload, Check} from "lucide-react";
 
@@ -188,12 +189,7 @@ export function MangaUploadPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="volume-file">Arquivo (PDF, EPUB, MOBI)</Label>
-                                <Input
-                                    id="volume-file"
-                                    type="file"
-                                    accept=".pdf,.epub,.mobi"
-                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
-                                />
+                                <FileInput id="volume-file" accept=".pdf,.epub,.mobi" onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}/>
                             </div>
                         </div>
 
@@ -226,7 +222,7 @@ export function MangaUploadPage() {
             <form onSubmit={handleSubmitManga} className="space-y-6">
 
                 <div className="space-y-2">
-                    <Label>Capa (opcional)</Label>
+                    <Label htmlFor="cover">Capa (opcional)</Label>
                     <div className="flex gap-4 items-start">
                         {coverPreview && (
                             <div className="relative w-24 shrink-0">
@@ -240,7 +236,7 @@ export function MangaUploadPage() {
                                 </button>
                             </div>
                         )}
-                        <Input type="file" accept="image/*" onChange={handleCoverChange}/>
+                        <FileInput id="cover" accept="image/*" onChange={handleCoverChange} buttonLabel="Escolher imagem"/>
                     </div>
                 </div>
 

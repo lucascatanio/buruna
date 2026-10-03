@@ -17,6 +17,7 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {PageHeader} from "@/components/PageHeader";
+import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
 import {Upload, Trash2, Pencil, Check, X, Globe, BookOpen, Send, AlertCircle, Clock} from "lucide-react";
 
@@ -318,12 +319,7 @@ export function PrivateMangaDetailPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="add-volume-file">Arquivo</Label>
-                                <Input
-                                    id="add-volume-file"
-                                    type="file"
-                                    accept=".pdf,.epub,.mobi"
-                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
-                                />
+                                <FileInput id="add-volume-file" accept=".pdf,.epub,.mobi" onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}/>
                             </div>
                         </div>
                         <Button

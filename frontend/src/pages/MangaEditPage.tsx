@@ -10,6 +10,7 @@ import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {TagSelector} from "@/components/TagSelector";
 import {NativeSelect} from "@/components/ui/native-select";
 import {PageHeader} from "@/components/PageHeader";
+import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
 import {Plus, X, Upload, Trash2} from "lucide-react";
 
@@ -216,7 +217,7 @@ export function MangaEditPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                    <Label>Capa</Label>
+                    <Label htmlFor="cover">Capa</Label>
                     <div className="flex gap-4 items-start">
                         {coverPreview && (
                             <div className="relative w-24 shrink-0">
@@ -230,7 +231,7 @@ export function MangaEditPage() {
                                 </button>
                             </div>
                         )}
-                        <Input type="file" accept="image/*" onChange={handleCoverChange}/>
+                        <FileInput id="cover" accept="image/*" onChange={handleCoverChange} buttonLabel="Escolher imagem"/>
                     </div>
                 </div>
 
@@ -386,12 +387,7 @@ export function MangaEditPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="vol-file">Arquivo</Label>
-                                <Input
-                                    id="vol-file"
-                                    type="file"
-                                    accept=".pdf,.epub,.mobi"
-                                    onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}
-                                />
+                                <FileInput id="vol-file" accept=".pdf,.epub,.mobi" onChange={(e) => setVolumeFile(e.target.files?.[0] ?? null)}/>
                             </div>
                         </div>
                         <Button
