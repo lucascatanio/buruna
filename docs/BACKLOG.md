@@ -72,11 +72,6 @@ remova cada override que ele já cobrir. Pendente: OpenTelemetry 1.49 → 1.62 (
 extensão não usada), deixado de fora porque só o cliente do GCS depende dele e os testes o
 mockam. Rodar `trivy fs backend/` depois de cada atualização.
 
-### `@MockBean` depreciado
-
-Os testes de integração usam `@MockBean`, depreciado desde o Spring Boot 3.4 e marcado para
-remoção. Troca mecânica por `@MockitoBean`.
-
 ### Origins locais no CORS do bucket de produção
 
 O `gcs-cors.json` (espelho do bucket de produção) aceita `http://localhost` e
@@ -134,6 +129,8 @@ exige hCaptcha a cada tentativa.
 
 - [x] CLAUDE.md não cita mais o intervalo de ADRs ("ADR-01 a ADR-41"), que envelhecia a
   cada ADR novo; aponta só para a pasta `docs/adr/` (issue #38).
+- [x] `@MockBean` (depreciado desde o Spring Boot 3.4) trocado por `@MockitoBean` nos testes
+  de integração (issue #36).
 - [x] Migração de pacotes de `manga` e `admin` concluída (issue #34): `controller/` → `web/`,
   `service/` → `application/`, `manga/exception/` → `manga/domain/`, e os `dto/` separados
   entre `application/` (o que o use case recebe ou devolve) e `web/` (só do controller).
