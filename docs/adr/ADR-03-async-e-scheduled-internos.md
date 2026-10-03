@@ -26,3 +26,10 @@ nesta correção), chamando `POST /admin/jobs/inactivity` às 02:00 UTC — a me
 existia como fallback manual (`JobController`, autenticada por `X-Job-Secret`) passa a ser o
 único caminho de execução. `@EnableScheduling` continua na aplicação porque `RateLimitFilter`
 ainda depende dele.
+
+**Atualização (2026-10-03):** o último `@Scheduled` saiu. A limpeza das entradas vencidas do
+`RateLimitFilter` passou a rodar dentro do próprio filtro, numa requisição limitada, no máximo
+uma vez por janela de 1 h. O Cloud Scheduler não servia: o contador vive na memória de cada
+instância, e uma chamada HTTP limparia só uma delas. Sem nenhum `@Scheduled`, o
+`@EnableScheduling` foi removido, e com ele a tentação de agendar trabalho interno que o
+`cpu-throttling` não deixa rodar (issue #44).

@@ -8,15 +8,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.Instant;
+import java.time.Clock;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -30,8 +30,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final ConcurrentHashMap<String, RateEntry> attempts = new ConcurrentHashMap<>();
     private final Map<String, Integer> limits;
     private final ClientIpResolver clientIpResolver;
+    private final Clock clock;
+    // 0 faz a primeira requisição limitada varrer o mapa (vazio) e marcar o relógio
+    private final AtomicLong lastEviction = new AtomicLong(0);
 
-    public RateLimitFilter(AppProperties appProperties, ClientIpResolver clientIpResolver) {
+    public RateLimitFilter(AppProperties appProperties, ClientIpResolver clientIpResolver, Clock clock) {
         this.limits = Map.of(
                 REGISTER_SUFFIX, appProperties.rateLimit().registerPerHour(),
                 LOGIN_SUFFIX, appProperties.rateLimit().loginPerHour(),
@@ -39,6 +42,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 FORGOT_PASSWORD_SUFFIX, appProperties.rateLimit().forgotPasswordPerHour()
         );
         this.clientIpResolver = clientIpResolver;
+        this.clock = clock;
     }
 
     @Override
@@ -69,7 +73,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
         String ip = clientIpResolver.resolve(request);
         String key = matchedSuffix + ":" + ip;
-        long now = Instant.now().toEpochMilli();
+        long now = clock.instant().toEpochMilli();
+        evictExpiredEntriesIfDue(now);
 
         RateEntry entry = attempts.compute(key, (k, existing) -> {
             if (existing == null || now - existing.windowStart() > WINDOW_MS) {
@@ -91,10 +96,22 @@ public class RateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    @Scheduled(fixedDelay = 3_600_000L)
-    public void evictExpiredEntries() {
-        long now = Instant.now().toEpochMilli();
+    /**
+     * Limpa as entradas vencidas dentro de uma requisição, no máximo uma vez por janela. Não
+     * usa {@code @Scheduled}: no Cloud Run com cpu-throttling a CPU fica cortada fora de
+     * requisição (ADR-03), e o Cloud Scheduler não serve porque o mapa vive na memória de
+     * cada instância. O compareAndSet garante que só uma thread varre.
+     */
+    private void evictExpiredEntriesIfDue(long now) {
+        long last = lastEviction.get();
+        if (now - last < WINDOW_MS || !lastEviction.compareAndSet(last, now)) {
+            return;
+        }
         attempts.entrySet().removeIf(e -> now - e.getValue().windowStart() > WINDOW_MS);
+    }
+
+    int trackedKeys() {
+        return attempts.size();
     }
 
     private record RateEntry(long windowStart, AtomicInteger count) {

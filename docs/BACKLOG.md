@@ -68,14 +68,6 @@ O `gcs-cors.json` (espelho do bucket de produção) aceita `http://localhost` e
 `http://192.168.100.192`, que só servem para testar contra o bucket de produção a partir da
 máquina ou rede de desenvolvimento. Remover se não forem mais usados.
 
-### Último `@Scheduled`: limpeza do `RateLimitFilter`
-
-A limpeza das entradas vencidas do rate limit roda por `@Scheduled(fixedDelay = 1h)`. Não dá
-para levar para o Cloud Scheduler: o contador vive na memória de cada instância, e uma chamada
-HTTP limparia só uma delas. Trocar por limpeza feita pelo próprio filtro (ex.: a cada N
-requisições) e remover o `@EnableScheduling`, para ninguém voltar a usar `@Scheduled` achando
-que funciona no Cloud Run com `cpu-throttling` (ADR-03).
-
 ## Segurança (hardening)
 
 Achados de baixa severidade do teste ativo de 2026-09-24 e do ADR-42. Nenhum é explorável
@@ -117,6 +109,8 @@ exige hCaptcha a cada tentativa.
 
 ## Concluído
 
+- [x] Último `@Scheduled` removido (issue #44): a limpeza do `RateLimitFilter` roda no próprio
+  filtro, no máximo uma vez por janela, e o `@EnableScheduling` saiu (ADR-03).
 - [x] `MangaSubmissionStatus.APPROVED` (issue #40): `Manga.approve` grava `APPROVED` em vez de
   zerar o status (V24 + backfill na V25), e `promoteToPublic` encerra uma submissão aberta,
   que antes deixava o mangá público na fila de revisão do admin.
