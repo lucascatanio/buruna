@@ -29,7 +29,8 @@ public record AppProperties(
             int registerPerHour,
             int loginPerHour,
             int feedbackPerHour,
-            int forgotPasswordPerHour
+            int forgotPasswordPerHour,
+            int deleteAccountPerHour
     ) {
     }
 

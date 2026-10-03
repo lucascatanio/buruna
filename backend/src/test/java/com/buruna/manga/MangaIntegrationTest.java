@@ -93,6 +93,7 @@ class MangaIntegrationTest {
     @Autowired VolumeRepository volumeRepository;
     @Autowired TagRepository tagRepository;
     @Autowired TagCategoryRepository tagCategoryRepository;
+    @Autowired org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     @MockitoBean StorageClient storageClient;
     @MockitoBean EmailService emailService;
 
@@ -1223,6 +1224,40 @@ class MangaIntegrationTest {
             String id = createPrivateManga("ITest Submit NotPending", reader);
             mockMvc.perform(post("/admin/submissions/{id}/approve", id).with(auth(admin)))
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  7. Deleção de conta (DELETE /auth/account) — efeito no conteúdo do dono
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    class AccountDeletion {
+
+        @Test
+        void shouldKeepPublicContentAndDeletePrivateCollection_whenOwnerDeletesAccount() throws Exception {
+            User owner = buildUser("owner-del@manga.test", "mangaOwnerDel", Role.COLLABORATOR);
+            owner.changePassword(passwordEncoder.encode("Password@123"));
+            owner = userRepository.save(owner);
+
+            String publicId = createPublicManga("ITest Del Public", owner);
+            uploadVolume("/mangas", publicId, 1, owner);
+            String publicFile = volumeRepository.findByMangaId(UUID.fromString(publicId)).get(0).getFileUrl();
+            String privateId = createPrivateManga("ITest Del Private", owner);
+            uploadVolume("/my/mangas", privateId, 1, owner);
+            String privateFile = volumeRepository.findByMangaId(UUID.fromString(privateId)).get(0).getFileUrl();
+
+            mockMvc.perform(delete("/auth/account").with(auth(owner))
+                            .header("X-Forwarded-For", "10.20.30.40")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"password\":\"Password@123\"}"))
+                    .andExpect(status().isNoContent());
+
+            org.assertj.core.api.Assertions.assertThat(mangaRepository.findById(UUID.fromString(privateId))).isEmpty();
+            org.assertj.core.api.Assertions.assertThat(mangaRepository.findById(UUID.fromString(publicId))).isPresent();
+            org.assertj.core.api.Assertions.assertThat(volumeRepository.findByMangaId(UUID.fromString(publicId))).hasSize(1);
+            verify(storageClient).delete(privateFile);
+            verify(storageClient, never()).delete(publicFile);
         }
     }
 }

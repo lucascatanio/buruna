@@ -51,7 +51,7 @@ Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-in
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
 e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-## 3. Migrations Flyway (V1–V25)
+## 3. Migrations Flyway (V1–V26)
 
 > Verificado em `backend/src/main/resources/db/migration/` — atualize esta tabela ao
 > adicionar uma migration nova.
@@ -83,6 +83,7 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V23    | Coluna total_pages em reading_progress (nula para progressos antigos) e CHECK de página dentro do total |
 | V24    | Adicionou valor `APPROVED` ao enum manga_submission_status                         |
 | V25    | Backfill: aprovados antigos (público + reviewed_at, status nulo) → `APPROVED`; público com `PENDING`/`REJECTED` (promovido com submissão aberta) → status e motivo nulos |
+| V26    | Adicionou valor `DELETED` ao enum user_status (conta anonimizada)                  |
 
 > Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
 > transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill

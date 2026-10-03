@@ -23,8 +23,8 @@
 
 | Termo | Definição |
 |---|---|
-| **User** (agregado raiz) | Usuário da plataforma. Mutação só por método de negócio: `approve()`, `reject()`, `deactivate()`, `changeStatus()`, `changeRole()`, `changeQuota()`, `changePassword()`, `assignAvatar()`, `recordLogin()`, `startTotpSetup()`/`enableTotp()`/`disableTotp()`. |
-| **UserStatus** (enum) | `PENDING` (aguardando aprovação) → `ACTIVE` (aprovado, uso normal) → `INACTIVE` (desativado por inatividade). |
+| **User** (agregado raiz) | Usuário da plataforma. Mutação só por método de negócio: `approve()`, `reject()`, `deactivate()`, `changeStatus()`, `anonymize()`, `changeRole()`, `changeQuota()`, `changePassword()`, `assignAvatar()`, `recordLogin()`, `startTotpSetup()`/`enableTotp()`/`disableTotp()`. |
+| **UserStatus** (enum) | `PENDING` (aguardando aprovação) → `ACTIVE` (aprovado, uso normal) → `INACTIVE` (desativado por inatividade). `DELETED`: conta removida pelo dono e anonimizada (`anonymize()`); estado final, `changeStatus()` recusa sair dele. |
 | **Role** (enum) | `READER` (leitor comum) < `COLLABORATOR` (pode ter coleção privada, promover mangá) < `ADMIN` (aprova usuários, revisa submissões, gerencia catálogo). |
 | **Email** (VO) | E-mail validado por regex (`^[^@\s]+@[^@\s]+\.[^@\s]+$`) na construção; lança `InvalidEmailException` se inválido. |
 | **Username** (VO) | Nome de usuário validado na construção; lança `InvalidUsernameException` se inválido. |

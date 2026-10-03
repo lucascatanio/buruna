@@ -57,6 +57,7 @@ app:
     login-per-hour: ${RATE_LIMIT_LOGIN_PER_HOUR:10}
     feedback-per-hour: ${RATE_LIMIT_FEEDBACK_PER_HOUR:3}
     forgot-password-per-hour: ${RATE_LIMIT_FORGOT_PASSWORD_PER_HOUR:3}
+    delete-account-per-hour: ${RATE_LIMIT_DELETE_ACCOUNT_PER_HOUR:5}
   hcaptcha:
     # Default vazio só é aceito com o profile "local" ativo (CaptchaService falha
     # no startup fora dele).
