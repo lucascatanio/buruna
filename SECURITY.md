@@ -102,7 +102,7 @@ de `application`, verificada por `actorId` — nunca no domínio de outro contex
 | POST /auth/password/forgot   | 3 req/hora     | RATE_LIMIT_FORGOT_PASSWORD_PER_HOUR   |
 
 Retorna `429 Too Many Requests` quando o limite é excedido. Entradas expiradas são
-limpas via `@Scheduled` a cada 1 hora.
+limpas pelo próprio filtro, dentro de uma requisição, no máximo uma vez por hora.
 
 ## hCaptcha
 
