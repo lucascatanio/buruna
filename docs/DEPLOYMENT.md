@@ -188,6 +188,11 @@ frontend exibe (`v{__APP_VERSION__}` no `AuthLayout`, injetada pelo `vite.config
 tag git `vX.Y.Z` marca o commit que foi para produção. O `backend/pom.xml` não é
 versionado (`0.0.1-SNAPSHOT`).
 
+Os PRs `dev` → `main` (release) e `main` → `dev` (sincronização) entram com **merge
+commit**, nunca squash nem rebase: squash criaria na `main` um commit sem a história da `dev`
+como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usam squash
+(ver [CONTRIBUTING.md](../CONTRIBUTING.md)).
+
 1. No PR `dev` → `main`, escolha o número pelo semver a partir da última tag
    (`git tag --sort=-v:refname | head -1`): só correções → patch, feature nova → minor,
    quebra de contrato da API → major.
