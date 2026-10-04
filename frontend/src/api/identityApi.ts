@@ -48,6 +48,11 @@ export function disable2FA(code: string): Promise<void> {
     return api.post("/auth/2fa/disable", {code}).then(() => undefined);
 }
 
+// totpCode só é conferido quando o 2FA da conta está ativo
+export function deleteAccount(password: string, totpCode?: string): Promise<void> {
+    return api.delete("/auth/account", {data: {password, totpCode}}).then(() => undefined);
+}
+
 export function logout(): Promise<void> {
     return api.post("/auth/logout").then(() => undefined);
 }

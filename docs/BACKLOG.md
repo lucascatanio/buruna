@@ -4,13 +4,6 @@ Itens fora do escopo das issues já executadas. Nada aqui deve ser feito sem iss
 
 ## Bugs
 
-### UI para deletar conta
-
-O backend está pronto (issue #46): `DELETE /auth/account` com senha e código 2FA, conta
-anonimizada (ver ARCHITECTURE.md §6.7). Falta a tela: diálogo com o aviso do que é apagado
-e o que fica, campos de senha e código 2FA, e o rótulo do status `DELETED` na lista de
-usuários do admin.
-
 ### 2FA em endpoint autenticado conta a falha duas vezes
 
 `TotpService.verify` lança `BadCredentialsException` (401). Numa requisição autenticada, o
@@ -120,6 +113,9 @@ exige hCaptcha a cada tentativa.
 
 ## Concluído
 
+- [x] UI para deletar conta (issue #49): seção "Excluir conta" na página de Segurança, com aviso do
+  que é apagado e do que fica, senha e código 2FA quando ativo; o admin mostra contas
+  `DELETED` como "Removido", sem edição. Backend no #48 (issue #46).
 - [x] Último `@Scheduled` removido (issue #44): a limpeza do `RateLimitFilter` roda no próprio
   filtro, no máximo uma vez por janela, e o `@EnableScheduling` saiu (ADR-03).
 - [x] `MangaSubmissionStatus.APPROVED` (issue #40): `Manga.approve` grava `APPROVED` em vez de
