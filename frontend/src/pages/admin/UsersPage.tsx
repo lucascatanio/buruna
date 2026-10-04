@@ -25,12 +25,14 @@ const STATUS_LABELS: Record<string, string> = {
     ACTIVE: "Ativo",
     INACTIVE: "Inativo",
     PENDING: "Pendente",
+    DELETED: "Removido",
 };
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     ACTIVE: "default",
     PENDING: "secondary",
     INACTIVE: "destructive",
+    DELETED: "outline",
 };
 
 export function UsersPage() {
@@ -107,9 +109,12 @@ export function UsersPage() {
                                             {user.quotaGb} GB
                                         </span>
                                     </div>
-                                    <Button size="sm" variant="outline" onClick={() => openEdit(user)} className="shrink-0">
-                                        Editar
-                                    </Button>
+                                    {/* conta removida pelo dono é anonimizada e não muda mais de status */}
+                                    {user.status !== "DELETED" && (
+                                        <Button size="sm" variant="outline" onClick={() => openEdit(user)} className="shrink-0">
+                                            Editar
+                                        </Button>
+                                    )}
                                 </CardContent>
                             </Card>
                         ))}

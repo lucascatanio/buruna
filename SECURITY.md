@@ -62,9 +62,8 @@ tentar refresh e reenviar. A conta é **anonimizada**, não apagada: e-mail e us
 placeholders, a senha deixa de conferir, o 2FA é desligado e o status vira `DELETED`. A
 coleção privada e seus arquivos são apagados; mangás públicos e volumes enviados ao catálogo
 continuam, referenciando a conta anonimizada. Detalhe em
-[ARCHITECTURE.md §6.7](docs/ARCHITECTURE.md#67-deleção-de-conta).
-
-> ⚠️ A UI que chama o endpoint ainda não existe. Ver [`docs/BACKLOG.md`](docs/BACKLOG.md).
+[ARCHITECTURE.md §6.7](docs/ARCHITECTURE.md#67-deleção-de-conta). Na interface, fica em
+Segurança → "Excluir conta".
 
 ## Senhas
 
