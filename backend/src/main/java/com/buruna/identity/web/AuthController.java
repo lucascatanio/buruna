@@ -1,6 +1,7 @@
 package com.buruna.identity.web;
 
 import com.buruna.identity.application.account.AccountService;
+import com.buruna.identity.application.account.DeleteAccountUseCase;
 import com.buruna.identity.application.authentication.AuthenticationService;
 import com.buruna.identity.domain.InvalidTokenException;
 import com.buruna.identity.domain.User;
@@ -31,13 +32,16 @@ public class AuthController {
 
     private final AuthenticationService authenticationService;
     private final AccountService accountService;
+    private final DeleteAccountUseCase deleteAccount;
     private final ClientIpResolver clientIpResolver;
     private final AppProperties appProperties;
 
     public AuthController(AuthenticationService authenticationService, AccountService accountService,
-                          ClientIpResolver clientIpResolver, AppProperties appProperties) {
+                          DeleteAccountUseCase deleteAccount, ClientIpResolver clientIpResolver,
+                          AppProperties appProperties) {
         this.authenticationService = authenticationService;
         this.accountService = accountService;
+        this.deleteAccount = deleteAccount;
         this.clientIpResolver = clientIpResolver;
         this.appProperties = appProperties;
     }
@@ -104,9 +108,12 @@ public class AuthController {
     }
 
     @DeleteMapping("/account")
-    public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal User user) {
-        accountService.deleteAccount(user.getId());
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal User user,
+                                              @Valid @RequestBody DeleteAccountRequest request) {
+        deleteAccount.handle(user.getId(), request.password(), request.totpCode());
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, clearedRefreshCookie().toString())
+                .build();
     }
 
     @GetMapping("/2fa/status")

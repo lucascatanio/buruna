@@ -27,7 +27,7 @@ class RateLimitFilterTest {
         clock = mock(Clock.class);
         AppProperties appProperties = new AppProperties(
                 null, null, null, null,
-                new AppProperties.RateLimitProperties(5, 10, 5, 3),
+                new AppProperties.RateLimitProperties(5, 10, 5, 3, 5),
                 new AppProperties.SecurityProperties(1), null);
         filter = new RateLimitFilter(appProperties, new ClientIpResolver(appProperties), clock);
     }
@@ -63,6 +63,32 @@ class RateLimitFilterTest {
 
         // 2.2.2.2 já venceu (70 min), mas a última varredura foi há 39 min: continua no mapa
         assertThat(filter.trackedKeys()).isEqualTo(3);
+    }
+
+    @Test
+    void shouldLimitDeleteAccount_whenSixthAttemptFromSameIp() throws Exception {
+        when(clock.instant()).thenReturn(T0);
+        int lastStatus = 0;
+        for (int i = 0; i < 6; i++) {
+            MockHttpServletRequest request = new MockHttpServletRequest("DELETE", "/api/auth/account");
+            request.setRemoteAddr("6.6.6.6");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, new MockFilterChain());
+            lastStatus = response.getStatus();
+        }
+
+        assertThat(lastStatus).isEqualTo(429);
+    }
+
+    @Test
+    void shouldNotLimit_whenSameRouteWithOtherMethod() throws Exception {
+        when(clock.instant()).thenReturn(T0);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/auth/account");
+        request.setRemoteAddr("7.7.7.7");
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+        assertThat(filter.trackedKeys()).isZero();
     }
 
     @Test

@@ -219,3 +219,22 @@ Usuários `ACTIVE` são processados em páginas de 50 via `Pageable`.
 Para deletar a coleção privada de um usuário desativado, o `identity` chama o use case
 público `manga.application.maintenance.DeletePrivateCollectionForUserUseCase` — exemplo
 concreto de cross-context via `application`, não via acesso direto a `persistence`.
+
+### 6.7 Deleção de conta
+
+`DELETE /auth/account` (`identity.web.AuthController`) recebe a senha e, com 2FA ativo, o
+código TOTP. `identity.application.account.DeleteAccountUseCase` orquestra, sem transação
+própria, no mesmo desenho da inatividade:
+
+1. `AccountService.confirmOwnership` confere senha e TOTP. Falha → `403`, com a falha de
+   TOTP gravada (`noRollbackFor`).
+2. `DeletePrivateCollectionForUserUseCase` apaga a coleção privada na transação de `manga`.
+3. `AccountService.anonymize` apaga refresh tokens e tokens de reset e chama
+   `User.anonymize()`: e-mail e username viram `removido-<id>`, a senha deixa de conferir,
+   o 2FA é desligado e o status vira `DELETED`.
+4. Os arquivos (volumes privados e avatar) saem do storage depois, best-effort.
+
+A linha do usuário fica porque `mangas.owner_id` e `volumes.uploaded_by` são `RESTRICT`: o
+conteúdo público que ele criou ou enviou continua no catálogo, apontando para a conta
+anonimizada. A coleção sai antes da anonimização para que uma falha no meio deixe a conta
+ainda utilizável e o pedido possa ser repetido.

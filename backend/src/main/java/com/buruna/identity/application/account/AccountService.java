@@ -4,6 +4,7 @@ import com.buruna.identity.application.authentication.CaptchaService;
 import com.buruna.identity.application.authentication.TokenHash;
 import com.buruna.identity.application.authentication.TokenService;
 import com.buruna.identity.application.authentication.TotpService;
+import com.buruna.identity.domain.AccountOwnershipNotConfirmedException;
 import com.buruna.identity.domain.Email;
 import com.buruna.identity.domain.InvalidTokenException;
 import com.buruna.identity.domain.PasswordResetToken;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -102,12 +104,43 @@ public class AccountService {
         );
     }
 
-    @Transactional
-    public void deleteAccount(UUID userId) {
+    /**
+     * Confere senha e, com 2FA ativo, o código TOTP antes de uma ação irreversível sobre a
+     * própria conta. noRollbackFor mantém gravada a falha de TOTP contada pelo
+     * {@link TotpService} (bloqueio após 5 erros).
+     */
+    @Transactional(noRollbackFor = AccountOwnershipNotConfirmedException.class)
+    public void confirmOwnership(UUID userId, String password, String totpCode) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
+
+        if (password == null || !passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new AccountOwnershipNotConfirmedException();
+        }
+        if (user.isTotpEnabled()) {
+            if (totpCode == null || totpCode.isBlank()) {
+                throw new AccountOwnershipNotConfirmedException();
+            }
+            try {
+                totpService.verify(user, totpCode);
+            } catch (BadCredentialsException e) {
+                throw new AccountOwnershipNotConfirmedException();
+            }
+        }
+    }
+
+    /** Anonimiza a conta e apaga os tokens. Devolve o avatar, para a remoção no storage. */
+    @Transactional
+    public Optional<String> anonymize(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        Optional<String> avatar = Optional.ofNullable(user.getAvatarUrl());
+
         tokenService.deleteAllUserTokens(userId);
-        userRepository.delete(user);
+        passwordResetTokenRepository.deleteByUserId(userId);
+        user.anonymize();
+        userRepository.save(user);
+        return avatar;
     }
 
     public boolean is2FAEnabled(UUID userId) {

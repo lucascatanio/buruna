@@ -472,15 +472,95 @@ class IdentityIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    @Test
-    void deleteAccount_returns204_andRemovesUserAndTokens() throws Exception {
-        loginAndGetRefreshToken("active@id.test");
+    /** DELETE /auth/account com IP único: o rate limit (5/hora) é compartilhado entre os testes. */
+    org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder deleteAccount(User user, String body) {
+        return delete("/auth/account").with(auth(user))
+                .header("X-Forwarded-For", uniqueIp())
+                .contentType(JSON).content(body);
+    }
 
-        mockMvc.perform(delete("/auth/account").with(auth(activeUser)))
+    static String deleteBody(String password, String totpCode) {
+        return totpCode == null
+                ? "{\"password\":\"%s\"}".formatted(password)
+                : "{\"password\":\"%s\",\"totpCode\":\"%s\"}".formatted(password, totpCode);
+    }
+
+    @Test
+    void shouldAnonymizeAndRemoveTokens_whenPasswordIsCorrect() throws Exception {
+        loginAndGetRefreshToken("active@id.test");
+        createResetToken(activeUser);
+
+        mockMvc.perform(deleteAccount(activeUser, deleteBody(KNOWN_PASSWORD, null)))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("Max-Age=0")));
+
+        User deleted = userRepository.findById(activeUser.getId()).orElseThrow();
+        assertThat(deleted.getStatus()).isEqualTo(UserStatus.DELETED);
+        assertThat(deleted.getEmail()).isEqualTo("removido-" + activeUser.getId() + "@buruna.invalid");
+        assertThat(deleted.getUsername()).isEqualTo("removido-" + activeUser.getId());
+        assertThat(refreshTokenRepository.findAll()).isEmpty();
+        assertThat(passwordResetTokenRepository.findAll()).isEmpty();
+        assertThat(login("active@id.test", KNOWN_PASSWORD).getResponse().getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    void shouldReturn403AndKeepAccount_whenPasswordIsWrong() throws Exception {
+        mockMvc.perform(deleteAccount(activeUser, deleteBody("Wrong@123", null)))
+                .andExpect(status().isForbidden());
+
+        assertThat(userRepository.findById(activeUser.getId()).orElseThrow().getStatus())
+                .isEqualTo(UserStatus.ACTIVE);
+    }
+
+    @Test
+    void shouldReturn400_whenPasswordIsMissing() throws Exception {
+        mockMvc.perform(deleteAccount(activeUser, "{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn403_whenTotpEnabledAndCodeMissing() throws Exception {
+        enableTotp(activeUser);
+
+        mockMvc.perform(deleteAccount(activeUser, deleteBody(KNOWN_PASSWORD, null)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void shouldReturn403AndCountFailure_whenTotpCodeIsWrong() throws Exception {
+        enableTotp(activeUser);
+
+        mockMvc.perform(deleteAccount(activeUser, deleteBody(KNOWN_PASSWORD, "000000")))
+                .andExpect(status().isForbidden());
+
+        User user = userRepository.findById(activeUser.getId()).orElseThrow();
+        assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        // a falha fica gravada mesmo com a exceção (noRollbackFor)
+        assertThat(user.getTotpFailedAttempts()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldAnonymize_whenTotpEnabledAndCodeIsCorrect() throws Exception {
+        String secret = enableTotp(activeUser);
+
+        mockMvc.perform(deleteAccount(activeUser, deleteBody(KNOWN_PASSWORD, currentTotpCode(secret))))
                 .andExpect(status().isNoContent());
 
-        assertThat(userRepository.findById(activeUser.getId())).isEmpty();
-        assertThat(refreshTokenRepository.findAll()).isEmpty();
+        User deleted = userRepository.findById(activeUser.getId()).orElseThrow();
+        assertThat(deleted.getStatus()).isEqualTo(UserStatus.DELETED);
+        assertThat(deleted.isTotpEnabled()).isFalse();
+    }
+
+    @Test
+    void shouldReturn409_whenAdminChangesStatusOfDeletedAccount() throws Exception {
+        mockMvc.perform(deleteAccount(activeUser, deleteBody(KNOWN_PASSWORD, null)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(patch("/admin/users/{id}/status", activeUser.getId())
+                        .with(auth(admin))
+                        .contentType(JSON)
+                        .content("{\"status\":\"ACTIVE\"}"))
+                .andExpect(status().isConflict());
     }
 
     // ══════════════════════════════════════════════════════════════════════════
