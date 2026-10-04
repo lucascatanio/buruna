@@ -200,6 +200,11 @@ versionado (`0.0.1-SNAPSHOT`).
    ```bash
    git fetch origin && git tag -a vX.Y.Z origin/main -m "vX.Y.Z" && git push origin vX.Y.Z
    ```
+4. Sincronize a `main` de volta na `dev` com um PR `main` → `dev`
+   (`gh pr create --base dev --head main`). O merge da release cria na `main` um commit que
+   a `dev` não tem; sem esse PR as duas nunca se reencontram e o GitHub mostra a `dev`
+   "atrás" da `main`. O auto-delete de branches do repositório não apaga `main` nem `dev`,
+   que são protegidas.
 
 ## 7. Pré-requisitos de infraestrutura
 
