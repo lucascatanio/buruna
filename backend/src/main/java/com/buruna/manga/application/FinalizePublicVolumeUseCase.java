@@ -3,13 +3,13 @@ package com.buruna.manga.application;
 import com.buruna.manga.domain.DuplicateVolumeException;
 import com.buruna.manga.domain.FileHash;
 import com.buruna.manga.domain.Manga;
+import com.buruna.manga.domain.PendingUploadNotFoundException;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.domain.VolumeNumber;
 import com.buruna.manga.domain.VolumeObjectName;
-import com.buruna.manga.dto.VolumeFinalizeRequest;
-import com.buruna.manga.dto.VolumeResponse;
-import com.buruna.manga.exception.PublicVolumeOnPrivateMangaException;
+import com.buruna.manga.domain.PublicVolumeOnPrivateMangaException;
 import com.buruna.manga.persistence.VolumeRepository;
+import com.buruna.shared.exception.StorageObjectNotFoundException;
 import com.buruna.shared.storage.StorageClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,22 +52,28 @@ public class FinalizePublicVolumeUseCase {
         }
 
         VolumeObjectName pending = VolumeObjectName.parsePending(request.objectName(), mangaId);
-        var metadata = storageClient.getFileMetadata(request.objectName());
+        // objeto ausente = finalize repetido, perdedor de finalize concorrente ou upload
+        // nunca feito: 404, não 500
+        try {
+            var metadata = storageClient.getFileMetadata(request.objectName());
 
-        // dedup por hash atravessa agregados (outros mangás públicos): permanece na application
-        if (volumeRepository.existsByFileHashAndMangaIsPublicTrue(metadata.md5())) {
-            throw new DuplicateVolumeException();
+            // dedup por hash atravessa agregados (outros mangás públicos): permanece na application
+            if (volumeRepository.existsByFileHashAndMangaIsPublicTrue(metadata.md5())) {
+                throw new DuplicateVolumeException();
+            }
+
+            // invariantes do agregado antes do move: se addVolume lançar, o objeto continua em
+            // pending/ (limpo pela lifecycle rule) em vez de virar órfão em volumes/
+            String finalObjectName = pending.finalObjectName();
+            Volume volume = manga.addVolume(
+                    VolumeNumber.of(request.volumeNumber()), finalObjectName,
+                    FileHash.of(metadata.md5()), metadata.size(), actorId);
+
+            storageClient.move(request.objectName(), finalObjectName);
+
+            return volumeResponseMapper.toResponse(volumeRepository.save(volume));
+        } catch (StorageObjectNotFoundException e) {
+            throw new PendingUploadNotFoundException();
         }
-
-        // invariantes do agregado antes do move: se addVolume lançar, o objeto continua em
-        // pending/ (limpo pela lifecycle rule) em vez de virar órfão em volumes/
-        String finalObjectName = pending.finalObjectName();
-        Volume volume = manga.addVolume(
-                VolumeNumber.of(request.volumeNumber()), finalObjectName,
-                FileHash.of(metadata.md5()), metadata.size(), actorId);
-
-        storageClient.move(request.objectName(), finalObjectName);
-
-        return volumeResponseMapper.toResponse(volumeRepository.save(volume));
     }
 }

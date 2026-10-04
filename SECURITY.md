@@ -54,7 +54,16 @@ de `localStorage`) e o hash do token no banco (em vez do valor em claro) são
 [ADR-41](docs/adr/ADR-41-refresh-token-cookie-httponly-e-hash.md) — inclusive por que
 `SameSite=Strict` dispensa um token CSRF dedicado nesse fluxo.
 
-> ⚠️ Não há UI para `DELETE /auth/account`. Ver [`docs/BACKLOG.md`](docs/BACKLOG.md).
+## Deleção de conta
+
+`DELETE /auth/account` exige a senha atual e, com 2FA ativo, o código TOTP (falhas contam
+para o bloqueio de 2FA). Confirmação errada responde `403`, não `401`, para o frontend não
+tentar refresh e reenviar. A conta é **anonimizada**, não apagada: e-mail e username viram
+placeholders, a senha deixa de conferir, o 2FA é desligado e o status vira `DELETED`. A
+coleção privada e seus arquivos são apagados; mangás públicos e volumes enviados ao catálogo
+continuam, referenciando a conta anonimizada. Detalhe em
+[ARCHITECTURE.md §6.7](docs/ARCHITECTURE.md#67-deleção-de-conta). Na interface, fica em
+Segurança → "Excluir conta".
 
 ## Senhas
 
@@ -85,7 +94,7 @@ dispositivo exige intervenção manual de um admin. Decisão: [ADR-30](docs/adr/
 | Alterar role/status/cota de usuários     | ❌        | ❌     | ❌           | ✅    |
 | Enviar feedback (`POST /feedback`)       | ❌        | ✅     | ✅           | ✅    |
 
-Usuários com status `PENDING` ou `INACTIVE` são bloqueados no login. RBAC é aplicado
+Usuários com status `PENDING`, `INACTIVE` ou `DELETED` são bloqueados no login. RBAC é aplicado
 na borda (`@PreAuthorize` no controller); ownership (posse de um recurso) é uma regra
 de `application`, verificada por `actorId` — nunca no domínio de outro contexto. Ver
 [ADR-35](docs/adr/ADR-35-autorizacao-unificada.md).
@@ -100,9 +109,10 @@ de `application`, verificada por `actorId` — nunca no domínio de outro contex
 | POST /auth/register          | 5 req/hora     | RATE_LIMIT_REGISTER_PER_HOUR          |
 | POST /auth/login             | 10 req/hora    | RATE_LIMIT_LOGIN_PER_HOUR             |
 | POST /auth/password/forgot   | 3 req/hora     | RATE_LIMIT_FORGOT_PASSWORD_PER_HOUR   |
+| DELETE /auth/account         | 5 req/hora     | RATE_LIMIT_DELETE_ACCOUNT_PER_HOUR    |
 
 Retorna `429 Too Many Requests` quando o limite é excedido. Entradas expiradas são
-limpas via `@Scheduled` a cada 1 hora.
+limpas pelo próprio filtro, dentro de uma requisição, no máximo uma vez por hora.
 
 ## hCaptcha
 

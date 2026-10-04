@@ -134,7 +134,29 @@ public class User {
 
     /** Override administrativo de status (PATCH /admin/users/{id}/status). */
     public void changeStatus(UserStatus newStatus) {
+        if (status == UserStatus.DELETED) {
+            throw new UserDeletedException();
+        }
         this.status = newStatus;
+    }
+
+    /**
+     * Remove a conta a pedido do dono sem apagar a linha: o conteúdo público que ele criou
+     * ou enviou continua referenciando este id (FKs {@code RESTRICT}). Tudo que identifica a
+     * pessoa sai — e-mail e username viram placeholders únicos derivados do id, a senha deixa
+     * de ser um hash válido e o 2FA é desligado. A coleção privada e os arquivos são apagados
+     * pela application.
+     */
+    public void anonymize() {
+        String placeholder = "removido-" + id;
+        this.email = placeholder + "@buruna.invalid";
+        this.username = placeholder;
+        // não é um hash BCrypt: nenhuma senha confere
+        this.passwordHash = "!";
+        this.avatarUrl = null;
+        this.presentationMessage = "";
+        disableTotp();
+        this.status = UserStatus.DELETED;
     }
 
     // ── Outras mutações de negócio ──────────────────────────────────────────

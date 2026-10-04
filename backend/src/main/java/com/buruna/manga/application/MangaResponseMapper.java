@@ -2,10 +2,6 @@ package com.buruna.manga.application;
 
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.manga.domain.Manga;
-import com.buruna.manga.dto.MangaResponse;
-import com.buruna.manga.dto.TagCategoryResponse;
-import com.buruna.manga.dto.TagResponse;
-import com.buruna.manga.dto.VolumeResponse;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;

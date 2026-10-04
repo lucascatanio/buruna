@@ -2,7 +2,6 @@ package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Volume;
-import com.buruna.manga.dto.PrivateMangaResponse;
 import com.buruna.manga.persistence.MangaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

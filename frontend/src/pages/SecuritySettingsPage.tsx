@@ -1,13 +1,15 @@
 import {useState, useEffect} from "react";
+import {useNavigate} from "react-router-dom";
 import {toast} from "sonner";
-import {disable2FA, get2FAStatus, setup2FA, verify2FA} from "@/api/identityApi";
+import {deleteAccount, disable2FA, get2FAStatus, setup2FA, verify2FA} from "@/api/identityApi";
+import {useAuthStore} from "@/store/authStore";
 import type {TotpSetupResponse} from "@/types/identity";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle, CardDescription} from "@/components/ui/card";
 import {PageHeader} from "@/components/PageHeader";
-import {ShieldCheck, ShieldOff} from "lucide-react";
+import {ShieldCheck, ShieldOff, Trash2} from "lucide-react";
 
 export function SecuritySettingsPage() {
     const [totpEnabled, setTotpEnabled] = useState(false);
@@ -16,6 +18,12 @@ export function SecuritySettingsPage() {
     const [disableCode, setDisableCode] = useState("");
     const [loading, setLoading] = useState(false);
     const [showDisable, setShowDisable] = useState(false);
+    const [showDelete, setShowDelete] = useState(false);
+    const [deletePassword, setDeletePassword] = useState("");
+    const [deleteCode, setDeleteCode] = useState("");
+    const [deleting, setDeleting] = useState(false);
+    const clearAuth = useAuthStore((s) => s.clearAuth);
+    const navigate = useNavigate();
 
     useEffect(() => {
         get2FAStatus().then((data) => {
@@ -64,6 +72,30 @@ export function SecuritySettingsPage() {
             toast.error(err.response?.data?.message ?? "Código inválido");
         } finally {
             setLoading(false);
+        }
+    }
+
+    function cancelDelete() {
+        setShowDelete(false);
+        setDeletePassword("");
+        setDeleteCode("");
+    }
+
+    async function handleDelete(e: React.FormEvent) {
+        e.preventDefault();
+        setDeleting(true);
+        try {
+            await deleteAccount(deletePassword, totpEnabled ? deleteCode : undefined);
+            // o backend já apagou os tokens e limpou o cookie de refresh
+            clearAuth();
+            toast.success("Conta excluída");
+            navigate("/login", {replace: true});
+        } catch (err: any) {
+            const status = err.response?.status;
+            toast.error(status === 429
+                ? "Muitas tentativas. Tente novamente mais tarde."
+                : err.response?.data?.message ?? "Não foi possível excluir a conta");
+            setDeleting(false);
         }
     }
 
@@ -166,6 +198,79 @@ export function SecuritySettingsPage() {
                                     {loading ? "Desativando…" : "Confirmar desativação"}
                                 </Button>
                                 <Button type="button" variant="ghost" onClick={() => { setShowDisable(false); setDisableCode(""); }}>
+                                    Cancelar
+                                </Button>
+                            </div>
+                        </form>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card className="border-destructive/50">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                        <Trash2 className="w-5 h-5"/>
+                        Excluir conta
+                    </CardTitle>
+                    <CardDescription>
+                        Remove sua conta de forma permanente. Esta ação não pode ser desfeita.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {!showDelete && (
+                        <Button variant="destructive" onClick={() => setShowDelete(true)}>
+                            Excluir minha conta
+                        </Button>
+                    )}
+
+                    {showDelete && (
+                        <form onSubmit={handleDelete} className="space-y-4">
+                            <div className="text-sm space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                                <p className="font-medium text-foreground">O que acontece:</p>
+                                <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                                    <li>Sua coleção privada, com volumes e arquivos, é apagada.</li>
+                                    <li>Seu e-mail, nome de usuário, avatar e senha são removidos, e você não consegue mais entrar.</li>
+                                    <li>Mangás e volumes que você publicou na biblioteca pública continuam disponíveis, sem o seu nome.</li>
+                                </ul>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="delete-password">Senha atual</Label>
+                                <Input
+                                    id="delete-password"
+                                    type="password"
+                                    value={deletePassword}
+                                    onChange={(e) => setDeletePassword(e.target.value)}
+                                    required
+                                    autoFocus
+                                    autoComplete="current-password"
+                                />
+                            </div>
+                            {totpEnabled && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="delete-code">Código do app autenticador</Label>
+                                    <Input
+                                        id="delete-code"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]{6}"
+                                        maxLength={6}
+                                        placeholder="000000"
+                                        value={deleteCode}
+                                        onChange={(e) => setDeleteCode(e.target.value)}
+                                        required
+                                        autoComplete="one-time-code"
+                                    />
+                                </div>
+                            )}
+                            <div className="flex gap-2">
+                                <Button
+                                    type="submit"
+                                    variant="destructive"
+                                    disabled={deleting || !deletePassword || (totpEnabled && deleteCode.length !== 6)}
+                                >
+                                    {deleting ? "Excluindo…" : "Excluir conta definitivamente"}
+                                </Button>
+                                <Button type="button" variant="ghost" onClick={cancelDelete} disabled={deleting}>
                                     Cancelar
                                 </Button>
                             </div>

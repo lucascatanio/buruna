@@ -6,7 +6,6 @@ import com.buruna.manga.domain.TagCategory;
 import com.buruna.manga.domain.TagCategoryAlreadyExistsException;
 import com.buruna.manga.domain.TagCategoryNotFoundException;
 import com.buruna.manga.domain.TagNotFoundException;
-import com.buruna.manga.dto.*;
 import com.buruna.manga.persistence.TagCategoryRepository;
 import com.buruna.manga.persistence.TagRepository;
 import lombok.RequiredArgsConstructor;

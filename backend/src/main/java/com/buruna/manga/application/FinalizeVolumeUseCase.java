@@ -2,12 +2,12 @@ package com.buruna.manga.application;
 
 import com.buruna.manga.domain.FileHash;
 import com.buruna.manga.domain.Manga;
+import com.buruna.manga.domain.PendingUploadNotFoundException;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.domain.VolumeNumber;
 import com.buruna.manga.domain.VolumeObjectName;
-import com.buruna.manga.dto.PrivateMangaResponse;
-import com.buruna.manga.dto.VolumeFinalizeRequest;
 import com.buruna.manga.persistence.VolumeRepository;
+import com.buruna.shared.exception.StorageObjectNotFoundException;
 import com.buruna.shared.storage.StorageClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,19 +53,25 @@ public class FinalizeVolumeUseCase {
         Manga manga = access.findOwned(mangaId, actorId);
 
         VolumeObjectName pending = VolumeObjectName.parsePending(request.objectName(), mangaId);
-        var metadata = storageClient.getFileMetadata(request.objectName());
+        // objeto ausente = finalize repetido, perdedor de finalize concorrente ou upload
+        // nunca feito: 404, não 500
+        try {
+            var metadata = storageClient.getFileMetadata(request.objectName());
 
-        quotaService.assertCanFit(actorId, quotaGb, metadata.size());
+            quotaService.assertCanFit(actorId, quotaGb, metadata.size());
 
-        // invariantes do agregado antes do move: se addVolume lançar, o objeto continua em
-        // pending/ (limpo pela lifecycle rule) em vez de virar órfão em volumes/
-        String finalObjectName = pending.finalObjectName();
-        Volume volume = manga.addVolume(
-                VolumeNumber.of(request.volumeNumber()), finalObjectName,
-                FileHash.of(metadata.md5()), metadata.size(), actorId);
+            // invariantes do agregado antes do move: se addVolume lançar, o objeto continua em
+            // pending/ (limpo pela lifecycle rule) em vez de virar órfão em volumes/
+            String finalObjectName = pending.finalObjectName();
+            Volume volume = manga.addVolume(
+                    VolumeNumber.of(request.volumeNumber()), finalObjectName,
+                    FileHash.of(metadata.md5()), metadata.size(), actorId);
 
-        storageClient.move(request.objectName(), finalObjectName);
-        volumeRepository.save(volume);
+            storageClient.move(request.objectName(), finalObjectName);
+            volumeRepository.save(volume);
+        } catch (StorageObjectNotFoundException e) {
+            throw new PendingUploadNotFoundException();
+        }
 
         return mapper.toResponse(manga);
     }

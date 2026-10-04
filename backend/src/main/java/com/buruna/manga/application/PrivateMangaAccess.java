@@ -1,8 +1,8 @@
 package com.buruna.manga.application;
 
 import com.buruna.manga.domain.Manga;
-import com.buruna.manga.exception.MangaNotFoundException;
-import com.buruna.manga.exception.PrivateMangaAccessDeniedException;
+import com.buruna.manga.domain.MangaNotFoundException;
+import com.buruna.manga.domain.PrivateMangaAccessDeniedException;
 import com.buruna.manga.persistence.MangaRepository;
 import org.springframework.stereotype.Component;
 

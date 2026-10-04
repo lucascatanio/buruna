@@ -2,7 +2,6 @@ package com.buruna.manga.application;
 
 import com.buruna.manga.domain.DuplicateVolumeException;
 import com.buruna.manga.domain.VolumeObjectName;
-import com.buruna.manga.dto.VolumeUploadUrlResponse;
 import com.buruna.manga.persistence.VolumeRepository;
 import com.buruna.shared.storage.StorageClient;
 import org.springframework.stereotype.Service;

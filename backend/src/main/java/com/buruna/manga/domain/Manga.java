@@ -230,7 +230,7 @@ public class Manga {
             throw new SubmissionNotPendingException();
         }
         isPublic = true;
-        submissionStatus = null;
+        submissionStatus = MangaSubmissionStatus.APPROVED;
         reviewedById = reviewerId;
         reviewedAt = OffsetDateTime.now();
     }
@@ -249,9 +249,15 @@ public class Manga {
      * Marca o mangá como público. As verificações de conflito (título/hash/slug
      * duplicados na biblioteca pública) dependem do repositório e permanecem na
      * application (ver PromoteMangaUseCase no [4.5]).
+     *
+     * <p>Promoção direta não passa por revisão: uma submissão aberta (PENDING ou REJECTED)
+     * é encerrada sem status, para o mangá público não ficar na fila do admin nem como
+     * rejeitado. Público tem sempre {@code APPROVED} (revisado) ou {@code null} (promovido).
      */
     public void promoteToPublic() {
         isPublic = true;
+        submissionStatus = null;
+        rejectionReason = null;
     }
 
     @PrePersist

@@ -1,7 +1,10 @@
 package com.buruna.manga.web;
 
 import com.buruna.manga.application.TagService;
-import com.buruna.manga.dto.*;
+import com.buruna.manga.application.TagCategoryRequest;
+import com.buruna.manga.application.TagCategoryResponse;
+import com.buruna.manga.application.TagRequest;
+import com.buruna.manga.application.TagResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

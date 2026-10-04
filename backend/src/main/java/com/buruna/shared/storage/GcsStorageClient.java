@@ -1,6 +1,7 @@
 package com.buruna.shared.storage;
 
 import com.buruna.shared.exception.StorageException;
+import com.buruna.shared.exception.StorageObjectNotFoundException;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.storage.*;
@@ -111,6 +112,11 @@ public class GcsStorageClient implements StorageClient {
                 .build();
         try {
             storage.copy(copyRequest).getResult();
+        } catch (com.google.cloud.storage.StorageException e) {
+            if (e.getCode() == 404) {
+                throw new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + from, e);
+            }
+            throw new StorageException("Falha ao mover objeto no GCS de " + from + " para " + to, e);
         } catch (Exception e) {
             throw new StorageException("Falha ao mover objeto no GCS de " + from + " para " + to, e);
         }
@@ -121,7 +127,7 @@ public class GcsStorageClient implements StorageClient {
     public FileMetadata getFileMetadata(String objectName) {
         Blob blob = storage.get(bucketName, objectName);
         if (blob == null) {
-            throw new StorageException("Objeto não encontrado no GCS: " + objectName, null);
+            throw new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + objectName);
         }
         return new FileMetadata(blob.getMd5(), blob.getSize());
     }

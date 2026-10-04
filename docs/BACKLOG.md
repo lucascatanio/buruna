@@ -4,24 +4,14 @@ Itens fora do escopo das issues já executadas. Nada aqui deve ser feito sem iss
 
 ## Bugs
 
-### UI para deletar conta
+### 2FA em endpoint autenticado conta a falha duas vezes
 
-`DELETE /auth/account` existe e tem teste no backend, mas não há UI no frontend que o chame.
-Achado no [6.3], investigação read-only.
-
-### Título com mais de 255 caracteres em `POST /mangas` responde 409 "unicidade"
-
-O `MangaRequest` público não tem `@Size(max = 255)` (o `PrivateMangaRequest` tem), então o
-título longo chega ao banco, estoura o `varchar(255)` e o `DataIntegrityViolationException` é
-traduzido como violação de unicidade. Deveria ser 400 com a mensagem de tamanho. Sem
-vazamento de dado. Achado no teste ativo de 2026-09-24.
-
-### Finalizar o mesmo upload duas vezes responde 500
-
-Na segunda chamada de `finalize` com o mesmo `objectName` (ou no perdedor de dois finalizes
-concorrentes), o arquivo já saiu de `pending/` e o `getFileMetadata` lança `StorageException`,
-que cai no handler genérico. Deveria ser 404 ou 409. Não há duplicação de volume nem
-vazamento; é só o status. Achado no teste ativo de 2026-09-24.
+`TotpService.verify` lança `BadCredentialsException` (401). Numa requisição autenticada, o
+interceptor do axios trata 401 como sessão expirada: faz refresh e reenvia, e o código
+errado é verificado de novo. Em `/auth/2fa/verify` e `/auth/2fa/disable` cada erro conta
+duas falhas no bloqueio (5 → bloqueia em 3 tentativas). O delete de conta já responde 403
+(`AccountOwnershipNotConfirmedException`); os dois endpoints deveriam fazer o mesmo. Achado
+na leitura do código (interceptor em `frontend/src/lib/axios.ts`), não reproduzido.
 
 ## Dívida técnica
 
@@ -35,24 +25,15 @@ A lifecycle rule aplicada em 2026-09-24 (`gcs-lifecycle.json`, ADR-40) só cobre
 os uploads que nunca chegaram ao finalize. Órfãos em `volumes/` precisam de outra rede, por
 exemplo um job que compare o bucket com a tabela `volumes`.
 
-### Adicionar `MangaSubmissionStatus.APPROVED`
+### `application/` importando DTO da `web/` em identity, engagement e reading
 
-O fluxo de submissão é assimétrico. `REJECTED` é estado persistido (`Manga.reject`), mas a
-aprovação não tem estado próprio: `Manga.approve` marca `isPublic=true` e zera
-`submissionStatus`, saindo do fluxo sem deixar rastro no enum. Confunde quem lê o domínio
-(ver `docs/glossario-dominio.md`). Achado na Fase 4, investigação read-only.
+O ADR-31 manda a dependência apontar só para dentro (`web → application`), mas 6 classes da
+`application/` desses contextos importam Request/Response da própria `web/` (3 em
+`identity`, 2 em `engagement`, 1 em `reading`). `manga` e `admin` já foram alinhados
+(issue #34).
 
-Escopo: enum `{PENDING, APPROVED, REJECTED}`, migration, ajuste em `ReviewSubmissionUseCase` e
-`Manga.approve`, teste de regressão.
-
-### Rename `controller/` para `web/` e `service/` para `application/`
-
-`manga/controller/` (MangaController, PrivateMangaController, VolumeController) convive com
-`manga/web/` (só TagController). `admin/controller/` e `admin/service/` nunca foram renomeados.
-Investigado no [6.3]: sem duplicação de rota, tudo vivo e chamado pelo frontend e pelos testes.
-É inconsistência de nomenclatura de migração incompleta, não código morto.
-
-Escopo: rename puro, sem mudança de comportamento.
+Escopo: mover para a `application/` os DTOs que o use case recebe ou devolve e incluir os
+três contextos em `WEB_INDEPENDENT_CONTEXTS` no `ArchitectureTest`.
 
 ### Signed URL não é revogada imediatamente
 
@@ -85,28 +66,11 @@ remova cada override que ele já cobrir. Pendente: OpenTelemetry 1.49 → 1.62 (
 extensão não usada), deixado de fora porque só o cliente do GCS depende dele e os testes o
 mockam. Rodar `trivy fs backend/` depois de cada atualização.
 
-### `@MockBean` depreciado
-
-Os testes de integração usam `@MockBean`, depreciado desde o Spring Boot 3.4 e marcado para
-remoção. Troca mecânica por `@MockitoBean`.
-
 ### Origins locais no CORS do bucket de produção
 
 O `gcs-cors.json` (espelho do bucket de produção) aceita `http://localhost` e
 `http://192.168.100.192`, que só servem para testar contra o bucket de produção a partir da
 máquina ou rede de desenvolvimento. Remover se não forem mais usados.
-
-### Último `@Scheduled`: limpeza do `RateLimitFilter`
-
-A limpeza das entradas vencidas do rate limit roda por `@Scheduled(fixedDelay = 1h)`. Não dá
-para levar para o Cloud Scheduler: o contador vive na memória de cada instância, e uma chamada
-HTTP limparia só uma delas. Trocar por limpeza feita pelo próprio filtro (ex.: a cada N
-requisições) e remover o `@EnableScheduling`, para ninguém voltar a usar `@Scheduled` achando
-que funciona no Cloud Run com `cpu-throttling` (ADR-03).
-
-### CLAUDE.md cita "ADR-01 a ADR-41"
-
-Já existe o ADR-42. O CLAUDE.md evolui por PR próprio.
 
 ## Segurança (hardening)
 
@@ -119,12 +83,6 @@ Os campos são gravados e devolvidos sem sanitização. Não é explorável no f
 React escapa e nenhuma página usa `dangerouslySetInnerHTML`), mas qualquer consumidor que
 renderize HTML ficaria exposto. A defesa adequada é um `Content-Security-Policy` no nginx do
 frontend, não escapar no backend.
-
-### `?sort=` aceita qualquer campo da entidade
-
-`GET /mangas?sort=<campo>` ordena por campos internos não expostos no DTO (ex.:
-`rejectionReason`), sem lista de campos permitidos. Dá para inferir a ordem relativa de dados
-de moderação, sem ler os valores.
 
 ### Possível corrida na cota de storage
 
@@ -155,6 +113,28 @@ exige hCaptcha a cada tentativa.
 
 ## Concluído
 
+- [x] UI para deletar conta (issue #49): seção "Excluir conta" na página de Segurança, com aviso do
+  que é apagado e do que fica, senha e código 2FA quando ativo; o admin mostra contas
+  `DELETED` como "Removido", sem edição. Backend no #48 (issue #46).
+- [x] Último `@Scheduled` removido (issue #44): a limpeza do `RateLimitFilter` roda no próprio
+  filtro, no máximo uma vez por janela, e o `@EnableScheduling` saiu (ADR-03).
+- [x] `MangaSubmissionStatus.APPROVED` (issue #40): `Manga.approve` grava `APPROVED` em vez de
+  zerar o status (V24 + backfill na V25), e `promoteToPublic` encerra uma submissão aberta,
+  que antes deixava o mangá público na fila de revisão do admin.
+- [x] CLAUDE.md não cita mais o intervalo de ADRs ("ADR-01 a ADR-41"), que envelhecia a
+  cada ADR novo; aponta só para a pasta `docs/adr/` (issue #38).
+- [x] `@MockBean` (depreciado desde o Spring Boot 3.4) trocado por `@MockitoBean` nos testes
+  de integração (issue #36).
+- [x] Migração de pacotes de `manga` e `admin` concluída (issue #34): `controller/` → `web/`,
+  `service/` → `application/`, `manga/exception/` → `manga/domain/`, e os `dto/` separados
+  entre `application/` (o que o use case recebe ou devolve) e `web/` (só do controller).
+  `admin` entrou no `MIGRATED_CONTEXTS`, e o `ArchitectureTest` ganhou a regra
+  `domainAndApplication_shouldNotDependOnWebLayer`.
+- [x] Status HTTP do catálogo e do upload (issues #29, #30 e #31): título acima de 255
+  caracteres e `originCountry` acima de 100 respondem 400 em vez de 409, e o sufixo do slug
+  (`-2`, `-3`…) não estoura mais a coluna; `finalize` de upload já movido ou inexistente
+  responde 404 em vez de 500; `GET /mangas?sort=` só aceita `title`, `createdAt`,
+  `updatedAt`, `avgRating`, `viewCount` e `year`, e outro campo responde 400.
 - [x] Reset de senha em tempo constante via Pub/Sub push com OIDC e job de inatividade
   disparado pelo Cloud Scheduler, em vez de `@Scheduled` (PRs #19 e #20, ADR-42).
 - [x] Adicionar volume a mangá público recém-criado não retorna mais 500: verificado em

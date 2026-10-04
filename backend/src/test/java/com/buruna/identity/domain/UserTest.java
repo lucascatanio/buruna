@@ -223,4 +223,33 @@ class UserTest {
         user.registerTotpFailure(now);
         assertThatCode(() -> user.assertTotpNotLocked(now)).doesNotThrowAnyException();
     }
+
+    @Test
+    void shouldRemovePersonalDataAndMarkDeleted_whenAnonymized() {
+        User user = newPendingUser();
+        user.approve();
+        user.assignAvatar("avatars/a.png");
+        user.startTotpSetup("SECRET");
+        user.enableTotp();
+
+        user.anonymize();
+
+        assertThat(user.getStatus()).isEqualTo(UserStatus.DELETED);
+        assertThat(user.getEmail()).startsWith("removido-").endsWith("@buruna.invalid");
+        assertThat(user.getUsername()).startsWith("removido-");
+        assertThat(user.getPasswordHash()).isEqualTo("!");
+        assertThat(user.getAvatarUrl()).isNull();
+        assertThat(user.isTotpEnabled()).isFalse();
+        assertThat(user.getTotpSecret()).isNull();
+        assertThat(user.canAuthenticate()).isFalse();
+    }
+
+    @Test
+    void shouldRejectStatusChange_whenAccountIsDeleted() {
+        User user = newPendingUser();
+        user.anonymize();
+
+        assertThatThrownBy(() -> user.changeStatus(UserStatus.ACTIVE))
+                .isInstanceOf(UserDeletedException.class);
+    }
 }

@@ -11,6 +11,9 @@ import java.util.Objects;
  */
 public final class Slug {
 
+    /** Tamanho da coluna {@code slug}. */
+    static final int MAX_LENGTH = 255;
+
     private final String value;
 
     private Slug(String value) {
@@ -36,9 +39,17 @@ public final class Slug {
         return new Slug(base);
     }
 
-    /** Retorna uma nova variação com sufixo numérico (ex.: {@code naruto} → {@code naruto-2}). */
+    /**
+     * Retorna uma nova variação com sufixo numérico (ex.: {@code naruto} → {@code naruto-2}).
+     * Se a base já ocupa a coluna inteira, o final dela é cortado para o sufixo caber.
+     */
     public Slug withSuffix(int suffix) {
-        return new Slug(value + "-" + suffix);
+        String tail = "-" + suffix;
+        String head = value;
+        if (head.length() + tail.length() > MAX_LENGTH) {
+            head = head.substring(0, MAX_LENGTH - tail.length()).replaceAll("-+$", "");
+        }
+        return new Slug(head + tail);
     }
 
     public String value() {

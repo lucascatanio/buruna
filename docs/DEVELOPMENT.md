@@ -99,7 +99,7 @@ npm install && npm run dev
 ## Rodar os testes
 
 - Backend: `./mvnw clean test` (dentro de `backend/`; sobe Testcontainers/Postgres —
-  Docker precisa estar rodando). Estado atual: 352 testes verdes.
+  Docker precisa estar rodando).
 - Frontend: `npm run build` (typecheck + build via `tsc -b && vite build`).
 
 Convenções de teste (pirâmide, AAA, nomenclatura): [TESTING.md](TESTING.md).

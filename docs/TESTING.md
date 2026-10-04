@@ -14,7 +14,7 @@
 | **Arquitetura** | ArchUnit (`ArchitectureTest`) | Regra de dependência entre contextos e camadas — ver [ARCHITECTURE.md §4](ARCHITECTURE.md#4-archunit-como-guarda-de-arquitetura) |
 
 Rodar tudo: `./mvnw clean test` (dentro de `backend/`) — sobe Testcontainers, então
-Docker precisa estar rodando. Estado atual: 289 testes verdes.
+Docker precisa estar rodando.
 
 ## Convenções
 

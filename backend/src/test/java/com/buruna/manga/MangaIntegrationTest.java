@@ -11,6 +11,7 @@ import com.buruna.manga.persistence.TagCategoryRepository;
 import com.buruna.manga.persistence.TagRepository;
 import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.manga.persistence.VolumeRepository;
+import com.buruna.shared.exception.StorageObjectNotFoundException;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.identity.domain.Email;
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -50,6 +51,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -91,8 +93,9 @@ class MangaIntegrationTest {
     @Autowired VolumeRepository volumeRepository;
     @Autowired TagRepository tagRepository;
     @Autowired TagCategoryRepository tagCategoryRepository;
-    @MockBean StorageClient storageClient;
-    @MockBean EmailService emailService;
+    @Autowired org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    @MockitoBean StorageClient storageClient;
+    @MockitoBean EmailService emailService;
 
     User admin;
     User collab;
@@ -443,6 +446,37 @@ class MangaIntegrationTest {
         }
 
         @Test
+        void postManga_titleOver255Chars_returns400() throws Exception {
+            mockMvc.perform(post("/mangas").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"title\":\"" + "a".repeat(256) + "\",\"format\":\"MANGA\",\"statusOrigin\":\"ONGOING\",\"statusSite\":\"INCOMPLETE\"}")
+                    .with(auth(collab)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("255")));
+        }
+
+        @Test
+        void postManga_originCountryOver100Chars_returns400() throws Exception {
+            mockMvc.perform(post("/mangas").contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"title\":\"ITest Long Country\",\"originCountry\":\"" + "a".repeat(101) + "\",\"format\":\"MANGA\",\"statusOrigin\":\"ONGOING\",\"statusSite\":\"INCOMPLETE\"}")
+                    .with(auth(collab)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("100")));
+        }
+
+        @Test
+        void getMangas_sortByAllowedField_returns200() throws Exception {
+            mockMvc.perform(get("/mangas").param("sort", "avgRating,desc").with(auth(reader)))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        void getMangas_sortByModerationField_returns400() throws Exception {
+            // campo da entidade fora do DTO: ordenar por ele vazaria a ordem dos dados de moderação
+            mockMvc.perform(get("/mangas").param("sort", "reviewedAt").with(auth(reader)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
         void postManga_asCollaborator_returns201WithSlug() throws Exception {
             mockMvc.perform(post("/mangas").contentType(MediaType.APPLICATION_JSON)
                     .content("{\"title\":\"ITest Public One\",\"format\":\"MANGA\",\"statusOrigin\":\"ONGOING\",\"statusSite\":\"INCOMPLETE\"}")
@@ -672,6 +706,31 @@ class MangaIntegrationTest {
 
             finalizeVolume("/mangas", id, obj2, 2, collab)
                     .andExpect(status().isConflict());
+        }
+
+        @Test
+        void finalize_sameObjectNameTwice_returns404() throws Exception {
+            String id = createPublicManga("ITest Vol Finalize Twice", collab);
+            String obj = uploadVolume("/mangas", id, 1, collab);
+            // o primeiro finalize moveu o objeto para fora de pending/
+            when(storageClient.getFileMetadata(eq(obj)))
+                    .thenThrow(new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + obj));
+
+            finalizeVolume("/mangas", id, obj, 1, collab)
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void finalize_objectGoneBeforeMove_returns404AndSavesNoVolume() throws Exception {
+            // perdedor de dois finalizes concorrentes: leu o metadado, mas o vencedor moveu antes
+            String id = createPublicManga("ITest Vol Finalize Race", collab);
+            String obj = requestUploadUrl("/mangas", id, 1, collab);
+            doThrow(new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + obj))
+                    .when(storageClient).move(eq(obj), any());
+
+            finalizeVolume("/mangas", id, obj, 1, collab)
+                    .andExpect(status().isNotFound());
+            org.assertj.core.api.Assertions.assertThat(volumeRepository.findByMangaId(UUID.fromString(id))).isEmpty();
         }
 
         @Test
@@ -939,6 +998,17 @@ class MangaIntegrationTest {
         }
 
         @Test
+        void finalizeVolume_sameObjectNameTwice_returns404() throws Exception {
+            String id = createPrivateManga("ITest Private Finalize Twice", reader);
+            String obj = uploadVolume("/my/mangas", id, 1, reader);
+            when(storageClient.getFileMetadata(eq(obj)))
+                    .thenThrow(new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + obj));
+
+            finalizeVolume("/my/mangas", id, obj, 1, reader)
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
         void finalizeVolume_duplicateVolumeNumber_doesNotMoveObjectOutOfPending() throws Exception {
             // se o agregado rejeitar o volume, o objeto tem que ficar em pending/ (limpo pela
             // lifecycle rule) — movido para volumes/ ele viraria órfão permanente
@@ -1095,6 +1165,35 @@ class MangaIntegrationTest {
         }
 
         @Test
+        void approve_persistsApprovedStatus() throws Exception {
+            // round-trip real: a coluna é o enum nativo manga_submission_status (V24)
+            String id = createPrivateManga("ITest Submit Approved Status", reader);
+            mockMvc.perform(post("/my/mangas/{id}/submit", id).with(auth(reader)))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/admin/submissions/{id}/approve", id).with(auth(admin)))
+                    .andExpect(status().isNoContent());
+
+            Manga approved = mangaRepository.findById(UUID.fromString(id)).orElseThrow();
+            org.assertj.core.api.Assertions.assertThat(approved.getSubmissionStatus())
+                    .isEqualTo(com.buruna.manga.domain.MangaSubmissionStatus.APPROVED);
+        }
+
+        @Test
+        void promote_withPendingSubmission_removesItFromReviewQueue() throws Exception {
+            String id = createPrivateManga("ITest Submit Then Promote", collab);
+            mockMvc.perform(post("/my/mangas/{id}/submit", id).with(auth(collab)))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(post("/my/mangas/{id}/promote", id).with(auth(collab)))
+                    .andExpect(status().isOk());
+
+            mockMvc.perform(get("/admin/submissions").with(auth(admin)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[?(@.id == '" + id + "')]").isEmpty());
+        }
+
+        @Test
         void approve_asReader_returns403() throws Exception {
             String id = createPrivateManga("ITest Submit Approve Forbidden", reader);
             mockMvc.perform(post("/my/mangas/{id}/submit", id).with(auth(reader)))
@@ -1125,6 +1224,40 @@ class MangaIntegrationTest {
             String id = createPrivateManga("ITest Submit NotPending", reader);
             mockMvc.perform(post("/admin/submissions/{id}/approve", id).with(auth(admin)))
                     .andExpect(status().isBadRequest());
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  7. Deleção de conta (DELETE /auth/account) — efeito no conteúdo do dono
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    class AccountDeletion {
+
+        @Test
+        void shouldKeepPublicContentAndDeletePrivateCollection_whenOwnerDeletesAccount() throws Exception {
+            User owner = buildUser("owner-del@manga.test", "mangaOwnerDel", Role.COLLABORATOR);
+            owner.changePassword(passwordEncoder.encode("Password@123"));
+            owner = userRepository.save(owner);
+
+            String publicId = createPublicManga("ITest Del Public", owner);
+            uploadVolume("/mangas", publicId, 1, owner);
+            String publicFile = volumeRepository.findByMangaId(UUID.fromString(publicId)).get(0).getFileUrl();
+            String privateId = createPrivateManga("ITest Del Private", owner);
+            uploadVolume("/my/mangas", privateId, 1, owner);
+            String privateFile = volumeRepository.findByMangaId(UUID.fromString(privateId)).get(0).getFileUrl();
+
+            mockMvc.perform(delete("/auth/account").with(auth(owner))
+                            .header("X-Forwarded-For", "10.20.30.40")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"password\":\"Password@123\"}"))
+                    .andExpect(status().isNoContent());
+
+            org.assertj.core.api.Assertions.assertThat(mangaRepository.findById(UUID.fromString(privateId))).isEmpty();
+            org.assertj.core.api.Assertions.assertThat(mangaRepository.findById(UUID.fromString(publicId))).isPresent();
+            org.assertj.core.api.Assertions.assertThat(volumeRepository.findByMangaId(UUID.fromString(publicId))).hasSize(1);
+            verify(storageClient).delete(privateFile);
+            verify(storageClient, never()).delete(publicFile);
         }
     }
 }

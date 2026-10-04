@@ -3,7 +3,7 @@ package com.buruna.manga.application;
 import com.buruna.manga.domain.Manga;
 import com.buruna.manga.domain.Volume;
 import com.buruna.manga.domain.VolumeNotFoundException;
-import com.buruna.manga.exception.VolumeAccessDeniedException;
+import com.buruna.manga.domain.VolumeAccessDeniedException;
 import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.manga.persistence.VolumeRepository;
 import org.springframework.stereotype.Service;

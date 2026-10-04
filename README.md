@@ -60,7 +60,7 @@ Variáveis de ambiente obrigatórias e notas de setup: [docs/DEVELOPMENT.md](doc
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)               | Infraestrutura GCP, Cloud Run, GCE, GCS e Secret Manager                        |
 | [docs/TESTING.md](docs/TESTING.md)                     | Pirâmide de testes, convenções e como rodar                                     |
 | [SECURITY.md](SECURITY.md)                             | JWT/refresh, RBAC, rate limit, 2FA e reporte de vulnerabilidades                |
-| [docs/adr/](docs/adr/)                                 | Decisões de arquitetura (ADR-01 a ADR-41)                                       |
+| [docs/adr/](docs/adr/)                                 | Decisões de arquitetura                                                         |
 | [docs/glossario-dominio.md](docs/glossario-dominio.md) | Vocabulário de domínio                                                          |
 | [docs/brand/BRAND.md](docs/brand/BRAND.md)             | Marca: logo, cores e regras de uso                                              |
 | [docs/BACKLOG.md](docs/BACKLOG.md)                     | Achados fora de escopo, aguardando issue própria                                |

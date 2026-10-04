@@ -8,15 +8,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.util.Map;
+import java.time.Clock;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -25,20 +25,28 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final String LOGIN_SUFFIX = "/auth/login";
     private static final String FEEDBACK_SUFFIX = "/feedback";
     private static final String FORGOT_PASSWORD_SUFFIX = "/auth/password/forgot";
+    private static final String DELETE_ACCOUNT_SUFFIX = "/auth/account";
     private static final long WINDOW_MS = 3_600_000L;
 
     private final ConcurrentHashMap<String, RateEntry> attempts = new ConcurrentHashMap<>();
-    private final Map<String, Integer> limits;
+    private final List<Limit> limits;
     private final ClientIpResolver clientIpResolver;
+    private final Clock clock;
+    // 0 faz a primeira requisição limitada varrer o mapa (vazio) e marcar o relógio
+    private final AtomicLong lastEviction = new AtomicLong(0);
 
-    public RateLimitFilter(AppProperties appProperties, ClientIpResolver clientIpResolver) {
-        this.limits = Map.of(
-                REGISTER_SUFFIX, appProperties.rateLimit().registerPerHour(),
-                LOGIN_SUFFIX, appProperties.rateLimit().loginPerHour(),
-                FEEDBACK_SUFFIX, appProperties.rateLimit().feedbackPerHour(),
-                FORGOT_PASSWORD_SUFFIX, appProperties.rateLimit().forgotPasswordPerHour()
+    public RateLimitFilter(AppProperties appProperties, ClientIpResolver clientIpResolver, Clock clock) {
+        AppProperties.RateLimitProperties rateLimit = appProperties.rateLimit();
+        this.limits = List.of(
+                new Limit("POST", REGISTER_SUFFIX, rateLimit.registerPerHour()),
+                new Limit("POST", LOGIN_SUFFIX, rateLimit.loginPerHour()),
+                new Limit("POST", FEEDBACK_SUFFIX, rateLimit.feedbackPerHour()),
+                new Limit("POST", FORGOT_PASSWORD_SUFFIX, rateLimit.forgotPasswordPerHour()),
+                // confere a senha: sem limite, um access token vazado vira oráculo de senha
+                new Limit("DELETE", DELETE_ACCOUNT_SUFFIX, rateLimit.deleteAccountPerHour())
         );
         this.clientIpResolver = clientIpResolver;
+        this.clock = clock;
     }
 
     @Override
@@ -46,30 +54,23 @@ public class RateLimitFilter extends OncePerRequestFilter {
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        if (!request.getMethod().equalsIgnoreCase("POST")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
+        String method = request.getMethod();
         String uri = request.getRequestURI();
-        String matchedSuffix = null;
-        Integer maxAttempts = null;
-        for (Map.Entry<String, Integer> limitEntry : limits.entrySet()) {
-            if (uri.endsWith(limitEntry.getKey())) {
-                matchedSuffix = limitEntry.getKey();
-                maxAttempts = limitEntry.getValue();
-                break;
-            }
-        }
+        Limit matched = limits.stream()
+                .filter(l -> l.method().equalsIgnoreCase(method) && uri.endsWith(l.suffix()))
+                .findFirst()
+                .orElse(null);
 
-        if (maxAttempts == null) {
+        if (matched == null) {
             filterChain.doFilter(request, response);
             return;
         }
+        int maxAttempts = matched.perHour();
 
         String ip = clientIpResolver.resolve(request);
-        String key = matchedSuffix + ":" + ip;
-        long now = Instant.now().toEpochMilli();
+        String key = matched.suffix() + ":" + ip;
+        long now = clock.instant().toEpochMilli();
+        evictExpiredEntriesIfDue(now);
 
         RateEntry entry = attempts.compute(key, (k, existing) -> {
             if (existing == null || now - existing.windowStart() > WINDOW_MS) {
@@ -91,12 +92,27 @@ public class RateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    @Scheduled(fixedDelay = 3_600_000L)
-    public void evictExpiredEntries() {
-        long now = Instant.now().toEpochMilli();
+    /**
+     * Limpa as entradas vencidas dentro de uma requisição, no máximo uma vez por janela. Não
+     * usa {@code @Scheduled}: no Cloud Run com cpu-throttling a CPU fica cortada fora de
+     * requisição (ADR-03), e o Cloud Scheduler não serve porque o mapa vive na memória de
+     * cada instância. O compareAndSet garante que só uma thread varre.
+     */
+    private void evictExpiredEntriesIfDue(long now) {
+        long last = lastEviction.get();
+        if (now - last < WINDOW_MS || !lastEviction.compareAndSet(last, now)) {
+            return;
+        }
         attempts.entrySet().removeIf(e -> now - e.getValue().windowStart() > WINDOW_MS);
     }
 
+    int trackedKeys() {
+        return attempts.size();
+    }
+
     private record RateEntry(long windowStart, AtomicInteger count) {
+    }
+
+    private record Limit(String method, String suffix, int perHour) {
     }
 }
