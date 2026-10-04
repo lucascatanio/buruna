@@ -17,6 +17,11 @@ Pré-requisitos, comandos de setup local e variáveis de ambiente:
   Mensagem no padrão `tipo(escopo): descrição` (`feat`, `fix`, `chore`, `docs`,
   `refactor` — ver `git log` para exemplos do projeto).
 - Sem push direto em `dev`/`main` — sempre via PR.
+- PR de feature para `dev` entra com **squash**: vira um commit só na `dev`, com o título do
+  PR como mensagem. Por isso o título segue o mesmo padrão `tipo(escopo): descrição`.
+  Para trazer novidades da `dev` para a sua branch, use rebase ("Update branch" →
+  "Update with rebase"), não merge. PRs entre `dev` e `main` (release e sincronização)
+  usam merge commit, nunca squash — ver [DEPLOYMENT.md](docs/DEPLOYMENT.md) §6.
 - PRs pequenos e focados numa mudança. Se sua mudança cruza bounded context (ex.:
   `manga` + `identity`), considere se não deveria ser dois PRs.
 - CI (`.github/workflows/ci.yml`) roda `./mvnw test` em todo PR para `dev`/`main` —
