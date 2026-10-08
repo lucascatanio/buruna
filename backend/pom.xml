@@ -24,13 +24,13 @@
         <!-- Boot: 10.1.55. Última da linha 10.1 -->
         <tomcat.version>10.1.60</tomcat.version>
         <!-- Boot: 42.7.11 -->
-        <postgresql.version>42.7.12</postgresql.version>
+        <postgresql.version>42.7.14</postgresql.version>
         <!-- Boot: 2.21.4. 2.21.7 corrige DoS em jackson-core e jackson-databind -->
         <jackson-bom.version>2.21.7</jackson-bom.version>
         <!-- Boot: 5.5.2 -->
-        <httpclient5.version>5.6.3</httpclient5.version>
+        <httpclient5.version>5.6.4</httpclient5.version>
         <!-- Boot: 5.3.6 -->
-        <httpcore5.version>5.4.3</httpcore5.version>
+        <httpcore5.version>5.4.4</httpcore5.version>
         <!-- Boot: 3.17.0 -->
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <!-- Boot: 2.24.3 -->
