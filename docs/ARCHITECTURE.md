@@ -220,6 +220,17 @@ Para deletar a coleção privada de um usuário desativado, o `identity` chama o
 público `manga.application.maintenance.DeletePrivateCollectionForUserUseCase` — exemplo
 concreto de cross-context via `application`, não via acesso direto a `persistence`.
 
+### 6.6.1 Arquivos órfãos de volumes
+
+O delete de volume apaga a linha na transação e o arquivo do GCS depois, best-effort
+([ADR-24](adr/ADR-24-upload-direto-gcs-signed-url.md)): se o GCS falha, o arquivo fica em `volumes/` sem linha em `volumes`. O use
+case público `manga.application.maintenance.DeleteOrphanVolumeFilesUseCase`, disparado por
+`admin.web.JobController` (`POST /admin/jobs/storage-orphans`, mesmo `X-Job-Secret` da
+inatividade), lista `volumes/` via `StorageClient.list`, confere os nomes contra
+`volumes.file_url` e apaga o que não tem linha E foi criado há mais de 7 dias (carência,
+`Clock` injetado). Falha em um objeto é logada em WARN e o job segue. Roda semanalmente no
+Cloud Scheduler (ver [DEPLOYMENT.md](DEPLOYMENT.md)).
+
 ### 6.7 Deleção de conta
 
 `DELETE /auth/account` (`identity.web.AuthController`) recebe a senha e, com 2FA ativo, o

@@ -264,5 +264,11 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   `@Scheduled` interno de `RunInactivityUseCase` — ver atualização de 2026-09-24 em
   [ADR-03](adr/ADR-03-async-e-scheduled-internos.md).
 
+- Job do Cloud Scheduler `buruna-storage-orphans` (a criar, semanal, ex.: cron `0 3 * * 0`):
+  `POST /api/admin/jobs/storage-orphans`, header `X-Job-Secret: <APP_JOBS_SECRET>`. Apaga de
+  `volumes/` no GCS os arquivos sem linha em `volumes` e com mais de 7 dias
+  (`DeleteOrphanVolumeFilesUseCase`). Enquanto o job não existir no Scheduler, os órfãos
+  continuam se acumulando.
+
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).

@@ -16,7 +16,10 @@ import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HexFormat;
+import java.util.List;
+import java.util.stream.Stream;
 import java.util.Map;
 
 public class LocalStorageClient implements StorageClient {
@@ -127,6 +130,27 @@ public class LocalStorageClient implements StorageClient {
             );
         } catch (IOException | NoSuchAlgorithmException e) {
             throw new StorageException("Falha ao ler metadados do arquivo local: " + objectName, e);
+        }
+    }
+
+    @Override
+    public List<StoredObject> list(String prefix) {
+        try (Stream<Path> files = Files.walk(storagePath)) {
+            return files.filter(Files::isRegularFile)
+                    .map(file -> storagePath.relativize(file).toString().replace('\\', '/'))
+                    .filter(name -> name.startsWith(prefix))
+                    .map(name -> new StoredObject(name, lastModified(name)))
+                    .toList();
+        } catch (IOException e) {
+            throw new StorageException("Falha ao listar arquivos locais com prefixo: " + prefix, e);
+        }
+    }
+
+    private Instant lastModified(String name) {
+        try {
+            return Files.getLastModifiedTime(resolve(name)).toInstant();
+        } catch (IOException e) {
+            throw new StorageException("Falha ao ler data do arquivo local: " + name, e);
         }
     }
 }
