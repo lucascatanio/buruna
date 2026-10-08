@@ -56,18 +56,17 @@ React escapa e nenhuma página usa `dangerouslySetInnerHTML`), mas qualquer cons
 renderize HTML ficaria exposto. A defesa adequada é um `Content-Security-Policy` no nginx do
 frontend, não escapar no backend.
 
+### Cadastro revela e-mail já cadastrado
+
+`POST /auth/register` responde 409 "Already exists an user with this email". É enumeração de
+conta por outro caminho que o ADR-42 não cobre, mais cara que o antigo timing do forgot porque
+exige hCaptcha a cada tentativa.
 ### Possível corrida na cota de storage
 
 O `QuotaService` soma o uso a cada finalize, sem reserva atômica nem lock. Dois finalizes
 concorrentes, cada um dentro da cota, poderiam ultrapassá-la juntos. Não reproduzido: a cota
 mínima ajustável pela API (0,1 GB) é grande demais para o teste. Escrever primeiro um teste de
 integração que reproduza a corrida; corrigir só se ele falhar.
-
-### Cadastro revela e-mail já cadastrado
-
-`POST /auth/register` responde 409 "Already exists an user with this email". É enumeração de
-conta por outro caminho que o ADR-42 não cobre, mais cara que o antigo timing do forgot porque
-exige hCaptcha a cada tentativa.
 
 ## Features
 
@@ -88,6 +87,13 @@ exige hCaptcha a cada tentativa.
 - [x] Avisos de inatividade em lote: o job junta os avisados e manda tudo numa chamada da API
   de lote do Resend (`EmailSender.sendBatch`, conteúdo próprio por destinatário, fatiado em
   blocos de 100), antes das desativações, em vez de uma chamada por usuário.
+- [x] Corrida na cota de storage: dois finalizes concorrentes do mesmo dono, cada um dentro
+  da cota, passavam juntos e a estouravam (reproduzido em teste de integração). O
+  `QuotaService.assertCanFit` trava os mangás privados do dono (`SELECT ... FOR UPDATE`) antes
+  de somar o uso, e a checagem fica serializada por usuário.
+- [x] Cadastro não revela e-mail já cadastrado: `POST /auth/register` responde 201 como um
+  cadastro novo e manda ao dono do e-mail um aviso com links de login e de recuperação de
+  senha, rodando o BCrypt mesmo assim (atualização no ADR-42). Username repetido continua 409.
 - [x] DTOs de `identity`, `engagement` e `reading` saem da `web/` para a `application/`
   (PR #59): os 15 Request/Response que o use case recebe ou devolve moram no pacote do use
   case, e a regra `domainAndApplication_shouldNotDependOnWebLayer` do `ArchitectureTest` vale
