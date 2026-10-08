@@ -55,10 +55,14 @@ public class EmailService {
         emailSender.sendToEach(adminEmails, "[Burūna] Feedback from " + username, body);
     }
 
-    public void sendInactivityWarning(String userEmail, String username) {
-        emailSender.send(userEmail,
-                "[Burūna] Inactivity warning",
-                "Hello %s, your account will be deactivated in 15 days due to inactivity.".formatted(username));
+    /** Um lote só para todos os avisados, cada e-mail com o nome do próprio usuário. */
+    public void sendInactivityWarnings(List<EmailRecipient> recipients) {
+        emailSender.sendBatch(recipients.stream()
+                .map(r -> new OutgoingEmail(r.email(),
+                        "[Burūna] Inactivity warning",
+                        "Hello %s, your account will be deactivated in 15 days due to inactivity."
+                                .formatted(r.username())))
+                .toList());
     }
 
     public void sendPasswordResetEmail(String userEmail, String username, String resetLink) {

@@ -17,6 +17,7 @@ import com.buruna.manga.domain.Slug;
 import com.buruna.manga.domain.VolumeNumber;
 import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.manga.persistence.VolumeRepository;
+import com.buruna.shared.notification.EmailRecipient;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -49,6 +50,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -165,7 +167,7 @@ class InactivityJobIntegrationTest {
 
             assertThat(reload(user).getStatus()).isEqualTo(UserStatus.ACTIVE);
             verify(emailService, times(1))
-                    .sendInactivityWarning("warn76@inactivity.test", "warn76User");
+                    .sendInactivityWarnings(List.of(new EmailRecipient("warn76@inactivity.test", "warn76User")));
             verifyNoInteractions(storageClient);
         }
 
@@ -178,7 +180,7 @@ class InactivityJobIntegrationTest {
 
             assertThat(reload(user).getStatus()).isEqualTo(UserStatus.ACTIVE);
             verify(emailService, times(1))
-                    .sendInactivityWarning("warn90@inactivity.test", "warn90User");
+                    .sendInactivityWarnings(List.of(new EmailRecipient("warn90@inactivity.test", "warn90User")));
             verifyNoInteractions(storageClient);
         }
 
@@ -191,7 +193,7 @@ class InactivityJobIntegrationTest {
             runInactivityUseCase.run();
 
             assertThat(reload(user).getStatus()).isEqualTo(UserStatus.INACTIVE);
-            verify(emailService, never()).sendInactivityWarning(user.getEmail(), user.getUsername());
+            verify(emailService, never()).sendInactivityWarnings(anyList());
         }
 
         @Test
@@ -202,7 +204,7 @@ class InactivityJobIntegrationTest {
 
             // Sem coleção privada, a desativação não toca GCS.
             assertThat(reload(user).getStatus()).isEqualTo(UserStatus.INACTIVE);
-            verify(emailService, never()).sendInactivityWarning(user.getEmail(), user.getUsername());
+            verify(emailService, never()).sendInactivityWarnings(anyList());
             verifyNoInteractions(storageClient);
         }
 
@@ -231,7 +233,7 @@ class InactivityJobIntegrationTest {
             // GCS limpo com os object names retornados pelo use case de manga (capa + volume).
             verify(storageClient, times(1)).delete("wipe-cover");
             verify(storageClient, times(1)).delete("wipe-vol-1");
-            verify(emailService, never()).sendInactivityWarning(user.getEmail(), user.getUsername());
+            verify(emailService, never()).sendInactivityWarnings(anyList());
         }
     }
 
@@ -270,6 +272,22 @@ class InactivityJobIntegrationTest {
             assertThat(stillActive).as("nenhum usuário elegível pode ser pulado").isZero();
         }
 
+        @Test
+        void shouldSendAllWarningsInSingleBatch_whenSeveralUsersAreInactive() {
+            activeUser("lote1@inactivity.test", "lote1", 76);
+            activeUser("lote2@inactivity.test", "lote2", 80);
+            activeUser("lote3@inactivity.test", "lote3", 88);
+
+            runInactivityUseCase.run();
+
+            // uma chamada só, e não uma por usuário
+            verify(emailService, times(1)).sendInactivityWarnings(org.mockito.ArgumentMatchers.argThat(recipients ->
+                    recipients.size() == 3 && recipients.containsAll(List.of(
+                            new EmailRecipient("lote1@inactivity.test", "lote1"),
+                            new EmailRecipient("lote2@inactivity.test", "lote2"),
+                            new EmailRecipient("lote3@inactivity.test", "lote3")))));
+        }
+
         /**
          * Lote misto: alguns são avisados e outros desativados numa única execução, provando
          * que ambos os caminhos coexistem sem interferência.
@@ -282,10 +300,9 @@ class InactivityJobIntegrationTest {
             runInactivityUseCase.run();
 
             assertThat(reload(toWarn).getStatus()).isEqualTo(UserStatus.ACTIVE);
-            verify(emailService, times(1)).sendInactivityWarning("mixWarn@inactivity.test", "mixWarn");
+            verify(emailService, times(1))
+                    .sendInactivityWarnings(List.of(new EmailRecipient("mixWarn@inactivity.test", "mixWarn")));
             assertThat(reload(toDeactivate).getStatus()).isEqualTo(UserStatus.INACTIVE);
-            verify(emailService, never())
-                    .sendInactivityWarning("mixGone@inactivity.test", "mixGone");
         }
     }
 

@@ -26,6 +26,11 @@ public interface EmailSender {
 
     /** Um e-mail individual por destinatário — nenhum vê o endereço dos outros. */
     default void sendToEach(List<String> recipients, String subject, String body) {
-        recipients.forEach(to -> send(to, subject, body));
+        sendBatch(recipients.stream().map(to -> new OutgoingEmail(to, subject, body)).toList());
+    }
+
+    /** Best-effort, como {@link #send}: cada e-mail do lote com conteúdo próprio. */
+    default void sendBatch(List<OutgoingEmail> emails) {
+        emails.forEach(email -> send(email.to(), email.subject(), email.body()));
     }
 }

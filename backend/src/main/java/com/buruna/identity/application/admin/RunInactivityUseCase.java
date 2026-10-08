@@ -5,6 +5,7 @@ import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.persistence.UserRepository;
 import com.buruna.manga.application.maintenance.DeletePrivateCollectionForUserUseCase;
+import com.buruna.shared.notification.EmailRecipient;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -71,28 +73,30 @@ public class RunInactivityUseCase {
                 userRepository.findEligibleForInactivity(UserStatus.ACTIVE, warningCutoff);
         log.info("RunInactivityUseCase evaluating {} candidate(s)", candidates.size());
 
-        int warned = 0;
-        int deactivated = 0;
+        List<EmailRecipient> toWarn = new ArrayList<>();
+        List<User> toDeactivate = new ArrayList<>();
 
         for (User user : candidates) {
             OffsetDateTime lastAccess = user.getLastAccessAt();
             if (lastAccess == null) lastAccess = user.getCreatedAt();
 
             switch (policy.decide(lastAccess, now)) {
-                case DEACTIVATE -> {
-                    deactivate(user);
-                    deactivated++;
-                }
-                case WARN -> {
-                    emailService.sendInactivityWarning(user.getEmail(), user.getUsername());
-                    warned++;
-                }
+                case DEACTIVATE -> toDeactivate.add(user);
+                case WARN -> toWarn.add(new EmailRecipient(user.getEmail(), user.getUsername()));
                 // Não deve ocorrer: a query só traz quem passou do limiar de aviso. Defensivo.
                 case NONE -> { }
             }
         }
 
-        log.info("RunInactivityUseCase finished: {} warned, {} deactivated", warned, deactivated);
+        // Avisos num lote só, antes das desativações: uma desativação que falhe no meio não
+        // impede os avisos, e o job não faz uma chamada ao Resend por usuário.
+        if (!toWarn.isEmpty()) {
+            emailService.sendInactivityWarnings(toWarn);
+        }
+        toDeactivate.forEach(this::deactivate);
+
+        log.info("RunInactivityUseCase finished: {} warned, {} deactivated",
+                toWarn.size(), toDeactivate.size());
     }
 
     private void deactivate(User user) {
