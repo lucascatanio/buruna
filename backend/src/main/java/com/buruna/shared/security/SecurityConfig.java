@@ -30,10 +30,12 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
     private final RateLimitFilter rateLimitFilter;
+    private final ProxySecretFilter proxySecretFilter;
 
-    public SecurityConfig(JwtFilter jwtFilter, RateLimitFilter rateLimitFilter) {
+    public SecurityConfig(JwtFilter jwtFilter, RateLimitFilter rateLimitFilter, ProxySecretFilter proxySecretFilter) {
         this.jwtFilter = jwtFilter;
         this.rateLimitFilter = rateLimitFilter;
+        this.proxySecretFilter = proxySecretFilter;
     }
 
     @Bean
@@ -71,6 +73,7 @@ public class SecurityConfig {
                                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
                 )
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(proxySecretFilter, RateLimitFilter.class)
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
