@@ -2,12 +2,14 @@ package com.buruna.shared.notification;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -42,6 +44,21 @@ class EmailServiceTest {
         emailService.sendMangaSubmissionNotification(ADMINS, "colab", "Titulo");
 
         verify(emailSender).sendToEach(eq(ADMINS), anyString(), anyString());
+        verify(emailSender, never()).send(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void shouldSendOnePersonalizedBatch_whenInactivityWarnings() {
+        emailService.sendInactivityWarnings(List.of(
+                new EmailRecipient("ana@buruna.test", "ana"),
+                new EmailRecipient("bia@buruna.test", "bia")));
+
+        ArgumentCaptor<List<OutgoingEmail>> batch = ArgumentCaptor.captor();
+        verify(emailSender).sendBatch(batch.capture());
+        assertThat(batch.getValue()).extracting(OutgoingEmail::to)
+                .containsExactly("ana@buruna.test", "bia@buruna.test");
+        assertThat(batch.getValue().get(0).body()).contains("Hello ana,");
+        assertThat(batch.getValue().get(1).body()).contains("Hello bia,");
         verify(emailSender, never()).send(anyString(), anyString(), anyString());
     }
 }

@@ -30,13 +30,6 @@ Escopo: ingress interno no backend e saída do frontend pela VPC. Atenção: o C
 precisa passar a chamar o job por um caminho permitido, e o `APP_TRUSTED_PROXY_HOPS` precisa
 ser recalibrado porque o caminho do header muda.
 
-### Avisos de inatividade em lote
-
-Desde que o envio de e-mail passou a ser síncrono (PR #11), o job envia um aviso por usuário
-dentro da própria requisição. Com muitos inativos no mesmo dia, o job fica lento. A API de
-lote do Resend (já usada nas notificações de admin) aceita e-mails com conteúdo diferente
-por destinatário.
-
 ### Overrides de versão no `pom.xml`
 
 O `pom.xml` sobrescreve versões gerenciadas pelo Spring Boot 3.5.16 (Tomcat, pgjdbc, Jackson,
@@ -92,6 +85,9 @@ exige hCaptcha a cada tentativa.
 
 ## Concluído
 
+- [x] Avisos de inatividade em lote: o job junta os avisados e manda tudo numa chamada da API
+  de lote do Resend (`EmailSender.sendBatch`, conteúdo próprio por destinatário, fatiado em
+  blocos de 100), antes das desativações, em vez de uma chamada por usuário.
 - [x] UI para deletar conta (issue #49): seção "Excluir conta" na página de Segurança, com aviso do
   que é apagado e do que fica, senha e código 2FA quando ativo; o admin mostra contas
   `DELETED` como "Removido", sem edição. Backend no #48 (issue #46).

@@ -2,6 +2,7 @@ package com.buruna.shared.notification;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
@@ -19,6 +20,8 @@ public class ResendEmailSender implements EmailSender {
     private static final Logger log = LoggerFactory.getLogger(ResendEmailSender.class);
     private static final String RESEND_API_URL = "https://api.resend.com/emails";
     private static final String RESEND_BATCH_URL = "https://api.resend.com/emails/batch";
+    // limite de e-mails por chamada da API de lote do Resend
+    static final int MAX_BATCH_SIZE = 100;
     // os e-mails saem dentro da requisição (Cloud Run corta a CPU fora dela), então o
     // timeout de resposta limita quanto o usuário espera se o Resend travar
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
@@ -27,10 +30,11 @@ public class ResendEmailSender implements EmailSender {
     private final String apiKey;
     private final String from;
 
+    @Autowired
     public ResendEmailSender(
             @Value("${resend.api-key}") String apiKey,
             @Value("${app.mail.from}") String from) {
-        this.restTemplate = new RestTemplateBuilder()
+        this(new RestTemplateBuilder()
                 .requestFactory(() -> {
                     HttpComponentsClientHttpRequestFactory factory =
                             new HttpComponentsClientHttpRequestFactory();
@@ -39,7 +43,11 @@ public class ResendEmailSender implements EmailSender {
                     factory.setReadTimeout(TIMEOUT);
                     return factory;
                 })
-                .build();
+                .build(), apiKey, from);
+    }
+
+    ResendEmailSender(RestTemplate restTemplate, String apiKey, String from) {
+        this.restTemplate = restTemplate;
         this.apiKey = apiKey;
         this.from = from;
     }
@@ -59,24 +67,29 @@ public class ResendEmailSender implements EmailSender {
         }
     }
 
+    /** Fatia em chamadas de até {@value #MAX_BATCH_SIZE}; falha num bloco não impede os outros. */
     @Override
-    public void sendToEach(List<String> recipients, String subject, String body) {
-        if (recipients.isEmpty()) {
+    public void sendBatch(List<OutgoingEmail> emails) {
+        if (emails.isEmpty()) {
             return;
         }
         if (apiKey == null || apiKey.isBlank()) {
-            System.out.println("[EMAIL SKIP] RESEND_API_KEY not configured. Would send to: " + recipients + " | Subject: " + subject);
+            System.out.println("[EMAIL SKIP] RESEND_API_KEY not configured. Would send " + emails.size() + " email(s)");
             return;
         }
-        try {
-            List<Map<String, Object>> batch = recipients.stream()
-                    .map(to -> payload(to, subject, body))
-                    .toList();
-            restTemplate.exchange(RESEND_BATCH_URL, HttpMethod.POST,
-                    new HttpEntity<>(batch, headers()), Void.class);
-            log.info("Email sent successfully to {}", recipients);
-        } catch (Exception e) {
-            log.warn("Failed to send email to {}: {}", recipients, e.getMessage());
+        for (int start = 0; start < emails.size(); start += MAX_BATCH_SIZE) {
+            List<OutgoingEmail> chunk = emails.subList(start, Math.min(start + MAX_BATCH_SIZE, emails.size()));
+            List<String> recipients = chunk.stream().map(OutgoingEmail::to).toList();
+            try {
+                List<Map<String, Object>> batch = chunk.stream()
+                        .map(email -> payload(email.to(), email.subject(), email.body()))
+                        .toList();
+                restTemplate.exchange(RESEND_BATCH_URL, HttpMethod.POST,
+                        new HttpEntity<>(batch, headers()), Void.class);
+                log.info("Email sent successfully to {}", recipients);
+            } catch (Exception e) {
+                log.warn("Failed to send email to {}: {}", recipients, e.getMessage());
+            }
         }
     }
 
