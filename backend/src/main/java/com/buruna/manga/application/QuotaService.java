@@ -2,8 +2,10 @@ package com.buruna.manga.application;
 
 import com.buruna.manga.domain.InsufficientStorageQuotaException;
 import com.buruna.manga.domain.Quota;
+import com.buruna.manga.persistence.MangaRepository;
 import com.buruna.manga.persistence.VolumeRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -18,13 +20,21 @@ import java.util.UUID;
 public class QuotaService {
 
     private final VolumeRepository volumeRepository;
+    private final MangaRepository mangaRepository;
 
-    public QuotaService(VolumeRepository volumeRepository) {
+    public QuotaService(VolumeRepository volumeRepository, MangaRepository mangaRepository) {
         this.volumeRepository = volumeRepository;
+        this.mangaRepository = mangaRepository;
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Trava os mangás privados do dono antes de somar o uso: sem isso, dois finalizes
+     * concorrentes leem o mesmo uso, cada um cabe sozinho e os dois juntos estouram a cota.
+     * O lock vale até o fim da transação de quem chama, que precisa gravar o volume nela.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
     public void assertCanFit(UUID actorId, BigDecimal limitGb, long additionalBytes) {
+        mangaRepository.lockPrivateByOwnerId(actorId);
         Quota quota = quotaFor(actorId, limitGb);
         if (!quota.canFit(additionalBytes)) {
             throw new InsufficientStorageQuotaException(limitGb, quota.usedBytes(), additionalBytes);
