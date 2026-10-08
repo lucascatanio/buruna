@@ -89,6 +89,13 @@ exige hCaptcha a cada tentativa.
   da cota, passavam juntos e a estouravam (reproduzido em teste de integração). O
   `QuotaService.assertCanFit` trava os mangás privados do dono (`SELECT ... FOR UPDATE`) antes
   de somar o uso, e a checagem fica serializada por usuário.
+- [x] DTOs de `identity`, `engagement` e `reading` saem da `web/` para a `application/`
+  (PR #59): os 15 Request/Response que o use case recebe ou devolve moram no pacote do use
+  case, e a regra `domainAndApplication_shouldNotDependOnWebLayer` do `ArchitectureTest` vale
+  para todos os contextos (`MIGRATED_CONTEXTS`).
+- [x] 2FA de usuário autenticado responde 403 em código errado ou reutilizado (PR #55):
+  `/auth/2fa/verify` e `/auth/2fa/disable` respondiam 401, e o interceptor do axios fazia
+  refresh e reenviava o código, contando cada erro duas vezes no bloqueio.
 - [x] UI para deletar conta (issue #49): seção "Excluir conta" na página de Segurança, com aviso do
   que é apagado e do que fica, senha e código 2FA quando ativo; o admin mostra contas
   `DELETED` como "Removido", sem edição. Backend no #48 (issue #46).
