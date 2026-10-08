@@ -247,7 +247,9 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   qualquer requisição sem o header correto, o que impede chamar o `run.app` do backend
   direto para forjar o `X-Forwarded-For` e burlar o rate limit
   ([ADR-43](adr/ADR-43-segredo-compartilhado-nginx-backend.md)). Sem `APP_PROXY_SECRET`
-  o filtro fica desligado (dev local/testes) e o backend loga um WARN no startup.
+  o filtro fica desligado (dev local/testes) e o backend loga um WARN no startup. Sem
+  `BACKEND_PROXY_SECRET`, o nginx sobe normalmente e manda o header vazio, então a imagem
+  nova pode ir para produção antes de o segredo existir.
   Ficam isentos, por terem autenticação própria ou não passarem pelo nginx:
   `/internal/pubsub/**` (OIDC do Pub/Sub), `/admin/jobs/**` (`X-Job-Secret` do Cloud
   Scheduler) e `/health` (probe do Cloud Run; só devolve `{"status":"UP"}`).
