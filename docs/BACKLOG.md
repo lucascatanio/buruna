@@ -44,18 +44,6 @@ O `gcs-cors.json` (espelho do bucket de produção) aceita `http://localhost` e
 `http://192.168.100.192`, que só servem para testar contra o bucket de produção a partir da
 máquina ou rede de desenvolvimento. Remover se não forem mais usados.
 
-## Segurança (hardening)
-
-Achados de baixa severidade do teste ativo de 2026-09-24 e do ADR-42. Nenhum é explorável
-hoje; são defesa em profundidade.
-
-### XSS armazenado em `title` e `synopsis`
-
-Os campos são gravados e devolvidos sem sanitização. Não é explorável no frontend atual (o
-React escapa e nenhuma página usa `dangerouslySetInnerHTML`), mas qualquer consumidor que
-renderize HTML ficaria exposto. A defesa adequada é um `Content-Security-Policy` no nginx do
-frontend, não escapar no backend.
-
 ## Features
 
 - [ ] Trocar volumes por capítulos. Decidir entre criar tabela de capítulo vinculada ao volume,
@@ -72,6 +60,10 @@ frontend, não escapar no backend.
 
 ## Concluído
 
+- [x] XSS armazenado em `title` e `synopsis`: `Content-Security-Policy` no nginx do frontend
+  (sem script inline nem de origem não listada; libera só o site, o hCaptcha e o GCS). Ficou
+  em Report-Only na v1.6.1 e foi validado em produção sem violação antes de bloquear.
+  Também saiu o QR do 2FA gerado pelo `api.qrserver.com`, que recebia o segredo TOTP (PR #64).
 - [x] Avisos de inatividade em lote: o job junta os avisados e manda tudo numa chamada da API
   de lote do Resend (`EmailSender.sendBatch`, conteúdo próprio por destinatário, fatiado em
   blocos de 100), antes das desativações, em vez de uma chamada por usuário.
