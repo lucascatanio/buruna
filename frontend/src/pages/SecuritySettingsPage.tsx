@@ -1,5 +1,6 @@
 import {useState, useEffect} from "react";
 import {useNavigate} from "react-router-dom";
+import {QRCodeSVG} from "qrcode.react";
 import {toast} from "sonner";
 import {deleteAccount, disable2FA, get2FAStatus, setup2FA, verify2FA} from "@/api/identityApi";
 import {useAuthStore} from "@/store/authStore";
@@ -129,12 +130,8 @@ export function SecuritySettingsPage() {
                                     Escaneie o QR code abaixo com seu app autenticador (Google Authenticator, Authy, etc.):
                                 </p>
                                 <div className="flex justify-center p-4 bg-white rounded-lg">
-                                    <img
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(setupData.qrUri)}`}
-                                        alt="QR Code 2FA"
-                                        width={200}
-                                        height={200}
-                                    />
+                                    {/* gerado no navegador: a URI carrega o segredo TOTP e não pode sair daqui */}
+                                    <QRCodeSVG value={setupData.qrUri} size={200} title="QR Code 2FA"/>
                                 </div>
                                 <details className="text-xs text-muted-foreground">
                                     <summary className="cursor-pointer">Não consegue escanear? Use a chave manual</summary>
