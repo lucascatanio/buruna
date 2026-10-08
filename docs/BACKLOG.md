@@ -2,17 +2,6 @@
 
 Itens fora do escopo das issues já executadas. Nada aqui deve ser feito sem issue própria.
 
-## Bugs
-
-### 2FA em endpoint autenticado conta a falha duas vezes
-
-`TotpService.verify` lança `BadCredentialsException` (401). Numa requisição autenticada, o
-interceptor do axios trata 401 como sessão expirada: faz refresh e reenvia, e o código
-errado é verificado de novo. Em `/auth/2fa/verify` e `/auth/2fa/disable` cada erro conta
-duas falhas no bloqueio (5 → bloqueia em 3 tentativas). O delete de conta já responde 403
-(`AccountOwnershipNotConfirmedException`); os dois endpoints deveriam fazer o mesmo. Achado
-na leitura do código (interceptor em `frontend/src/lib/axios.ts`), não reproduzido.
-
 ## Dívida técnica
 
 ### Arquivos órfãos em `volumes/` quando a deleção no GCS falha

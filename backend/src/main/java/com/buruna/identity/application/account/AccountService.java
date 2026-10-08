@@ -7,9 +7,11 @@ import com.buruna.identity.application.authentication.TotpService;
 import com.buruna.identity.domain.AccountOwnershipNotConfirmedException;
 import com.buruna.identity.domain.Email;
 import com.buruna.identity.domain.InvalidTokenException;
+import com.buruna.identity.domain.InvalidTotpCodeException;
 import com.buruna.identity.domain.PasswordResetToken;
 import com.buruna.identity.domain.Quota;
 import com.buruna.identity.domain.Role;
+import com.buruna.identity.domain.TotpReplayException;
 import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserAlreadyExistsException;
 import com.buruna.identity.domain.UserNotFoundException;
@@ -163,9 +165,9 @@ public class AccountService {
         return new TotpSetupResponse(secret, qrUri);
     }
 
-    // noRollbackFor evita que o rollback padrão de BadCredentialsException
-    // desfaça o incremento do contador de falhas de TOTP no agregado.
-    @Transactional(noRollbackFor = BadCredentialsException.class)
+    // noRollbackFor evita que o rollback padrão desfaça o incremento do contador de
+    // falhas de TOTP no agregado.
+    @Transactional(noRollbackFor = InvalidTotpCodeException.class)
     public void verify2FA(UUID userId, String code) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
@@ -174,13 +176,13 @@ public class AccountService {
             throw new IllegalStateException("2FA setup not started. Call /auth/2fa/setup first.");
         }
 
-        totpService.verify(user, code);
+        verifyTotpOfAuthenticatedUser(user, code);
 
         user.enableTotp();
         userRepository.save(user);
     }
 
-    @Transactional(noRollbackFor = BadCredentialsException.class)
+    @Transactional(noRollbackFor = InvalidTotpCodeException.class)
     public void disable2FA(UUID userId, String code) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
@@ -189,10 +191,22 @@ public class AccountService {
             throw new IllegalStateException("2FA is not enabled");
         }
 
-        totpService.verify(user, code);
+        verifyTotpOfAuthenticatedUser(user, code);
 
         user.disableTotp();
         userRepository.save(user);
+    }
+
+    /**
+     * O usuário já está autenticado: código errado ou reutilizado vira 403, não o 401 do
+     * {@link TotpService}, para o frontend não tratar como sessão expirada e reenviar.
+     */
+    private void verifyTotpOfAuthenticatedUser(User user, String code) {
+        try {
+            totpService.verify(user, code);
+        } catch (BadCredentialsException | TotpReplayException e) {
+            throw new InvalidTotpCodeException();
+        }
     }
 
     public void forgotPassword(String email) {
