@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -130,5 +132,17 @@ public class GcsStorageClient implements StorageClient {
             throw new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + objectName);
         }
         return new FileMetadata(blob.getMd5(), blob.getSize());
+    }
+
+    @Override
+    public List<StoredObject> list(String prefix) {
+        List<StoredObject> objects = new ArrayList<>();
+        for (Blob blob : storage.list(bucketName, Storage.BlobListOption.prefix(prefix)).iterateAll()) {
+            if (blob.getName().endsWith("/")) {
+                continue; // placeholder de "pasta", não é arquivo
+            }
+            objects.add(new StoredObject(blob.getName(), blob.getCreateTimeOffsetDateTime().toInstant()));
+        }
+        return objects;
     }
 }
