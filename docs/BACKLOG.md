@@ -56,18 +56,6 @@ React escapa e nenhuma página usa `dangerouslySetInnerHTML`), mas qualquer cons
 renderize HTML ficaria exposto. A defesa adequada é um `Content-Security-Policy` no nginx do
 frontend, não escapar no backend.
 
-### Cadastro revela e-mail já cadastrado
-
-`POST /auth/register` responde 409 "Already exists an user with this email". É enumeração de
-conta por outro caminho que o ADR-42 não cobre, mais cara que o antigo timing do forgot porque
-exige hCaptcha a cada tentativa.
-### Possível corrida na cota de storage
-
-O `QuotaService` soma o uso a cada finalize, sem reserva atômica nem lock. Dois finalizes
-concorrentes, cada um dentro da cota, poderiam ultrapassá-la juntos. Não reproduzido: a cota
-mínima ajustável pela API (0,1 GB) é grande demais para o teste. Escrever primeiro um teste de
-integração que reproduza a corrida; corrigir só se ele falhar.
-
 ## Features
 
 - [ ] Trocar volumes por capítulos. Decidir entre criar tabela de capítulo vinculada ao volume,
