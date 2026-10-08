@@ -19,9 +19,9 @@ import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.domain.Username;
 import com.buruna.identity.persistence.PasswordResetTokenRepository;
 import com.buruna.identity.persistence.UserRepository;
-import com.buruna.identity.web.RegisterRequest;
-import com.buruna.identity.web.ResetPasswordRequest;
-import com.buruna.identity.web.TotpSetupResponse;
+
+
+
 import com.buruna.shared.config.AppProperties;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;

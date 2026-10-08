@@ -1,4 +1,4 @@
-package com.buruna.identity.web;
+package com.buruna.identity.application.authentication;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;

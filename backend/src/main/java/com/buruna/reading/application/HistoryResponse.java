@@ -1,4 +1,4 @@
-package com.buruna.reading.web;
+package com.buruna.reading.application;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
