@@ -68,6 +68,12 @@ frontend, não escapar no backend.
 `POST /auth/register` responde 409 "Already exists an user with this email". É enumeração de
 conta por outro caminho que o ADR-42 não cobre, mais cara que o antigo timing do forgot porque
 exige hCaptcha a cada tentativa.
+### Possível corrida na cota de storage
+
+O `QuotaService` soma o uso a cada finalize, sem reserva atômica nem lock. Dois finalizes
+concorrentes, cada um dentro da cota, poderiam ultrapassá-la juntos. Não reproduzido: a cota
+mínima ajustável pela API (0,1 GB) é grande demais para o teste. Escrever primeiro um teste de
+integração que reproduza a corrida; corrigir só se ele falhar.
 
 ## Features
 
@@ -89,6 +95,9 @@ exige hCaptcha a cada tentativa.
   da cota, passavam juntos e a estouravam (reproduzido em teste de integração). O
   `QuotaService.assertCanFit` trava os mangás privados do dono (`SELECT ... FOR UPDATE`) antes
   de somar o uso, e a checagem fica serializada por usuário.
+- [x] Cadastro não revela e-mail já cadastrado: `POST /auth/register` responde 201 como um
+  cadastro novo e manda ao dono do e-mail um aviso com links de login e de recuperação de
+  senha, rodando o BCrypt mesmo assim (atualização no ADR-42). Username repetido continua 409.
 - [x] DTOs de `identity`, `engagement` e `reading` saem da `web/` para a `application/`
   (PR #59): os 15 Request/Response que o use case recebe ou devolve moram no pacote do use
   case, e a regra `domainAndApplication_shouldNotDependOnWebLayer` do `ArchitectureTest` vale
