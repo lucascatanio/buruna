@@ -81,6 +81,15 @@ alocada, contornando o `cpu-throttling`.
   sem Pub/Sub — esse endpoint tem hCaptcha (ADR-10) e rate limit, que já mitigam
   enumeração por um vetor diferente (tentativas em massa, não timing), então não herdou a
   mesma mudança.
+
+  **Atualização (2026-10-07):** o 409 por e-mail saiu. E-mail já cadastrado responde 201,
+  como um cadastro novo, e o dono do e-mail recebe um aviso ("alguém tentou criar conta com
+  seu e-mail") com links de login e de recuperação de senha. Esse caminho roda o BCrypt
+  mesmo assim, para a latência ficar próxima da de um cadastro novo. Continua sem Pub/Sub: o
+  avatar opcional ainda deixa uma diferença de tempo, mas medir isso exige um hCaptcha por
+  tentativa, e uma fila só para esse caso não se justifica. Nome de usuário repetido continua
+  409, porque o username é público. O e-mail é checado antes do username, para o 409 do
+  username não denunciar o e-mail.
 - `/internal/pubsub/**` fica público no Spring Security por necessidade (não há como o
   Pub/Sub apresentar uma sessão de usuário), o que move a responsabilidade de autenticação
   para dentro do controller — desvio documentado e aceito da regra geral de RBAC na borda

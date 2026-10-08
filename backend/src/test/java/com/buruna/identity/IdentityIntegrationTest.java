@@ -5,6 +5,7 @@ import com.buruna.identity.domain.PasswordResetToken;
 import com.buruna.identity.domain.RefreshToken;
 import com.buruna.identity.persistence.PasswordResetTokenRepository;
 import com.buruna.identity.persistence.RefreshTokenRepository;
+import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.notification.EmailSender;
 import com.buruna.shared.security.PubSubPushAuthenticator;
 import com.buruna.identity.domain.Email;
@@ -56,7 +57,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.endsWith;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -214,9 +221,23 @@ class IdentityIntegrationTest {
     }
 
     @Test
-    void register_duplicateEmail_returns409() throws Exception {
+    void shouldReturn201AndCreateNoUser_whenEmailIsAlreadyRegistered() throws Exception {
+        long before = userRepository.count();
+
+        // 201 como um cadastro novo: um 409 aqui revelaria quais e-mails têm conta
         MvcResult result = register(registerJson("active@id.test", "outroUsername"));
-        assertThat(result.getResponse().getStatus()).isEqualTo(409);
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
+        assertThat(userRepository.count()).isEqualTo(before);
+        assertThat(userRepository.existsByUsername("outroUsername")).isFalse();
+    }
+
+    @Test
+    void shouldReturn201_whenEmailAndUsernameAreBothTaken() throws Exception {
+        // o e-mail é checado antes: o 409 do username não pode denunciar o e-mail
+        MvcResult result = register(registerJson("active@id.test", "idPending"));
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(201);
     }
 
     @Test
@@ -1088,6 +1109,41 @@ class IdentityIntegrationTest {
     //  push-service-account configurados, recusaria todo push — por isso é mockado aqui
     //  para simular verify() autorizando ou rejeitando.
     // ══════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    class RegisterNotifications {
+
+        // @MockitoBean força um ApplicationContext próprio (ver PasswordResetPush)
+        @Autowired
+        MockMvc mockMvc;
+
+        @MockitoBean
+        EmailService emailService;
+
+        int registerStatus(String json) throws Exception {
+            return mockMvc.perform(post("/auth/register")
+                            .header("X-Forwarded-For", uniqueIp())
+                            .contentType(JSON).content(json))
+                    .andReturn().getResponse().getStatus();
+        }
+
+        @Test
+        void shouldNotifyOwnerAndNotAdmins_whenEmailIsAlreadyRegistered() throws Exception {
+            assertThat(registerStatus(registerJson("active@id.test", "outroUsername"))).isEqualTo(201);
+
+            verify(emailService).sendExistingAccountNotice(eq("active@id.test"), eq("idActive"),
+                    endsWith("/login"), endsWith("/forgot-password"));
+            verify(emailService, never()).sendNewRegistrationNotification(anyList(), anyString(), anyString());
+        }
+
+        @Test
+        void shouldNotifyAdminsAndNotSendNotice_whenEmailIsNew() throws Exception {
+            assertThat(registerStatus(registerJson("inedito@id.test", "ineditoUser"))).isEqualTo(201);
+
+            verify(emailService).sendNewRegistrationNotification(anyList(), eq("ineditoUser"), eq("inedito@id.test"));
+            verify(emailService, never()).sendExistingAccountNotice(anyString(), anyString(), anyString(), anyString());
+        }
+    }
 
     @Nested
     class PasswordResetPush {
