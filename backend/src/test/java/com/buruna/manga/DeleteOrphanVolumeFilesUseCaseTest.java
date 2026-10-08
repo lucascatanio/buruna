@@ -45,20 +45,20 @@ class DeleteOrphanVolumeFilesUseCaseTest {
     void shouldDeleteObject_whenOrphanOlderThanGracePeriod() {
         when(storageClient.list("volumes/")).thenReturn(List.of(object("volumes/a/old.pdf", 8)));
 
-        OrphanVolumeFilesResult result = useCase.run();
+        OrphanVolumeFilesResult result = useCase.run(false);
 
         verify(storageClient).delete("volumes/a/old.pdf");
-        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(1, 1, 1));
+        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(1, 1, 1, false, false));
     }
 
     @Test
     void shouldKeepObject_whenOrphanYoungerThanGracePeriod() {
         when(storageClient.list("volumes/")).thenReturn(List.of(object("volumes/a/new.pdf", 6)));
 
-        OrphanVolumeFilesResult result = useCase.run();
+        OrphanVolumeFilesResult result = useCase.run(false);
 
         verify(storageClient, never()).delete(anyString());
-        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(1, 0, 0));
+        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(1, 0, 0, false, false));
     }
 
     @Test
@@ -66,10 +66,10 @@ class DeleteOrphanVolumeFilesUseCaseTest {
         when(storageClient.list("volumes/")).thenReturn(List.of(object("volumes/a/used.pdf", 30)));
         when(volumeRepository.findExistingFileUrls(anyCollection())).thenReturn(List.of("volumes/a/used.pdf"));
 
-        OrphanVolumeFilesResult result = useCase.run();
+        OrphanVolumeFilesResult result = useCase.run(false);
 
         verify(storageClient, never()).delete(anyString());
-        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(1, 0, 0));
+        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(1, 0, 0, false, false));
     }
 
     @Test
@@ -79,10 +79,10 @@ class DeleteOrphanVolumeFilesUseCaseTest {
                 object("volumes/a/second.pdf", 10)));
         doThrow(new RuntimeException("gcs down")).when(storageClient).delete("volumes/a/first.pdf");
 
-        OrphanVolumeFilesResult result = useCase.run();
+        OrphanVolumeFilesResult result = useCase.run(false);
 
         verify(storageClient).delete("volumes/a/second.pdf");
-        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(2, 2, 1));
+        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(2, 2, 1, false, false));
     }
 
     @Test
@@ -91,9 +91,50 @@ class DeleteOrphanVolumeFilesUseCaseTest {
                 .mapToObj(i -> object("volumes/a/" + i + ".pdf", 1)).toList();
         when(storageClient.list("volumes/")).thenReturn(many);
 
-        useCase.run();
+        useCase.run(false);
 
         verify(volumeRepository, org.mockito.Mockito.times(3)).findExistingFileUrls(anyCollection());
+    }
+
+    @Test
+    void shouldDeleteNothing_whenDryRun() {
+        when(storageClient.list("volumes/")).thenReturn(List.of(object("volumes/a/old.pdf", 8)));
+
+        OrphanVolumeFilesResult result = useCase.run(true);
+
+        verify(storageClient, never()).delete(anyString());
+        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(1, 1, 0, true, false));
+    }
+
+    @Test
+    void shouldAbortWithoutDeleting_whenOrphansExceedSafetyRatio() {
+        // 6 órfãos em 20 objetos (30%): passa do piso de 5 e de 10%, sinal de descasamento
+        // entre bucket e banco, não de falhas pontuais
+        List<StoredObject> objects = java.util.stream.IntStream.range(0, 20)
+                .mapToObj(i -> object("volumes/a/" + i + ".pdf", 30)).toList();
+        when(storageClient.list("volumes/")).thenReturn(objects);
+        when(volumeRepository.findExistingFileUrls(anyCollection())).thenReturn(
+                objects.subList(6, 20).stream().map(StoredObject::name).toList());
+
+        OrphanVolumeFilesResult result = useCase.run(false);
+
+        verify(storageClient, never()).delete(anyString());
+        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(20, 6, 0, false, true));
+    }
+
+    @Test
+    void shouldDelete_whenOrphansAreWithinSafetyRatio() {
+        // 6 órfãos em 100 objetos (6%): abaixo de 10%
+        List<StoredObject> objects = java.util.stream.IntStream.range(0, 100)
+                .mapToObj(i -> object("volumes/a/" + i + ".pdf", 30)).toList();
+        when(storageClient.list("volumes/")).thenReturn(objects);
+        when(volumeRepository.findExistingFileUrls(anyCollection())).thenReturn(
+                objects.subList(6, 100).stream().map(StoredObject::name).toList());
+
+        OrphanVolumeFilesResult result = useCase.run(false);
+
+        verify(storageClient, org.mockito.Mockito.times(6)).delete(anyString());
+        assertThat(result).isEqualTo(new OrphanVolumeFilesResult(100, 6, 6, false, false));
     }
 
     private static StoredObject object(String name, int daysOld) {

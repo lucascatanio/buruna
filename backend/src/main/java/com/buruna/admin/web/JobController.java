@@ -39,11 +39,12 @@ public class JobController {
 
     @PostMapping("/storage-orphans")
     public ResponseEntity<?> triggerStorageOrphans(
-            @RequestHeader("X-Job-Secret") String secret) {
+            @RequestHeader("X-Job-Secret") String secret,
+            @RequestParam(defaultValue = "false") boolean dryRun) {
         if (!isAuthorized(secret)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
         }
-        OrphanVolumeFilesResult result = deleteOrphanVolumeFilesUseCase.run();
+        OrphanVolumeFilesResult result = deleteOrphanVolumeFilesUseCase.run(dryRun);
         return ResponseEntity.ok(result);
     }
 

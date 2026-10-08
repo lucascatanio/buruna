@@ -228,8 +228,9 @@ case público `manga.application.maintenance.DeleteOrphanVolumeFilesUseCase`, di
 `admin.web.JobController` (`POST /admin/jobs/storage-orphans`, mesmo `X-Job-Secret` da
 inatividade), lista `volumes/` via `StorageClient.list`, confere os nomes contra
 `volumes.file_url` e apaga o que não tem linha E foi criado há mais de 7 dias (carência,
-`Clock` injetado). Falha em um objeto é logada em WARN e o job segue. Roda semanalmente no
-Cloud Scheduler (ver [DEPLOYMENT.md](DEPLOYMENT.md)).
+`Clock` injetado). Falha em um objeto é logada em WARN e o job segue. `?dryRun=true` só conta,
+e uma trava aborta sem apagar nada se os órfãos passarem de 5 e de 10% do analisado. Roda
+semanalmente no Cloud Scheduler (ver [DEPLOYMENT.md](DEPLOYMENT.md)).
 
 ### 6.7 Deleção de conta
 

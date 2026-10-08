@@ -102,4 +102,19 @@ class StorageOrphansJobIntegrationTest {
         verify(storageClient, never()).delete("volumes/m/kept.pdf");
         verify(storageClient, never()).delete("volumes/m/orphan-recent.pdf");
     }
+
+    @Test
+    void shouldReportWithoutDeleting_whenDryRun() throws Exception {
+        when(storageClient.list("volumes/")).thenReturn(List.of(
+                new StoredObject("volumes/m/orphan-old.pdf", Instant.now().minus(Duration.ofDays(30)))));
+
+        mockMvc.perform(post("/admin/jobs/storage-orphans").param("dryRun", "true")
+                        .header("X-Job-Secret", CORRECT_SECRET))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orphans").value(1))
+                .andExpect(jsonPath("$.deleted").value(0))
+                .andExpect(jsonPath("$.dryRun").value(true));
+
+        verify(storageClient, never()).delete(anyString());
+    }
 }
