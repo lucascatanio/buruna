@@ -1,4 +1,4 @@
-package com.buruna.engagement.web;
+package com.buruna.engagement.application;
 
 import com.buruna.engagement.domain.ReadingStatus;
 import jakarta.validation.constraints.NotNull;

@@ -1,5 +1,7 @@
 package com.buruna.engagement.web;
 
+import com.buruna.engagement.application.ReadingListRequest;
+import com.buruna.engagement.application.ReadingListResponse;
 import com.buruna.engagement.application.ReadingListService;
 import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;

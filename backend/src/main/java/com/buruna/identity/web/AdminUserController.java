@@ -1,7 +1,8 @@
 package com.buruna.identity.web;
 
-import com.buruna.identity.web.*;
+import com.buruna.identity.application.admin.UserResponse;
 import com.buruna.identity.application.admin.UserService;
+import com.buruna.identity.web.*;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

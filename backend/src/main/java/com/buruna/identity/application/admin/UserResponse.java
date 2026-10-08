@@ -1,4 +1,4 @@
-package com.buruna.identity.web;
+package com.buruna.identity.application.admin;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

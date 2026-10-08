@@ -1,4 +1,4 @@
-package com.buruna.identity.web;
+package com.buruna.identity.application.account;
 
 public record TotpSetupResponse(
         String secret,

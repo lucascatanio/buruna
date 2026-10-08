@@ -5,8 +5,8 @@ import com.buruna.engagement.domain.RatingAlreadyExistsException;
 import com.buruna.engagement.domain.RatingNotFoundException;
 import com.buruna.engagement.domain.Score;
 import com.buruna.engagement.persistence.RatingRepository;
-import com.buruna.engagement.web.RatingRequest;
-import com.buruna.engagement.web.RatingResponse;
+
+
 import com.buruna.manga.application.FindPublicMangaUseCase;
 import com.buruna.manga.application.UpdateMangaRatingStatsUseCase;
 import org.springframework.stereotype.Service;

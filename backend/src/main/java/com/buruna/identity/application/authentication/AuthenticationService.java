@@ -4,10 +4,10 @@ import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserNotActiveException;
 import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.persistence.UserRepository;
-import com.buruna.identity.web.LoginRequest;
-import com.buruna.identity.web.LoginResponse;
-import com.buruna.identity.web.TokenResponse;
-import com.buruna.identity.web.TotpAuthenticateRequest;
+
+
+
+
 import com.buruna.shared.config.AppProperties;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;

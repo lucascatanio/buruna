@@ -2,7 +2,14 @@ package com.buruna.identity.web;
 
 import com.buruna.identity.application.account.AccountService;
 import com.buruna.identity.application.account.DeleteAccountUseCase;
+import com.buruna.identity.application.account.RegisterRequest;
+import com.buruna.identity.application.account.ResetPasswordRequest;
+import com.buruna.identity.application.account.TotpSetupResponse;
 import com.buruna.identity.application.authentication.AuthenticationService;
+import com.buruna.identity.application.authentication.LoginRequest;
+import com.buruna.identity.application.authentication.LoginResponse;
+import com.buruna.identity.application.authentication.TokenResponse;
+import com.buruna.identity.application.authentication.TotpAuthenticateRequest;
 import com.buruna.identity.domain.InvalidTokenException;
 import com.buruna.identity.domain.User;
 import com.buruna.shared.config.AppProperties;

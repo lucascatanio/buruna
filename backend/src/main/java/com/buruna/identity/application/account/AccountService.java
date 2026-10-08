@@ -19,9 +19,9 @@ import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.domain.Username;
 import com.buruna.identity.persistence.PasswordResetTokenRepository;
 import com.buruna.identity.persistence.UserRepository;
-import com.buruna.identity.web.RegisterRequest;
-import com.buruna.identity.web.ResetPasswordRequest;
-import com.buruna.identity.web.TotpSetupResponse;
+
+
+
 import com.buruna.shared.config.AppProperties;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
@@ -82,8 +82,10 @@ public class AccountService {
 
         captchaService.verify(request.captchaToken(), clientIp);
 
-        if (userRepository.existsByEmail(email.value())) {
-            throw new UserAlreadyExistsException("email");
+        Optional<User> existing = userRepository.findByEmail(email.value());
+        if (existing.isPresent()) {
+            notifyExistingAccount(existing.get(), request.password());
+            return;
         }
         if (userRepository.existsByUsername(username.value())) {
             throw new UserAlreadyExistsException("username");
@@ -104,6 +106,19 @@ public class AccountService {
                 adminEmails.isEmpty() ? List.of(appProperties.adminEmail()) : adminEmails,
                 user.getUsername(), user.getEmail()
         );
+    }
+
+    /**
+     * E-mail já cadastrado responde como um cadastro novo (201), para o endpoint não revelar
+     * quais e-mails têm conta: o aviso vai só para a caixa do dono. O BCrypt roda mesmo assim,
+     * para a latência não denunciar o caminho. Envio best-effort: uma falha no e-mail não pode
+     * virar um erro que só este caminho devolveria.
+     */
+    private void notifyExistingAccount(User owner, String password) {
+        passwordEncoder.encode(password);
+        String frontendUrl = appProperties.frontendUrl();
+        emailService.sendExistingAccountNotice(owner.getEmail(), owner.getUsername(),
+                frontendUrl + "/login", frontendUrl + "/forgot-password");
     }
 
     /**

@@ -14,16 +14,6 @@ A lifecycle rule aplicada em 2026-09-24 (`gcs-lifecycle.json`, ADR-40) só cobre
 os uploads que nunca chegaram ao finalize. Órfãos em `volumes/` precisam de outra rede, por
 exemplo um job que compare o bucket com a tabela `volumes`.
 
-### `application/` importando DTO da `web/` em identity, engagement e reading
-
-O ADR-31 manda a dependência apontar só para dentro (`web → application`), mas 6 classes da
-`application/` desses contextos importam Request/Response da própria `web/` (3 em
-`identity`, 2 em `engagement`, 1 em `reading`). `manga` e `admin` já foram alinhados
-(issue #34).
-
-Escopo: mover para a `application/` os DTOs que o use case recebe ou devolve e incluir os
-três contextos em `WEB_INDEPENDENT_CONTEXTS` no `ArchitectureTest`.
-
 ### Signed URL não é revogada imediatamente
 
 Limitação conhecida do GCS. A URL assinada continua válida até expirar, mesmo que o acesso do
@@ -39,13 +29,6 @@ ver DEPLOYMENT.md).
 Escopo: ingress interno no backend e saída do frontend pela VPC. Atenção: o Cloud Scheduler
 precisa passar a chamar o job por um caminho permitido, e o `APP_TRUSTED_PROXY_HOPS` precisa
 ser recalibrado porque o caminho do header muda.
-
-### Avisos de inatividade em lote
-
-Desde que o envio de e-mail passou a ser síncrono (PR #11), o job envia um aviso por usuário
-dentro da própria requisição. Com muitos inativos no mesmo dia, o job fica lento. A API de
-lote do Resend (já usada nas notificações de admin) aceita e-mails com conteúdo diferente
-por destinatário.
 
 ### Overrides de versão no `pom.xml`
 
@@ -73,19 +56,6 @@ React escapa e nenhuma página usa `dangerouslySetInnerHTML`), mas qualquer cons
 renderize HTML ficaria exposto. A defesa adequada é um `Content-Security-Policy` no nginx do
 frontend, não escapar no backend.
 
-### Possível corrida na cota de storage
-
-O `QuotaService` soma o uso a cada finalize, sem reserva atômica nem lock. Dois finalizes
-concorrentes, cada um dentro da cota, poderiam ultrapassá-la juntos. Não reproduzido: a cota
-mínima ajustável pela API (0,1 GB) é grande demais para o teste. Escrever primeiro um teste de
-integração que reproduza a corrida; corrigir só se ele falhar.
-
-### Cadastro revela e-mail já cadastrado
-
-`POST /auth/register` responde 409 "Already exists an user with this email". É enumeração de
-conta por outro caminho que o ADR-42 não cobre, mais cara que o antigo timing do forgot porque
-exige hCaptcha a cada tentativa.
-
 ## Features
 
 - [ ] Trocar volumes por capítulos. Decidir entre criar tabela de capítulo vinculada ao volume,
@@ -102,6 +72,23 @@ exige hCaptcha a cada tentativa.
 
 ## Concluído
 
+- [x] Avisos de inatividade em lote: o job junta os avisados e manda tudo numa chamada da API
+  de lote do Resend (`EmailSender.sendBatch`, conteúdo próprio por destinatário, fatiado em
+  blocos de 100), antes das desativações, em vez de uma chamada por usuário.
+- [x] Corrida na cota de storage: dois finalizes concorrentes do mesmo dono, cada um dentro
+  da cota, passavam juntos e a estouravam (reproduzido em teste de integração). O
+  `QuotaService.assertCanFit` trava os mangás privados do dono (`SELECT ... FOR UPDATE`) antes
+  de somar o uso, e a checagem fica serializada por usuário.
+- [x] Cadastro não revela e-mail já cadastrado: `POST /auth/register` responde 201 como um
+  cadastro novo e manda ao dono do e-mail um aviso com links de login e de recuperação de
+  senha, rodando o BCrypt mesmo assim (atualização no ADR-42). Username repetido continua 409.
+- [x] DTOs de `identity`, `engagement` e `reading` saem da `web/` para a `application/`
+  (PR #59): os 15 Request/Response que o use case recebe ou devolve moram no pacote do use
+  case, e a regra `domainAndApplication_shouldNotDependOnWebLayer` do `ArchitectureTest` vale
+  para todos os contextos (`MIGRATED_CONTEXTS`).
+- [x] 2FA de usuário autenticado responde 403 em código errado ou reutilizado (PR #55):
+  `/auth/2fa/verify` e `/auth/2fa/disable` respondiam 401, e o interceptor do axios fazia
+  refresh e reenviava o código, contando cada erro duas vezes no bloqueio.
 - [x] UI para deletar conta (issue #49): seção "Excluir conta" na página de Segurança, com aviso do
   que é apagado e do que fica, senha e código 2FA quando ativo; o admin mostra contas
   `DELETED` como "Removido", sem edição. Backend no #48 (issue #46).

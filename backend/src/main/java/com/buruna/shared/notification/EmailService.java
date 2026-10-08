@@ -19,6 +19,22 @@ public class EmailService {
                 "User '%s' (%s) has registered and is awaiting your approval.".formatted(username, userEmail));
     }
 
+    public void sendExistingAccountNotice(String userEmail, String username,
+                                          String loginLink, String forgotPasswordLink) {
+        emailSender.send(userEmail,
+                "[Burūna] Sign-up attempt with your email",
+                """
+                Hello %s,
+
+                Someone tried to create a new Burūna account with this email address, but it \
+                already belongs to your account.
+
+                If it was you, log in at %s or reset your password at %s.
+
+                If it wasn't you, you can ignore this email: nothing has changed in your account.
+                """.formatted(username, loginLink, forgotPasswordLink));
+    }
+
     public void sendApprovalNotification(String userEmail, String username) {
         emailSender.send(userEmail,
                 "[Burūna] Your account has been approved",
@@ -39,10 +55,14 @@ public class EmailService {
         emailSender.sendToEach(adminEmails, "[Burūna] Feedback from " + username, body);
     }
 
-    public void sendInactivityWarning(String userEmail, String username) {
-        emailSender.send(userEmail,
-                "[Burūna] Inactivity warning",
-                "Hello %s, your account will be deactivated in 15 days due to inactivity.".formatted(username));
+    /** Um lote só para todos os avisados, cada e-mail com o nome do próprio usuário. */
+    public void sendInactivityWarnings(List<EmailRecipient> recipients) {
+        emailSender.sendBatch(recipients.stream()
+                .map(r -> new OutgoingEmail(r.email(),
+                        "[Burūna] Inactivity warning",
+                        "Hello %s, your account will be deactivated in 15 days due to inactivity."
+                                .formatted(r.username())))
+                .toList());
     }
 
     public void sendPasswordResetEmail(String userEmail, String username, String resetLink) {
