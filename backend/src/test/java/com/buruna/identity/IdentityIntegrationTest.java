@@ -700,15 +700,22 @@ class IdentityIntegrationTest {
     }
 
     @Test
-    void twoFA_verify_invalidCode_returns401() throws Exception {
+    void shouldReturn403AndCountFailure_whenVerifyingWithWrongCode() throws Exception {
         mockMvc.perform(post("/auth/2fa/setup").with(auth(activeUser)))
                 .andExpect(status().isOk());
 
+        // 403, não 401: o usuário está autenticado, e um 401 faria o frontend dar refresh
+        // e reenviar o código, contando a falha duas vezes.
         mockMvc.perform(post("/auth/2fa/verify")
                         .with(auth(activeUser))
                         .contentType(JSON)
                         .content("{\"code\":\"000000\"}"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
+
+        User user = userRepository.findById(activeUser.getId()).orElseThrow();
+        assertThat(user.isTotpEnabled()).isFalse();
+        // a falha fica gravada mesmo com a exceção (noRollbackFor)
+        assertThat(user.getTotpFailedAttempts()).isEqualTo(1);
     }
 
     @Test
@@ -833,6 +840,43 @@ class IdentityIntegrationTest {
                 .andExpect(status().isOk());
 
         assertThat(userRepository.findById(activeUser.getId()).orElseThrow().isTotpEnabled()).isFalse();
+    }
+
+    @Test
+    void shouldReturn403AndCountFailure_whenDisablingWithWrongCode() throws Exception {
+        enableTotp(activeUser);
+
+        mockMvc.perform(post("/auth/2fa/disable")
+                        .with(auth(activeUser))
+                        .contentType(JSON)
+                        .content("{\"code\":\"000000\"}"))
+                .andExpect(status().isForbidden());
+
+        User user = userRepository.findById(activeUser.getId()).orElseThrow();
+        assertThat(user.isTotpEnabled()).isTrue();
+        assertThat(user.getTotpFailedAttempts()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldReturn403_whenDisablingWithAlreadyUsedCode() throws Exception {
+        String secret = enableTotp(activeUser);
+        MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
+        String tempToken = body(loginResult).get("tempToken").asText();
+        String code = currentTotpCode(secret);
+        mockMvc.perform(post("/auth/2fa/authenticate")
+                        .contentType(JSON)
+                        .content("""
+                                {"tempToken":"%s","totpCode":"%s"}""".formatted(tempToken, code)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/auth/2fa/disable")
+                        .with(auth(activeUser))
+                        .contentType(JSON)
+                        .content("""
+                                {"code":"%s"}""".formatted(code)))
+                .andExpect(status().isForbidden());
+
+        assertThat(userRepository.findById(activeUser.getId()).orElseThrow().isTotpEnabled()).isTrue();
     }
 
     // ══════════════════════════════════════════════════════════════════════════
