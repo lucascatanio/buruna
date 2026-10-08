@@ -503,6 +503,8 @@ export function ReaderPage() {
                     cMapUrl: "/cmaps/",
                     cMapPacked: true,
                     rangeChunkSize: 131072,
+                    // sem eval/new Function: o CSP não libera 'unsafe-eval'
+                    isEvalSupported: false,
                 });
                 const doc = await loadingTask.promise;
                 setPdf(doc);
