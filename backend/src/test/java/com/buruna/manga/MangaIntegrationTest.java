@@ -47,10 +47,16 @@ import java.net.URL;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -876,6 +882,44 @@ class MangaIntegrationTest {
             // @ExceptionHandler(Exception.class), devolvendo 500 (bug latente).
             finalizeVolume("/my/mangas", id, objectName, 1, reader)
                     .andExpect(status().isUnprocessableEntity());
+        }
+
+        @Test
+        void shouldAcceptOnlyOne_whenTwoConcurrentFinalizesTogetherExceedQuota() throws Exception {
+            String idA = createPrivateManga("ITest Private Race A", reader);
+            String idB = createPrivateManga("ITest Private Race B", reader);
+            String objectA = requestUploadUrl("/my/mangas", idA, 1, reader);
+            String objectB = requestUploadUrl("/my/mangas", idB, 1, reader);
+            // 600 MB cada: um sozinho cabe na cota de 1 GB, os dois juntos não
+            long size = 600L * 1024 * 1024;
+            when(storageClient.getFileMetadata(eq(objectA)))
+                    .thenReturn(new StorageClient.FileMetadata("md5-race-a", size));
+            when(storageClient.getFileMetadata(eq(objectB)))
+                    .thenReturn(new StorageClient.FileMetadata("md5-race-b", size));
+            // o move roda depois da checagem de cota: segurar cada finalize ali até o outro
+            // chegar (ou 2 s) garante que, sem serialização, os dois leiam o uso antes de
+            // qualquer commit
+            CountDownLatch bothPastQuotaCheck = new CountDownLatch(2);
+            doAnswer(inv -> {
+                bothPastQuotaCheck.countDown();
+                bothPastQuotaCheck.await(2, TimeUnit.SECONDS);
+                return null;
+            }).when(storageClient).move(anyString(), anyString());
+
+            ExecutorService pool = Executors.newFixedThreadPool(2);
+            try {
+                Future<Integer> a = pool.submit(() -> finalizeVolume("/my/mangas", idA, objectA, 1, reader)
+                        .andReturn().getResponse().getStatus());
+                Future<Integer> b = pool.submit(() -> finalizeVolume("/my/mangas", idB, objectB, 1, reader)
+                        .andReturn().getResponse().getStatus());
+
+                org.assertj.core.api.Assertions.assertThat(List.of(a.get(10, TimeUnit.SECONDS), b.get(10, TimeUnit.SECONDS)))
+                        .containsExactlyInAnyOrder(201, 422);
+            } finally {
+                pool.shutdownNow();
+            }
+            org.assertj.core.api.Assertions.assertThat(volumeRepository.sumPrivateFileSizeByOwnerId(reader.getId()))
+                    .isEqualTo(size);
         }
 
         @Test
