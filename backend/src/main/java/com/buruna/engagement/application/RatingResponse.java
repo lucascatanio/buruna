@@ -1,4 +1,4 @@
-package com.buruna.engagement.web;
+package com.buruna.engagement.application;
 
 import java.math.BigDecimal;
 import java.util.UUID;

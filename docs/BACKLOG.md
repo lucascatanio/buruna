@@ -14,16 +14,6 @@ A lifecycle rule aplicada em 2026-09-24 (`gcs-lifecycle.json`, ADR-40) só cobre
 os uploads que nunca chegaram ao finalize. Órfãos em `volumes/` precisam de outra rede, por
 exemplo um job que compare o bucket com a tabela `volumes`.
 
-### `application/` importando DTO da `web/` em identity, engagement e reading
-
-O ADR-31 manda a dependência apontar só para dentro (`web → application`), mas 6 classes da
-`application/` desses contextos importam Request/Response da própria `web/` (3 em
-`identity`, 2 em `engagement`, 1 em `reading`). `manga` e `admin` já foram alinhados
-(issue #34).
-
-Escopo: mover para a `application/` os DTOs que o use case recebe ou devolve e incluir os
-três contextos em `WEB_INDEPENDENT_CONTEXTS` no `ArchitectureTest`.
-
 ### Signed URL não é revogada imediatamente
 
 Limitação conhecida do GCS. A URL assinada continua válida até expirar, mesmo que o acesso do

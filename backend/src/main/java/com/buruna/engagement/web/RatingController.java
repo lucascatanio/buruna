@@ -1,5 +1,7 @@
 package com.buruna.engagement.web;
 
+import com.buruna.engagement.application.RatingRequest;
+import com.buruna.engagement.application.RatingResponse;
 import com.buruna.engagement.application.RatingService;
 import com.buruna.identity.domain.User;
 import jakarta.validation.Valid;

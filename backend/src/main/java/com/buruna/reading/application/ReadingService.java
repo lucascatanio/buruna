@@ -11,9 +11,9 @@ import com.buruna.reading.domain.ReadingHistory;
 import com.buruna.reading.domain.ReadingProgress;
 import com.buruna.reading.persistence.ReadingHistoryRepository;
 import com.buruna.reading.persistence.ReadingProgressRepository;
-import com.buruna.reading.web.HistoryResponse;
-import com.buruna.reading.web.ProgressResponse;
-import com.buruna.reading.web.VolumeUrlResponse;
+
+
+
 import com.buruna.shared.storage.StorageClient;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

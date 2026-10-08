@@ -36,16 +36,6 @@ class ArchitectureTest {
             "admin"
     };
 
-    /**
-     * Contextos já sem dependência application → web (seta do ADR-31). identity, engagement
-     * e reading ainda importam DTOs de web/ na application — ver docs/BACKLOG.md; entram
-     * aqui quando forem alinhados.
-     */
-    private static final String[] WEB_INDEPENDENT_CONTEXTS = {
-            "manga",
-            "admin"
-    };
-
     private static final String BASE = "com.buruna";
 
     @BeforeAll
@@ -79,7 +69,7 @@ class ArchitectureTest {
 
     @Test
     void domainAndApplication_shouldNotDependOnWebLayer() {
-        for (String context : WEB_INDEPENDENT_CONTEXTS) {
+        for (String context : MIGRATED_CONTEXTS) {
             DescribedPredicate<JavaClass> inContext =
                     resideInAPackage(BASE + "." + context + ".domain..")
                             .or(resideInAPackage(BASE + "." + context + ".application.."));

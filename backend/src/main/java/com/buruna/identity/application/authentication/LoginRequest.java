@@ -1,4 +1,4 @@
-package com.buruna.identity.web;
+package com.buruna.identity.application.authentication;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

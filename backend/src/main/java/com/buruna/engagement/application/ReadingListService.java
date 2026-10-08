@@ -3,8 +3,8 @@ package com.buruna.engagement.application;
 import com.buruna.engagement.domain.ReadingList;
 import com.buruna.engagement.domain.ReadingListItemNotFoundException;
 import com.buruna.engagement.persistence.ReadingListRepository;
-import com.buruna.engagement.web.ReadingListRequest;
-import com.buruna.engagement.web.ReadingListResponse;
+
+
 import com.buruna.manga.application.FindPublicMangaUseCase;
 import com.buruna.manga.application.GetMangaInfoUseCase;
 import com.buruna.manga.application.MangaInfo;

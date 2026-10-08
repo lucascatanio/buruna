@@ -1,7 +1,7 @@
 package com.buruna.identity.application.authentication;
 
 import com.buruna.identity.persistence.UserRepository;
-import com.buruna.identity.web.LoginRequest;
+
 import com.buruna.shared.config.AppProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

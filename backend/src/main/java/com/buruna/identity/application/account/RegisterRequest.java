@@ -1,4 +1,4 @@
-package com.buruna.identity.web;
+package com.buruna.identity.application.account;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
