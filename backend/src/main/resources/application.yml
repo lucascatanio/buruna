@@ -44,6 +44,10 @@ app:
     # Sem default de propósito: /admin/jobs/** é público e o job apaga arquivos, então
     # a aplicação não sobe sem o segredo em vez de aceitar um valor conhecido.
     secret: ${APP_JOBS_SECRET}
+  proxy:
+    # Segredo que o nginx do frontend envia em X-Proxy-Secret. Vazio = filtro desligado
+    # (dev local e testes). Obrigatório em produção; ver docs/DEPLOYMENT.md e ADR-43.
+    secret: ${APP_PROXY_SECRET:}
   pubsub:
     # Obrigatórios fora do profile "local" (PubSubPasswordResetRequests / PubSubPushAuthenticator
     # falham no startup sem eles). Ver docs/DEPLOYMENT.md.
