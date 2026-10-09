@@ -53,9 +53,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -1165,6 +1168,83 @@ class MangaIntegrationTest {
 
             mockMvc.perform(post("/my/mangas/{id}/promote", privateId).with(auth(collab)))
                     .andExpect(status().isConflict());
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  5b. Slug, capa e ordem dos volumes — rede de segurança antes do rename
+    //      Manga → Work e da troca de volume por capítulo
+    // ══════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    class SlugCoverAndOrdering {
+
+        @Test
+        void shouldAppendNumericSuffix_whenPrivateTitleRepeatsAnExistingSlug() throws Exception {
+            // Arrange
+            String firstId = createPrivateManga("ITest Slug Repetido", collab);
+
+            // Act
+            String secondId = createPrivateManga("ITest Slug Repetido", collab);
+
+            // Assert
+            assertThat(mangaRepository.findById(UUID.fromString(firstId)).orElseThrow().getSlug())
+                    .isEqualTo("itest-slug-repetido");
+            assertThat(mangaRepository.findById(UUID.fromString(secondId)).orElseThrow().getSlug())
+                    .isEqualTo("itest-slug-repetido-2");
+        }
+
+        @Test
+        void shouldStoreCoverUnderCoversAndReturnSignedUrl_whenPrivateMangaIsCreatedWithCover() throws Exception {
+            // Arrange
+            String pngBase64 = "data:image/png;base64,"
+                    + java.util.Base64.getEncoder().encodeToString(new byte[]{1, 2, 3});
+
+            // Act
+            ResultActions result = mockMvc.perform(post("/my/mangas")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"title\":\"ITest Capa\",\"coverBase64\":\"" + pngBase64 + "\"}")
+                    .with(auth(collab)));
+
+            // Assert
+            result.andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.coverUrl").value(FAKE_URL.toString()));
+            verify(storageClient).upload(any(), startsWith("covers/"), eq("image/png"), eq(3L));
+        }
+
+        @Test
+        void shouldReturn400AndUploadNothing_whenCoverTypeIsNotAllowed() throws Exception {
+            // Arrange
+            String htmlBase64 = "data:text/html;base64,"
+                    + java.util.Base64.getEncoder().encodeToString("<p>x</p>".getBytes());
+
+            // Act
+            ResultActions result = mockMvc.perform(post("/my/mangas")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"title\":\"ITest Capa Invalida\",\"coverBase64\":\"" + htmlBase64 + "\"}")
+                    .with(auth(collab)));
+
+            // Assert
+            result.andExpect(status().isBadRequest());
+            verify(storageClient, never()).upload(any(), anyString(), anyString(), anyLong());
+        }
+
+        @Test
+        void shouldListVolumesByAscendingNumber_whenVolumesWereUploadedOutOfOrder() throws Exception {
+            // Arrange
+            String id = createPublicManga("ITest Ordem Volumes", collab);
+            uploadVolume("/mangas", id, 3, collab);
+            uploadVolume("/mangas", id, 1, collab);
+            uploadVolume("/mangas", id, 2, collab);
+
+            // Act
+            ResultActions result = mockMvc.perform(get("/mangas/{id}", id).with(auth(reader)));
+
+            // Assert
+            result.andExpect(status().isOk())
+                    .andExpect(jsonPath("$.volumes[0].volumeNumber").value(1))
+                    .andExpect(jsonPath("$.volumes[1].volumeNumber").value(2))
+                    .andExpect(jsonPath("$.volumes[2].volumeNumber").value(3));
         }
     }
 
