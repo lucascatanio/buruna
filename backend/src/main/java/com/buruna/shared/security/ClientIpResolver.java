@@ -22,8 +22,9 @@ import java.util.List;
  * (posição {@code size - hops}) é o IP como visto pelo primeiro salto confiável —
  * o mais próximo do valor real do cliente que dá para confiar.
  *
- * <p>Limitação conhecida: quem chama o backend diretamente (sem passar pelo
- * frontend) ainda escolhe o valor que cai nessa posição.
+ * <p>Chamada direta ao backend (sem passar pelo nginx) não chega aqui: o
+ * {@link ProxySecretFilter} a recusa antes, então o caminho nginx → Cloud Run é o único
+ * que o resolver precisa considerar.
  */
 @Component
 public class ClientIpResolver {

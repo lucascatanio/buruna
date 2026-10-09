@@ -28,4 +28,17 @@ class LocalStorageClientTest {
         assertThatThrownBy(() -> client.move("pending/volumes/x/missing.pdf", "volumes/x/missing.pdf"))
                 .isInstanceOf(StorageObjectNotFoundException.class);
     }
+
+    @Test
+    void shouldListOnlyObjectsUnderPrefix_whenStorageHasOtherFolders() throws Exception {
+        LocalStorageClient client = new LocalStorageClient(storagePath, "http://localhost");
+        client.upload(new java.io.ByteArrayInputStream(new byte[]{1}), "volumes/m/a.pdf", "application/pdf", 1);
+        client.upload(new java.io.ByteArrayInputStream(new byte[]{1}), "pending/volumes/m/b.pdf", "application/pdf", 1);
+
+        var objects = client.list("volumes/");
+
+        org.assertj.core.api.Assertions.assertThat(objects)
+                .extracting(StorageClient.StoredObject::name)
+                .containsExactly("volumes/m/a.pdf");
+    }
 }

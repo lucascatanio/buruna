@@ -4,57 +4,12 @@ Itens fora do escopo das issues já executadas. Nada aqui deve ser feito sem iss
 
 ## Dívida técnica
 
-### Arquivos órfãos em `volumes/` quando a deleção no GCS falha
+### Spring Boot 4 para os CVEs do `spring-webmvc`
 
-O `DeletePrivateCollectionForUserUseCase` (e os demais deletes de volume) apagam as linhas do
-banco dentro da transação e deletam os arquivos do GCS depois, fora dela, em best effort
-(ADR-24). Se a deleção no GCS falhar, o banco não reverte e o arquivo fica em `volumes/`.
-
-A lifecycle rule aplicada em 2026-09-24 (`gcs-lifecycle.json`, ADR-40) só cobre `pending/`,
-os uploads que nunca chegaram ao finalize. Órfãos em `volumes/` precisam de outra rede, por
-exemplo um job que compare o bucket com a tabela `volumes`.
-
-### Signed URL não é revogada imediatamente
-
-Limitação conhecida do GCS. A URL assinada continua válida até expirar, mesmo que o acesso do
-usuário seja revogado antes disso.
-
-### Backend acessível direto pelo `run.app`
-
-O `buruna-backend` tem ingress `all` e `allUsers` como invoker, porque o nginx do frontend
-faz `proxy_pass` para a URL pública. Quem chama o `run.app` direto, sem passar pelo nginx,
-ainda influencia a entrada do `X-Forwarded-For` que o rate limit lê (`APP_TRUSTED_PROXY_HOPS`,
-ver DEPLOYMENT.md).
-
-Escopo: ingress interno no backend e saída do frontend pela VPC. Atenção: o Cloud Scheduler
-precisa passar a chamar o job por um caminho permitido, e o `APP_TRUSTED_PROXY_HOPS` precisa
-ser recalibrado porque o caminho do header muda.
-
-### Overrides de versão no `pom.xml`
-
-O `pom.xml` sobrescreve versões gerenciadas pelo Spring Boot 3.5.16 (Tomcat, pgjdbc, Jackson,
-HttpComponents, commons-lang3, log4j-api) para pegar correções de CVE. Ao atualizar o Boot,
-remova cada override que ele já cobrir. Pendente: OpenTelemetry 1.49 → 1.62 (CVE média numa
-extensão não usada), deixado de fora porque só o cliente do GCS depende dele e os testes o
-mockam. Rodar `trivy fs backend/` depois de cada atualização.
-
-### Origins locais no CORS do bucket de produção
-
-O `gcs-cors.json` (espelho do bucket de produção) aceita `http://localhost` e
-`http://192.168.100.192`, que só servem para testar contra o bucket de produção a partir da
-máquina ou rede de desenvolvimento. Remover se não forem mais usados.
-
-## Segurança (hardening)
-
-Achados de baixa severidade do teste ativo de 2026-09-24 e do ADR-42. Nenhum é explorável
-hoje; são defesa em profundidade.
-
-### XSS armazenado em `title` e `synopsis`
-
-Os campos são gravados e devolvidos sem sanitização. Não é explorável no frontend atual (o
-React escapa e nenhuma página usa `dangerouslySetInnerHTML`), mas qualquer consumidor que
-renderize HTML ficaria exposto. A defesa adequada é um `Content-Security-Policy` no nginx do
-frontend, não escapar no backend.
+O Trivy aponta CVE-2026-47884 e CVE-2026-47890 (CRITICAL) no `spring-webmvc` 6.2.19, já a
+última versão aberta da linha 6.2. A correção só existe no Spring Framework 7.0.9, ou seja,
+Spring Boot 4. É uma migração de versão maior, com issue própria. Ao migrar, remova os
+overrides do `pom.xml` que o Boot 4 já cobrir e rode o Trivy de novo.
 
 ## Features
 
@@ -72,6 +27,21 @@ frontend, não escapar no backend.
 
 ## Concluído
 
+- [x] Dívidas técnicas revisadas em 2026-10-08:
+  - Órfãos em `volumes/` no GCS: job `POST /admin/jobs/storage-orphans` (PR #75) apaga o que
+    não tem linha em `volumes` e tem mais de 7 dias, com `dryRun` e trava de proporção. Falta
+    a primeira execução em `dryRun` e o job semanal no Cloud Scheduler.
+  - Backend direto pelo `run.app`: segredo compartilhado nginx → backend (PR #76, ADR-43).
+    Falta criar o segredo e ligá-lo aos dois serviços, nessa ordem: frontend e depois backend.
+  - Overrides do `pom.xml` revisados (PR #74): todos ainda necessários, Jackson 2.21.7,
+    patches de postgresql/httpclient5/httpcore5 e OpenTelemetry 1.62.0. O Trivy foi de 10 achados
+    para 2, que dependem do Spring Boot 4 (ver Dívida técnica).
+  - Origens locais no CORS do bucket: removidas e aplicadas no bucket (PR #73).
+  - Signed URL não revogada: risco aceito na atualização de 2026-10-08 do ADR-07 (PR #73).
+- [x] XSS armazenado em `title` e `synopsis`: `Content-Security-Policy` no nginx do frontend
+  (sem script inline nem de origem não listada; libera só o site, o hCaptcha e o GCS). Ficou
+  em Report-Only na v1.6.1 e foi validado em produção sem violação antes de bloquear.
+  Também saiu o QR do 2FA gerado pelo `api.qrserver.com`, que recebia o segredo TOTP (PR #64).
 - [x] Avisos de inatividade em lote: o job junta os avisados e manda tudo numa chamada da API
   de lote do Resend (`EmailSender.sendBatch`, conteúdo próprio por destinatário, fatiado em
   blocos de 100), antes das desativações, em vez de uma chamada por usuário.

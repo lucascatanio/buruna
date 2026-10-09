@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,6 +28,10 @@ public interface VolumeRepository extends JpaRepository<Volume, UUID> {
     long sumPrivateFileSizeByOwnerId(@Param("ownerId") UUID ownerId);
 
     boolean existsByFileHashAndMangaIsPublicTrue(String fileHash);
+
+    /** Dos {@code fileUrls} informados, devolve só os que têm linha em {@code volumes}. */
+    @Query("SELECT DISTINCT v.fileUrl FROM Volume v WHERE v.fileUrl IN :fileUrls")
+    List<String> findExistingFileUrls(@Param("fileUrls") Collection<String> fileUrls);
 
     boolean existsByFileUrlAndIdNot(String fileUrl, UUID id);
 

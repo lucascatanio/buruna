@@ -76,7 +76,7 @@
 │  Secret Manager (us-east1) — injeta env vars no Cloud Run no deploy:         │
 │  DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET, GCS_BUCKET_NAME,                 │
 │  RESEND_API_KEY, APP_JOBS_SECRET, HCAPTCHA_SECRET,                          │
-│  APP_TRUSTED_PROXY_HOPS, APP_CORS_ALLOWED_ORIGIN,                          │
+│  APP_PROXY_SECRET, APP_TRUSTED_PROXY_HOPS, APP_CORS_ALLOWED_ORIGIN,        │
 │  APP_PUBSUB_PASSWORD_RESET_TOPIC, APP_PUBSUB_PUSH_AUDIENCE,                │
 │  APP_PUBSUB_PUSH_SERVICE_ACCOUNT, …                                        │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -226,9 +226,9 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   nginx do `buruna-frontend`, e qualquer outro salto que o Cloud Run acrescente ao
   `X-Forwarded-For`) precedem o IP real do cliente. O `ClientIpResolver`
   (`shared/security`) usa esse valor para o rate limit de login/registro/forgot não
-  ser burlável forjando o header. Limitação conhecida: uma chamada direta ao
-  `run.app` do backend (sem passar pelo frontend) ainda escolhe o valor que cai na
-  posição lida. Para calibrar o valor:
+  ser burlável forjando o header. Chamada direta ao `run.app` do backend não burla
+  mais esse cálculo: o `ProxySecretFilter` (`APP_PROXY_SECRET`, abaixo) a recusa com 403
+  antes do rate limit. Para calibrar o valor:
   1. Ligue o log do header: variável `LOGGING_LEVEL_COM_BURUNA_SHARED_SECURITY=DEBUG`
      no `buruna-backend` (nível de pacote: o Spring converte a variável para
      minúsculas, então o nome da classe não funcionaria).
@@ -241,6 +241,52 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
      (ex.: `6.6.6.6, <seu IP>, <proxy>, <proxy>` → 4 − 1 = 3).
   4. Defina `APP_TRUSTED_PROXY_HOPS` e remova a variável de log: o log registra IPs
      de usuários e só deve ficar ligado durante a calibração.
+- `APP_PROXY_SECRET` (backend) e `BACKEND_PROXY_SECRET` (frontend) são o **mesmo**
+  segredo, vindo do Secret Manager (`buruna-proxy-secret`). O nginx do `buruna-frontend`
+  envia `X-Proxy-Secret` em todo `/api/`; o `ProxySecretFilter` do backend responde 403 a
+  qualquer requisição sem o header correto, o que impede chamar o `run.app` do backend
+  direto para forjar o `X-Forwarded-For` e burlar o rate limit
+  ([ADR-43](adr/ADR-43-segredo-compartilhado-nginx-backend.md)). Sem `APP_PROXY_SECRET`
+  o filtro fica desligado (dev local/testes) e o backend loga um WARN no startup. Sem
+  `BACKEND_PROXY_SECRET`, o nginx sobe normalmente e manda o header vazio, então a imagem
+  nova pode ir para produção antes de o segredo existir.
+  Ficam isentos, por terem autenticação própria ou não passarem pelo nginx:
+  `/internal/pubsub/**` (OIDC do Pub/Sub), `/admin/jobs/**` (`X-Job-Secret` do Cloud
+  Scheduler) e `/health` (probe do Cloud Run; só devolve `{"status":"UP"}`).
+
+  Criar o segredo e liberar as service accounts (substitua `<SA_BACKEND>` e `<SA_FRONTEND>`
+  pelas contas de execução dos dois serviços):
+
+  ```bash
+  openssl rand -hex 32 | tr -d '\n' | gcloud secrets create buruna-proxy-secret --data-file=-
+  gcloud secrets add-iam-policy-binding buruna-proxy-secret \
+    --member="serviceAccount:<SA_BACKEND>" --role="roles/secretmanager.secretAccessor"
+  gcloud secrets add-iam-policy-binding buruna-proxy-secret \
+    --member="serviceAccount:<SA_FRONTEND>" --role="roles/secretmanager.secretAccessor"
+  ```
+
+  **Ordem de rollout** (inverter derruba o site, porque o nginx ainda não enviaria o
+  header e o backend passaria a exigi-lo):
+
+  1. Frontend primeiro. O backend ainda não tem a propriedade, então o filtro segue
+     desligado e o header extra é ignorado:
+     ```bash
+     gcloud run services update buruna-frontend --region us-east1 \
+       --update-secrets=BACKEND_PROXY_SECRET=buruna-proxy-secret:latest
+     ```
+  2. Confira que o site continua funcionando (login, biblioteca).
+  3. Backend depois, ligando o filtro:
+     ```bash
+     gcloud run services update buruna-backend --region us-east1 \
+       --update-secrets=APP_PROXY_SECRET=buruna-proxy-secret:latest
+     ```
+  4. Valide: `curl -i https://<backend>.run.app/api/auth/password/reset-info?token=x`
+     responde 403 e o mesmo caminho pelo frontend responde 200.
+
+  Rotação: crie uma versão nova do segredo e rode os dois `update-secrets` em seguida
+  (há uma janela curta de 403 entre eles; o `:latest` só é lido ao subir a revisão).
+  O `deploy.yml` não precisa mudar: `gcloud run deploy` preserva os segredos já ligados
+  ao serviço.
 - `SWAGGER_ENABLED` tem default `false`; defina `true` explicitamente se quiser
   expor `/api/swagger-ui.html` em algum ambiente.
 - `APP_PUBSUB_PASSWORD_RESET_TOPIC`, `APP_PUBSUB_PUSH_AUDIENCE` e
@@ -263,6 +309,15 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   `POST /api/admin/jobs/inactivity`, header `X-Job-Secret: <APP_JOBS_SECRET>`. Substituiu o
   `@Scheduled` interno de `RunInactivityUseCase` — ver atualização de 2026-09-24 em
   [ADR-03](adr/ADR-03-async-e-scheduled-internos.md).
+
+- Job do Cloud Scheduler `buruna-storage-orphans` (a criar, semanal, ex.: cron `0 3 * * 0`):
+  `POST /api/admin/jobs/storage-orphans`, header `X-Job-Secret: <APP_JOBS_SECRET>`. Apaga de
+  `volumes/` no GCS os arquivos sem linha em `volumes` e com mais de 7 dias
+  (`DeleteOrphanVolumeFilesUseCase`). Enquanto o job não existir no Scheduler, os órfãos
+  continuam se acumulando. Antes de criar o job, rode uma vez à mão com `?dryRun=true`
+  (só conta, não apaga) e confira se `orphans` é plausível. Trava de segurança: se os órfãos
+  passarem de 5 e de 10% do analisado, o job não apaga nada e loga ERROR, porque essa
+  proporção indica descasamento entre o nome no bucket e o `file_url` do banco.
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).
