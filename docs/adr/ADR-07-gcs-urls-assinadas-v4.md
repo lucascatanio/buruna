@@ -16,3 +16,12 @@ baixa o PDF em pedaços (`rangeChunkSize`) ao longo da leitura, e o front guarda
 25 min (`signedUrlCache`) para não pedir outra a cada página. Uma URL mais curta exigiria
 renovar no meio da leitura, com risco de travar o leitor, para reduzir uma janela que já é
 curta e só expõe o que o usuário já tinha acesso pouco antes.
+
+**Atualização (2026-10-09):** o leitor passou a abrir o PDF com `disableAutoFetch` e
+`disableStream`: o pdf.js baixa só os trechos das páginas renderizadas, em vez do arquivo
+inteiro em segundo plano. Com isso a URL pode vencer no meio da leitura, quando o range
+request da próxima página volta 400/403. O front pede uma URL nova e reabre o documento na
+página atual (uma vez por minuto no máximo, para não entrar em laço se a falha não for
+expiração). A expiração de 30 min continua como está. Cada renovação passa por
+`GET /reader/{volumeId}/url`, então conta mais uma visualização e grava mais uma entrada no
+histórico, no máximo uma vez a cada ~30 min de leitura contínua.

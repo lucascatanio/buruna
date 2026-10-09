@@ -30,6 +30,34 @@ interface ReaderState {
     backUrl?: string;
 }
 
+// Abre o PDF baixando só os trechos (range requests) das páginas que forem renderizadas.
+// Sem disableAutoFetch o pdf.js continuaria baixando o arquivo inteiro em segundo plano,
+// o que custa dados no 4G para quem lê poucas páginas.
+function openPdf(url: string): Promise<PDFDocumentProxy> {
+    return pdfjsLib.getDocument({
+        url,
+        withCredentials: false,
+        cMapUrl: "/cmaps/",
+        cMapPacked: true,
+        rangeChunkSize: 131072,
+        disableAutoFetch: true,
+        disableStream: true,
+        // sem eval/new Function: o CSP não libera 'unsafe-eval'
+        isEvalSupported: false,
+    }).promise;
+}
+
+// URL assinada vencida: o GCS recusa o range request com 400 ou 403. Como o PDF não é
+// mais baixado inteiro de uma vez, isso pode acontecer no meio da leitura.
+function isExpiredUrlError(e: unknown): boolean {
+    const err = e as { name?: string; status?: number } | null;
+    return err?.name === "UnexpectedResponseException" && (err.status === 400 || err.status === 403);
+}
+
+// intervalo mínimo entre duas recargas: se a URL nova falhar logo em seguida, o problema
+// não é expiração e insistir só repetiria o erro
+const RELOAD_COOLDOWN_MS = 60 * 1000;
+
 // salva progresso com debounce de 1.5s
 let progressTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -56,10 +84,11 @@ interface PagedReaderProps {
     contrast: number;
     onPageChange: (p: number) => void;
     onComplete?: () => void;
+    onFetchError: (e: unknown, source: PDFDocumentProxy) => void;
     pageJump?: PageJump | null;
 }
 
-function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageChange, onComplete, pageJump}: PagedReaderProps) {
+function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageChange, onComplete, onFetchError, pageJump}: PagedReaderProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const renderTaskRef = useRef<RenderTask | null>(null);
     const [currentPage, setCurrentPage] = useState(initialPage);
@@ -105,11 +134,12 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
         } catch (e: any) {
             if (e?.name !== "RenderingCancelledException") {
                 console.error("Render error:", e);
+                onFetchError(e, pdf);
             }
         } finally {
             if (seq === renderSeqRef.current) setRendering(false);
         }
-    }, [pdf]);
+    }, [pdf, onFetchError]);
 
     useEffect(() => {
         renderPage(currentPage);
@@ -216,15 +246,19 @@ function PagedReader({pdf, initialPage, volumeId, brightness, contrast, onPageCh
 interface ScrollPageProps {
     pdf: PDFDocumentProxy;
     pageNum: number;
+    // altura/largura usada como placeholder até a página ser renderizada
+    placeholderRatio: number;
     brightness: number;
     contrast: number;
     onVisible: (pageNum: number) => void;
+    onFetchError: (e: unknown, source: PDFDocumentProxy) => void;
 }
 
-function ScrollPage({pdf, pageNum, brightness, contrast, onVisible}: ScrollPageProps) {
+function ScrollPage({pdf, pageNum, placeholderRatio, brightness, contrast, onVisible, onFetchError}: ScrollPageProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const renderedRef = useRef(false);
+    const [rendered, setRendered] = useState(false);
 
     // IntersectionObserver: renderiza quando entra no viewport
     useEffect(() => {
@@ -251,8 +285,10 @@ function ScrollPage({pdf, pageNum, brightness, contrast, onVisible}: ScrollPageP
                         canvas.style.height = `${displayViewport.height}px`;
                         const ctx2d = canvas.getContext("2d")!;
                         await page.render({canvasContext: ctx2d, viewport: renderViewport}).promise;
+                        setRendered(true);
                     } catch (e) {
                         console.error(`Erro ao renderizar página ${pageNum}:`, e);
+                        onFetchError(e, pdf);
                     }
                 }
             },
@@ -272,10 +308,16 @@ function ScrollPage({pdf, pageNum, brightness, contrast, onVisible}: ScrollPageP
             renderObserver.disconnect();
             visibleObserver.disconnect();
         };
-    }, [pdf, pageNum, onVisible]);
+    }, [pdf, pageNum, onVisible, onFetchError]);
 
+    // Sem altura reservada, todas as páginas ainda vazias caberiam no viewport ao mesmo
+    // tempo e seriam renderizadas (e baixadas) de uma vez.
     return (
-        <div ref={containerRef} className="w-full max-w-3xl mx-auto mb-1">
+        <div
+            ref={containerRef}
+            className="w-full max-w-3xl mx-auto mb-1"
+            style={rendered ? undefined : {aspectRatio: `1 / ${placeholderRatio}`}}
+        >
             <canvas
                 ref={canvasRef}
                 className="w-full h-auto block"
@@ -293,15 +335,34 @@ interface ScrollReaderProps {
     contrast: number;
     onPageChange: (p: number) => void;
     onComplete?: () => void;
+    onFetchError: (e: unknown, source: PDFDocumentProxy) => void;
     pageJump?: PageJump | null;
 }
 
-function ScrollReader({pdf, initialPage, volumeId, brightness, contrast, onPageChange, onComplete, pageJump}: ScrollReaderProps) {
+function ScrollReader({pdf, initialPage, volumeId, brightness, contrast, onPageChange, onComplete, onFetchError, pageJump}: ScrollReaderProps) {
     const pages = Array.from({length: pdf.numPages}, (_, i) => i + 1);
     const initialScrollRef = useRef(false);
     const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
     const currentPageRef = useRef(initialPage);
     const endRef = useRef<HTMLDivElement>(null);
+    const [placeholderRatio, setPlaceholderRatio] = useState<number | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        pdf.getPage(1)
+            .then((page) => {
+                const viewport = page.getViewport({scale: 1});
+                if (!cancelled) setPlaceholderRatio(viewport.height / viewport.width);
+            })
+            .catch((e) => {
+                // sem a proporção real, assume A4 retrato
+                if (!cancelled) setPlaceholderRatio(Math.SQRT2);
+                onFetchError(e, pdf);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [pdf, onFetchError]);
 
     const handleVisible = useCallback((pageNum: number) => {
         if (pageNum !== currentPageRef.current) {
@@ -312,7 +373,7 @@ function ScrollReader({pdf, initialPage, volumeId, brightness, contrast, onPageC
     }, [volumeId, onPageChange, pdf.numPages]);
 
     useEffect(() => {
-        if (initialScrollRef.current || initialPage <= 1) return;
+        if (placeholderRatio == null || initialScrollRef.current || initialPage <= 1) return;
         const timer = setTimeout(() => {
             const el = pageRefs.current[initialPage - 1];
             if (el) {
@@ -321,7 +382,7 @@ function ScrollReader({pdf, initialPage, volumeId, brightness, contrast, onPageC
             }
         }, 500);
         return () => clearTimeout(timer);
-    }, [initialPage]);
+    }, [initialPage, placeholderRatio]);
 
     // jump to page from slider/input
     useEffect(() => {
@@ -345,7 +406,16 @@ function ScrollReader({pdf, initialPage, volumeId, brightness, contrast, onPageC
         );
         observer.observe(el);
         return () => observer.disconnect();
-    }, [pdf.numPages, onComplete]);
+        // placeholderRatio: o sentinela só existe depois que a proporção é conhecida
+    }, [pdf.numPages, onComplete, placeholderRatio]);
+
+    if (placeholderRatio == null) {
+        return (
+            <div className="flex-1 flex items-center justify-center">
+                <Loading className="text-paper" label="Carregando volume"/>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 overflow-y-auto px-2 py-2">
@@ -356,9 +426,11 @@ function ScrollReader({pdf, initialPage, volumeId, brightness, contrast, onPageC
                     <ScrollPage
                         pdf={pdf}
                         pageNum={pageNum}
+                        placeholderRatio={placeholderRatio}
                         brightness={brightness}
                         contrast={contrast}
                         onVisible={handleVisible}
+                        onFetchError={onFetchError}
                     />
                 </div>
             ))}
@@ -463,10 +535,55 @@ export function ReaderPage() {
 
     const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Recarga do documento quando a URL assinada vence no meio da leitura. docVersion
+    // remonta o leitor na página atual com o documento novo.
+    const [docVersion, setDocVersion] = useState(0);
+    const pdfRef = useRef<PDFDocumentProxy | null>(null);
+    const currentPageRef = useRef(1);
+    const reloadingRef = useRef(false);
+    const lastReloadAtRef = useRef(0);
+
     // keep input in sync with current page when not typing
     useEffect(() => {
         if (!pageInputFocused) setPageInputValue(String(currentPage));
     }, [currentPage, pageInputFocused]);
+
+    useEffect(() => {
+        currentPageRef.current = currentPage;
+    }, [currentPage]);
+
+    useEffect(() => () => {
+        pdfRef.current?.destroy();
+    }, []);
+
+    const handleFetchError = useCallback(async (e: unknown, source: PDFDocumentProxy) => {
+        // erro de um documento que já foi trocado: a recarga já aconteceu
+        if (!isExpiredUrlError(e) || source !== pdfRef.current || reloadingRef.current || !volumeId) return;
+        // a URL recém-gerada também falhou: não insiste em laço
+        if (Date.now() - lastReloadAtRef.current < RELOAD_COOLDOWN_MS) {
+            setLoadError("Não foi possível continuar carregando o volume. Abra o volume de novo.");
+            return;
+        }
+        reloadingRef.current = true;
+        lastReloadAtRef.current = Date.now();
+        try {
+            const {url} = await getVolumeUrl(volumeId);
+            setSignedUrl(volumeId, url);
+            const doc = await openPdf(url);
+            const previous = pdfRef.current;
+            pdfRef.current = doc;
+            setInitialPage(currentPageRef.current);
+            // o leitor remontado aplicaria de novo o último salto e voltaria àquela página
+            setPageJump(null);
+            setPdf(doc);
+            setDocVersion(v => v + 1);
+            previous?.destroy();
+        } catch {
+            setLoadError("Erro ao carregar o PDF.");
+        } finally {
+            reloadingRef.current = false;
+        }
+    }, [volumeId]);
 
     useEffect(() => {
         if (!volumeId) return;
@@ -497,16 +614,17 @@ export function ReaderPage() {
                 setCurrentPage(startPage);
                 setProgressLoaded(true);
 
-                const loadingTask = pdfjsLib.getDocument({
-                    url: signedUrl,
-                    withCredentials: false,
-                    cMapUrl: "/cmaps/",
-                    cMapPacked: true,
-                    rangeChunkSize: 131072,
-                    // sem eval/new Function: o CSP não libera 'unsafe-eval'
-                    isEvalSupported: false,
-                });
-                const doc = await loadingTask.promise;
+                let doc: PDFDocumentProxy;
+                try {
+                    doc = await openPdf(signedUrl);
+                } catch (e) {
+                    // URL do cache venceu antes do previsto: pede uma nova, uma vez
+                    if (!cached || !isExpiredUrlError(e)) throw e;
+                    const {url} = await getVolumeUrl(volumeId!);
+                    setSignedUrl(volumeId!, url);
+                    doc = await openPdf(url);
+                }
+                pdfRef.current = doc;
                 setPdf(doc);
             } catch (e) {
                 setLoadError("Erro ao carregar o PDF.");
@@ -718,6 +836,7 @@ export function ReaderPage() {
 
             {mode === "paged" ? (
                 <PagedReader
+                    key={docVersion}
                     pdf={pdf}
                     initialPage={initialPage}
                     volumeId={volumeId!}
@@ -725,10 +844,12 @@ export function ReaderPage() {
                     contrast={contrast}
                     onPageChange={setCurrentPage}
                     onComplete={handleVolumeComplete}
+                    onFetchError={handleFetchError}
                     pageJump={pageJump}
                 />
             ) : (
                 <ScrollReader
+                    key={docVersion}
                     pdf={pdf}
                     initialPage={initialPage}
                     volumeId={volumeId!}
@@ -736,6 +857,7 @@ export function ReaderPage() {
                     contrast={contrast}
                     onPageChange={setCurrentPage}
                     onComplete={handleVolumeComplete}
+                    onFetchError={handleFetchError}
                     pageJump={pageJump}
                 />
             )}
