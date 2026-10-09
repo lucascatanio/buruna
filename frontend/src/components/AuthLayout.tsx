@@ -1,6 +1,6 @@
 import type {ReactNode} from "react";
 import {Wordmark} from "@/components/Logo";
-import {MangaPageArt, MangaStripArt} from "@/components/MangaPageArt";
+import {WorkPageArt, WorkStripArt} from "@/components/WorkPageArt";
 
 declare const __APP_VERSION__: string;
 
@@ -18,8 +18,8 @@ interface Props {
 export function AuthLayout({title, description, children}: Props) {
     return (
         <div className="min-h-screen flex flex-col lg:flex-row bg-background text-foreground">
-            <MangaStripArt className="lg:hidden"/>
-            <MangaPageArt className="hidden lg:block lg:flex-1"/>
+            <WorkStripArt className="lg:hidden"/>
+            <WorkPageArt className="hidden lg:block lg:flex-1"/>
 
             <main className="flex-1 lg:flex-none flex flex-col gap-6 px-6 pt-6 pb-8 sm:px-12 sm:items-center lg:items-stretch lg:w-[480px] lg:shrink-0 lg:justify-center lg:gap-9 lg:px-16 lg:py-10">
                 {/* Campos e botão principal maiores que o padrão do app: área de toque de 48px */}

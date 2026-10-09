@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
 import {approveSubmission, listPendingSubmissions, rejectSubmission} from "@/api/adminApi";
-import type {PendingSubmission} from "@/types/manga";
+import type {PendingSubmission} from "@/types/work";
 import {Button} from "@/components/ui/button";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {PageHeader} from "@/components/PageHeader";

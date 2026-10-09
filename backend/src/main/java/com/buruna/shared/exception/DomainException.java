@@ -5,7 +5,7 @@ package com.buruna.shared.exception;
  * Carrega apenas a mensagem e uma {@link DomainErrorType} (categoria de domínio);
  * a tradução para status HTTP acontece exclusivamente no GlobalExceptionHandler.
  *
- * <p>Subclasses concretas e nomeadas por intenção (ex.: MangaNotFoundException)
+ * <p>Subclasses concretas e nomeadas por intenção (ex.: WorkNotFoundException)
  * são criadas em cada contexto durante a migração.
  */
 public abstract class DomainException extends RuntimeException {

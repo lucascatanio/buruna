@@ -6,10 +6,10 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record ReadingListResponse(
-        UUID mangaId,
-        String mangaSlug,
-        String mangaTitle,
-        String mangaCoverUrl,
+        UUID workId,
+        String workSlug,
+        String workTitle,
+        String workCoverUrl,
         ReadingStatus status,
         OffsetDateTime updatedAt
 ) {

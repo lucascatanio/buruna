@@ -2,7 +2,7 @@ import {useEffect, useRef, useState, useCallback} from "react";
 import {useParams, useNavigate, useLocation} from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import type {PDFDocumentProxy, RenderTask} from "pdfjs-dist";
-import {getManga} from "@/api/mangaApi";
+import {getWork} from "@/api/workApi";
 import {getVolumeProgress, getVolumeUrl, saveProgress as saveProgressApi} from "@/api/readingApi";
 import {getSignedUrl, setSignedUrl} from "@/lib/signedUrlCache";
 import {Loading} from "@/components/Loading";
@@ -23,9 +23,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 type ReadMode = "paged" | "scroll";
 
 interface ReaderState {
-    mangaId?: string;
-    mangaTitle?: string;
-    mangaSlug?: string;
+    workId?: string;
+    workTitle?: string;
+    workSlug?: string;
     volumeNumber?: number;
     backUrl?: string;
 }
@@ -449,11 +449,11 @@ function CompletionOverlay({state}: CompletionOverlayProps) {
     const [nextVol, setNextVol] = useState<{id: string; volumeNumber: number} | null | undefined>(undefined);
 
     useEffect(() => {
-        if (!state.mangaSlug) {
+        if (!state.workSlug) {
             setNextVol(null);
             return;
         }
-        getManga(state.mangaSlug)
+        getWork(state.workSlug)
             .then((data) => {
                 const vols: {id: string; volumeNumber: number}[] = data.volumes ?? [];
                 const sorted = [...vols].sort((a, b) => a.volumeNumber - b.volumeNumber);
@@ -461,7 +461,7 @@ function CompletionOverlay({state}: CompletionOverlayProps) {
                 setNextVol(next);
             })
             .catch(() => setNextVol(null));
-    }, [state.mangaSlug, state.volumeNumber]);
+    }, [state.workSlug, state.volumeNumber]);
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -470,9 +470,9 @@ function CompletionOverlay({state}: CompletionOverlayProps) {
                 <LogoMark className="relative h-12 w-auto text-paper" decorative/>
                 <div className="relative text-center space-y-1">
                     <p className="text-paper text-lg font-semibold">Volume concluído</p>
-                    {(state.mangaTitle || state.volumeNumber != null) && (
+                    {(state.workTitle || state.volumeNumber != null) && (
                         <p className="text-paper/50 text-sm">
-                            {[state.mangaTitle, state.volumeNumber != null && `Vol. ${state.volumeNumber}`]
+                            {[state.workTitle, state.volumeNumber != null && `Vol. ${state.volumeNumber}`]
                                 .filter(Boolean).join(" — ")}
                         </p>
                     )}
@@ -485,9 +485,9 @@ function CompletionOverlay({state}: CompletionOverlayProps) {
                             className="w-full h-11 bg-paper text-ink rounded-sm text-sm font-semibold hover:bg-paper/90 transition-colors"
                             onClick={() => navigate(`/leitor/${nextVol.id}`, {
                                 state: {
-                                    mangaId: state.mangaId,
-                                    mangaTitle: state.mangaTitle,
-                                    mangaSlug: state.mangaSlug,
+                                    workId: state.workId,
+                                    workTitle: state.workTitle,
+                                    workSlug: state.workSlug,
                                     volumeNumber: nextVol.volumeNumber,
                                     backUrl: state.backUrl,
                                 }
@@ -731,11 +731,11 @@ export function ReaderPage() {
                         <button
                             className="flex min-h-11 min-w-0 items-center gap-2.5 px-1.5 text-paper/85 transition-colors hover:text-paper"
                             onClick={handleBack}
-                            aria-label={`Voltar${state.mangaTitle ? ` para ${state.mangaTitle}` : ""}`}
+                            aria-label={`Voltar${state.workTitle ? ` para ${state.workTitle}` : ""}`}
                         >
                             <ArrowLeft className="size-5 shrink-0"/>
                             <span className="truncate text-sm font-medium max-w-[45vw] sm:max-w-[320px]">
-                                {state.mangaTitle ?? "Voltar"}
+                                {state.workTitle ?? "Voltar"}
                             </span>
                             {state.volumeNumber != null && (
                                 <span className="shrink-0 font-mono text-xs text-paper/50">

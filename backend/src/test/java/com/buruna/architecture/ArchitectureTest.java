@@ -32,7 +32,7 @@ class ArchitectureTest {
             "engagement",
             "reading",
             "identity",
-            "manga",
+            "work",
             "admin"
     };
 
@@ -129,7 +129,7 @@ class ArchitectureTest {
     }
 
     private static String[] buildForbiddenPackages(String self) {
-        String[] allContexts = {"engagement", "manga", "reading", "identity", "admin"};
+        String[] allContexts = {"engagement", "work", "reading", "identity", "admin"};
         return java.util.Arrays.stream(allContexts)
                 .filter(c -> !c.equals(self))
                 .flatMap(c -> java.util.Arrays.stream(new String[]{

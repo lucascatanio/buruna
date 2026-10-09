@@ -1,12 +1,12 @@
 package com.buruna.reading.application;
 
-import com.buruna.manga.application.GetMangaInfoUseCase;
-import com.buruna.manga.application.GetVolumeAccessUseCase;
-import com.buruna.manga.application.GetVolumeIdsByMangaUseCase;
-import com.buruna.manga.application.GetVolumeInfoUseCase;
-import com.buruna.manga.application.MangaInfo;
-import com.buruna.manga.application.VolumeInfo;
-import com.buruna.manga.application.VolumeReadInfo;
+import com.buruna.work.application.GetWorkInfoUseCase;
+import com.buruna.work.application.GetVolumeAccessUseCase;
+import com.buruna.work.application.GetVolumeIdsByWorkUseCase;
+import com.buruna.work.application.GetVolumeInfoUseCase;
+import com.buruna.work.application.WorkInfo;
+import com.buruna.work.application.VolumeInfo;
+import com.buruna.work.application.VolumeReadInfo;
 import com.buruna.reading.domain.ReadingHistory;
 import com.buruna.reading.domain.ReadingProgress;
 import com.buruna.reading.persistence.ReadingHistoryRepository;
@@ -37,23 +37,23 @@ public class ReadingService {
 
     private final GetVolumeAccessUseCase volumeAccessUseCase;
     private final GetVolumeInfoUseCase volumeInfoUseCase;
-    private final GetMangaInfoUseCase mangaInfoUseCase;
-    private final GetVolumeIdsByMangaUseCase volumeIdsByMangaUseCase;
+    private final GetWorkInfoUseCase workInfoUseCase;
+    private final GetVolumeIdsByWorkUseCase volumeIdsByWorkUseCase;
     private final ReadingProgressRepository progressRepository;
     private final ReadingHistoryRepository historyRepository;
     private final StorageClient storageClient;
 
     public ReadingService(GetVolumeAccessUseCase volumeAccessUseCase,
                           GetVolumeInfoUseCase volumeInfoUseCase,
-                          GetMangaInfoUseCase mangaInfoUseCase,
-                          GetVolumeIdsByMangaUseCase volumeIdsByMangaUseCase,
+                          GetWorkInfoUseCase workInfoUseCase,
+                          GetVolumeIdsByWorkUseCase volumeIdsByWorkUseCase,
                           ReadingProgressRepository progressRepository,
                           ReadingHistoryRepository historyRepository,
                           StorageClient storageClient) {
         this.volumeAccessUseCase = volumeAccessUseCase;
         this.volumeInfoUseCase = volumeInfoUseCase;
-        this.mangaInfoUseCase = mangaInfoUseCase;
-        this.volumeIdsByMangaUseCase = volumeIdsByMangaUseCase;
+        this.workInfoUseCase = workInfoUseCase;
+        this.volumeIdsByWorkUseCase = volumeIdsByWorkUseCase;
         this.progressRepository = progressRepository;
         this.historyRepository = historyRepository;
         this.storageClient = storageClient;
@@ -90,10 +90,10 @@ public class ReadingService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<ProgressResponse> getProgress(UUID mangaId, UUID actorId) {
-        mangaInfoUseCase.requireExists(mangaId);
+    public Optional<ProgressResponse> getProgress(UUID workId, UUID actorId) {
+        workInfoUseCase.requireExists(workId);
 
-        List<UUID> volumeIds = volumeIdsByMangaUseCase.getVolumeIdsOrderedByNumberDesc(mangaId);
+        List<UUID> volumeIds = volumeIdsByWorkUseCase.getVolumeIdsOrderedByNumberDesc(workId);
         if (volumeIds.isEmpty()) {
             return Optional.empty();
         }
@@ -115,22 +115,22 @@ public class ReadingService {
 
         Map<UUID, VolumeInfo> volumeInfos = volumeInfoUseCase.getInfoByIds(volumeIds);
 
-        Set<UUID> mangaIds = volumeInfos.values().stream()
-                .map(VolumeInfo::mangaId)
+        Set<UUID> workIds = volumeInfos.values().stream()
+                .map(VolumeInfo::workId)
                 .collect(Collectors.toSet());
 
-        Map<UUID, MangaInfo> mangaInfos = mangaInfoUseCase.getInfoByIds(mangaIds);
+        Map<UUID, WorkInfo> workInfos = workInfoUseCase.getInfoByIds(workIds);
 
         return historyPage.map(h -> {
             VolumeInfo vol = volumeInfos.get(h.getVolumeId());
             if (vol == null) return null;
-            MangaInfo manga = mangaInfos.get(vol.mangaId());
-            if (manga == null) return null;
-            String coverUrl = manga.coverUrl() != null
-                    ? storageClient.generateSignedUrl(manga.coverUrl(), Duration.ofHours(1)).toString()
+            WorkInfo work = workInfos.get(vol.workId());
+            if (work == null) return null;
+            String coverUrl = work.coverUrl() != null
+                    ? storageClient.generateSignedUrl(work.coverUrl(), Duration.ofHours(1)).toString()
                     : null;
-            return new HistoryResponse(h.getVolumeId(), vol.volumeNumber(), vol.mangaId(),
-                    manga.title(), coverUrl, h.getReadAt());
+            return new HistoryResponse(h.getVolumeId(), vol.volumeNumber(), vol.workId(),
+                    work.title(), coverUrl, h.getReadAt());
         });
     }
 

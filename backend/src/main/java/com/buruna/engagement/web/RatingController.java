@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/mangas/{mangaId}/rating")
+// /mangas: rota de antes do rename (ADR-45), mantida por uma versão para abas abertas com o
+// front antigo. Remover na versão seguinte.
+@RequestMapping({"/works/{workId}/rating", "/mangas/{workId}/rating"})
 public class RatingController {
 
     private final RatingService ratingService;
@@ -24,35 +26,35 @@ public class RatingController {
 
     @GetMapping
     public ResponseEntity<RatingResponse> getMyRating(
-            @PathVariable UUID mangaId,
+            @PathVariable UUID workId,
             @AuthenticationPrincipal User user) {
-        return ratingService.findByUser(mangaId, user.getId())
+        return ratingService.findByUser(workId, user.getId())
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.noContent().build());
     }
 
     @PostMapping
     public ResponseEntity<RatingResponse> rate(
-            @PathVariable UUID mangaId,
+            @PathVariable UUID workId,
             @Valid @RequestBody RatingRequest request,
             @AuthenticationPrincipal User user) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ratingService.rate(mangaId, request, user.getId()));
+                .body(ratingService.rate(workId, request, user.getId()));
     }
 
     @PutMapping
     public ResponseEntity<RatingResponse> update(
-            @PathVariable UUID mangaId,
+            @PathVariable UUID workId,
             @Valid @RequestBody RatingRequest request,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(ratingService.update(mangaId, request, user.getId()));
+        return ResponseEntity.ok(ratingService.update(workId, request, user.getId()));
     }
 
     @DeleteMapping
     public ResponseEntity<Void> remove(
-            @PathVariable UUID mangaId,
+            @PathVariable UUID workId,
             @AuthenticationPrincipal User user) {
-        ratingService.remove(mangaId, user.getId());
+        ratingService.remove(workId, user.getId());
         return ResponseEntity.noContent().build();
     }
 }

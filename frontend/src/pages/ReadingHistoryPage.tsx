@@ -5,7 +5,7 @@ import type {HistoryEntry} from "@/types/reading";
 import {Button} from "@/components/ui/button";
 import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
-import {MangaCover} from "@/components/MangaCover";
+import {WorkCover} from "@/components/WorkCover";
 import {toast} from "sonner";
 import {ChevronRight} from "lucide-react";
 
@@ -84,16 +84,16 @@ export function ReadingHistoryPage() {
                                         <Link
                                             to={`/leitor/${entry.volumeId}`}
                                             state={{
-                                                mangaTitle: entry.mangaTitle,
-                                                mangaId: entry.mangaId,
+                                                workTitle: entry.workTitle,
+                                                workId: entry.workId,
                                                 volumeNumber: entry.volumeNumber,
                                                 backUrl: "/historico",
                                             }}
                                             className="group flex items-center gap-4 py-3 pr-1 transition-colors hover:bg-muted/40"
                                         >
-                                            <MangaCover title={entry.mangaTitle} coverUrl={entry.mangaCoverUrl} compact className="w-11 shrink-0 shadow-none"/>
+                                            <WorkCover title={entry.workTitle} coverUrl={entry.workCoverUrl} compact className="w-11 shrink-0 shadow-none"/>
                                             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                                <span className="truncate text-[15px] font-medium">{entry.mangaTitle}</span>
+                                                <span className="truncate text-[15px] font-medium">{entry.workTitle}</span>
                                                 <span className="font-mono text-xs text-muted-foreground">Vol. {String(entry.volumeNumber).padStart(2, "0")}</span>
                                             </div>
                                             <span className="shrink-0 font-mono text-xs text-muted-foreground">

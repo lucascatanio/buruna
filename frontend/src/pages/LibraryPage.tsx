@@ -1,14 +1,14 @@
 import {useEffect, useState, useCallback} from "react";
 import {Link} from "react-router-dom";
-import {listMangas} from "@/api/mangaApi";
+import {listWorks} from "@/api/workApi";
 import type {Page} from "@/types/common";
-import type {MangaCard} from "@/types/manga";
+import type {WorkCard} from "@/types/work";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {TagSelector} from "@/components/TagSelector";
 import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
-import {MangaCover} from "@/components/MangaCover";
+import {WorkCover} from "@/components/WorkCover";
 import {NativeSelect} from "@/components/ui/native-select";
 import {Search, SlidersHorizontal, X, Plus, Star, ChevronLeft, ChevronRight} from "lucide-react";
 import {useAuthStore} from "@/store/authStore";
@@ -40,7 +40,7 @@ const FORMAT_LABELS: Record<string, string> = {
 export function LibraryPage() {
     const user = useAuthStore((s) => s.user);
     const isCollab = user?.role === "COLLABORATOR" || user?.role === "ADMIN";
-    const [data, setData] = useState<Page<MangaCard> | null>(null);
+    const [data, setData] = useState<Page<WorkCard> | null>(null);
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
 
@@ -53,10 +53,10 @@ export function LibraryPage() {
 
     const hasActiveFilters = format !== "" || statusOrigin !== "" || tagIds.length > 0;
 
-    const fetchMangas = useCallback(async (pageNum: number) => {
+    const fetchWorks = useCallback(async (pageNum: number) => {
         setLoading(true);
         try {
-            const res = await listMangas({page: pageNum, size: 24, title, format, statusOrigin, tagIds});
+            const res = await listWorks({page: pageNum, size: 24, title, format, statusOrigin, tagIds});
             setData(res);
         } finally {
             setLoading(false);
@@ -65,8 +65,8 @@ export function LibraryPage() {
 
     useEffect(() => {
         setPage(0);
-        fetchMangas(0);
-    }, [fetchMangas]);
+        fetchWorks(0);
+    }, [fetchWorks]);
 
     function handleSearch(e: React.FormEvent) {
         e.preventDefault();
@@ -81,7 +81,7 @@ export function LibraryPage() {
 
     function changePage(newPage: number) {
         setPage(newPage);
-        fetchMangas(newPage);
+        fetchWorks(newPage);
         window.scrollTo({top: 0, behavior: "smooth"});
     }
 
@@ -197,8 +197,8 @@ export function LibraryPage() {
 
             {!loading && data && data.content.length > 0 && (
                 <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:gap-x-5 sm:gap-y-8">
-                    {data.content.map((manga) => (
-                        <MangaCardItem key={manga.id} manga={manga}/>
+                    {data.content.map((work) => (
+                        <WorkCardItem key={work.id} work={work}/>
                     ))}
                 </div>
             )}
@@ -221,7 +221,7 @@ export function LibraryPage() {
 
             {isCollab && (
                 <Link
-                    to="/mangas/novo"
+                    to="/obras/nova"
                     aria-label="Publicar mangá"
                     className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-50 size-14 rounded-lg bg-primary text-primary-foreground shadow-[0_10px_30px_rgba(0,0,0,.5)] flex items-center justify-center hover:bg-primary/90 transition-colors"
                 >
@@ -236,24 +236,24 @@ function formatRating(value: number): string {
     return value.toLocaleString("pt-BR", {minimumFractionDigits: 1, maximumFractionDigits: 1});
 }
 
-function MangaCardItem({manga}: {manga: MangaCard}) {
+function WorkCardItem({work}: {work: WorkCard}) {
     return (
-        <Link to={`/biblioteca/${manga.slug}`} className="group flex flex-col gap-2.5">
-            <MangaCover
-                title={manga.title}
-                coverUrl={manga.coverUrl}
-                formatLabel={FORMAT_LABELS[manga.format] ?? manga.format}
+        <Link to={`/biblioteca/${work.slug}`} className="group flex flex-col gap-2.5">
+            <WorkCover
+                title={work.title}
+                coverUrl={work.coverUrl}
+                formatLabel={FORMAT_LABELS[work.format] ?? work.format}
                 className="transition-transform duration-200 group-hover:-translate-y-[3px]"
             />
             <div className="flex flex-col gap-0.5">
-                <span className="text-[13px] sm:text-sm font-medium leading-snug line-clamp-2">{manga.title}</span>
+                <span className="text-[13px] sm:text-sm font-medium leading-snug line-clamp-2">{work.title}</span>
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {manga.year}
-                    {manga.year && manga.ratingCount > 0 && <span aria-hidden="true">·</span>}
-                    {manga.ratingCount > 0 && (
+                    {work.year}
+                    {work.year && work.ratingCount > 0 && <span aria-hidden="true">·</span>}
+                    {work.ratingCount > 0 && (
                         <>
                             <Star aria-hidden="true" className="size-3 fill-shu text-shu"/>
-                            <span>{formatRating(Number(manga.avgRating))}<span className="sr-only"> de 5</span></span>
+                            <span>{formatRating(Number(work.avgRating))}<span className="sr-only"> de 5</span></span>
                         </>
                     )}
                 </span>

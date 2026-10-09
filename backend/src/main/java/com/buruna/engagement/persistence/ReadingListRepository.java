@@ -9,11 +9,11 @@ import java.util.UUID;
 
 public interface ReadingListRepository extends JpaRepository<ReadingList, UUID> {
 
-    Optional<ReadingList> findByUserIdAndMangaId(UUID userId, UUID mangaId);
+    Optional<ReadingList> findByUserIdAndWorkId(UUID userId, UUID workId);
 
     List<ReadingList> findAllByUserIdOrderByUpdatedAtDesc(UUID userId);
 
-    void deleteByUserIdAndMangaId(UUID userId, UUID mangaId);
+    void deleteByUserIdAndWorkId(UUID userId, UUID workId);
 
-    boolean existsByUserIdAndMangaId(UUID userId, UUID mangaId);
+    boolean existsByUserIdAndWorkId(UUID userId, UUID workId);
 }

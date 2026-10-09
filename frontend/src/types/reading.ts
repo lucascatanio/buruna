@@ -14,8 +14,8 @@ export interface ProgressResponse {
 export interface HistoryEntry {
     volumeId: string;
     volumeNumber: number;
-    mangaId: string;
-    mangaTitle: string;
-    mangaCoverUrl: string | null;
+    workId: string;
+    workTitle: string;
+    workCoverUrl: string | null;
     readAt: string;
 }
