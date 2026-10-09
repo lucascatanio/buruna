@@ -3,6 +3,8 @@ package com.buruna.shared.storage;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 public interface StorageClient {
@@ -14,6 +16,8 @@ public interface StorageClient {
      * assinatura bater — ex.: {@code x-goog-content-length-range} no GCS,
      * limitando o tamanho aceito pelo PUT sem o backend tocar o arquivo.
      */
+    record StoredObject(String name, Instant createdAt) {}
+
     record SignedUpload(URL url, Map<String, String> requiredHeaders) {}
 
     String upload(InputStream content, String fileName, String contentType, long contentLength);
@@ -27,4 +31,7 @@ public interface StorageClient {
     void move(String from, String to);
 
     FileMetadata getFileMetadata(String objectName);
+
+    /** Lista todos os objetos cujo nome começa com {@code prefix}, com a data de criação de cada um. */
+    List<StoredObject> list(String prefix);
 }
