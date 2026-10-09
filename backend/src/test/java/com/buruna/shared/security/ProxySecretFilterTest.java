@@ -88,7 +88,7 @@ class ProxySecretFilterTest {
 
     @Test
     void shouldReturn403_whenExemptPrefixAppearsOnlyInsideAnotherPath() throws Exception {
-        MockHttpServletResponse response = call(filterWith(SECRET), "/api/mangas/admin/jobs/x", null);
+        MockHttpServletResponse response = call(filterWith(SECRET), "/api/works/admin/jobs/x", null);
 
         assertThat(response.getStatus()).isEqualTo(403);
     }

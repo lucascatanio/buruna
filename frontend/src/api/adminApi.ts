@@ -1,7 +1,7 @@
 import api from "@/lib/axios";
 import type {Page} from "@/types/common";
 import type {AdminUser, DashboardData, PendingUser} from "@/types/admin";
-import type {PendingSubmission} from "@/types/manga";
+import type {PendingSubmission} from "@/types/work";
 
 export function getDashboard(): Promise<DashboardData> {
     return api.get<DashboardData>("/admin/dashboard").then((r) => r.data);

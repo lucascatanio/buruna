@@ -40,8 +40,8 @@ class EmailServiceTest {
     }
 
     @Test
-    void shouldSendSingleBatchToAllAdmins_whenMangaSubmitted() {
-        emailService.sendMangaSubmissionNotification(ADMINS, "colab", "Titulo");
+    void shouldSendSingleBatchToAllAdmins_whenWorkSubmitted() {
+        emailService.sendWorkSubmissionNotification(ADMINS, "colab", "Titulo");
 
         verify(emailSender).sendToEach(eq(ADMINS), anyString(), anyString());
         verify(emailSender, never()).send(anyString(), anyString(), anyString());

@@ -28,19 +28,19 @@ public class ReadingListController {
         return ResponseEntity.ok(readingListService.findAll(user.getId()));
     }
 
-    @PutMapping("/{mangaId}")
+    @PutMapping("/{workId}")
     public ResponseEntity<ReadingListResponse> upsert(
-            @PathVariable UUID mangaId,
+            @PathVariable UUID workId,
             @Valid @RequestBody ReadingListRequest request,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(readingListService.upsert(mangaId, request, user.getId()));
+        return ResponseEntity.ok(readingListService.upsert(workId, request, user.getId()));
     }
 
-    @DeleteMapping("/{mangaId}")
+    @DeleteMapping("/{workId}")
     public ResponseEntity<Void> remove(
-            @PathVariable UUID mangaId,
+            @PathVariable UUID workId,
             @AuthenticationPrincipal User user) {
-        readingListService.remove(mangaId, user.getId());
+        readingListService.remove(workId, user.getId());
         return ResponseEntity.noContent().build();
     }
 }

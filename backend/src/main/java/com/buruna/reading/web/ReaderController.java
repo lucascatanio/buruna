@@ -42,11 +42,11 @@ public class ReaderController {
         return ResponseEntity.ok(readingService.saveProgress(volumeId, request.currentPage(), request.totalPages(), user.getId()));
     }
 
-    @GetMapping("/progress/{mangaId}")
+    @GetMapping("/progress/{workId}")
     public ResponseEntity<ProgressResponse> getProgress(
-            @PathVariable UUID mangaId,
+            @PathVariable UUID workId,
             @AuthenticationPrincipal User user) {
-        return readingService.getProgress(mangaId, user.getId())
+        return readingService.getProgress(workId, user.getId())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }

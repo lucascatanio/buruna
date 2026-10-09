@@ -8,15 +8,15 @@ import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.domain.Username;
 import com.buruna.identity.persistence.UserRepository;
-import com.buruna.manga.domain.FileHash;
-import com.buruna.manga.domain.Manga;
-import com.buruna.manga.domain.MangaFormat;
-import com.buruna.manga.domain.MangaStatusOrigin;
-import com.buruna.manga.domain.MangaStatusSite;
-import com.buruna.manga.domain.Slug;
-import com.buruna.manga.domain.VolumeNumber;
-import com.buruna.manga.persistence.MangaRepository;
-import com.buruna.manga.persistence.VolumeRepository;
+import com.buruna.work.domain.FileHash;
+import com.buruna.work.domain.Work;
+import com.buruna.work.domain.WorkFormat;
+import com.buruna.work.domain.WorkStatusOrigin;
+import com.buruna.work.domain.WorkStatusSite;
+import com.buruna.work.domain.Slug;
+import com.buruna.work.domain.VolumeNumber;
+import com.buruna.work.persistence.WorkRepository;
+import com.buruna.work.persistence.VolumeRepository;
 import com.buruna.shared.notification.EmailRecipient;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
@@ -104,7 +104,7 @@ class InactivityJobIntegrationTest {
 
     @Autowired RunInactivityUseCase runInactivityUseCase;
     @Autowired UserRepository userRepository;
-    @Autowired MangaRepository mangaRepository;
+    @Autowired WorkRepository workRepository;
     @Autowired VolumeRepository volumeRepository;
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -122,7 +122,7 @@ class InactivityJobIntegrationTest {
         when(clock.getZone()).thenReturn(ZoneOffset.UTC);
 
         volumeRepository.deleteAllInBatch();
-        mangaRepository.deleteAll();
+        workRepository.deleteAll();
         userRepository.deleteAllInBatch();
     }
 
@@ -212,25 +212,25 @@ class InactivityJobIntegrationTest {
          * B1 CORRIGIDO: desativar um usuário COM coleção privada agora funciona.
          *
          * <p>Antes de [5.3], {@code deactivateUser} era {@code @Transactional} mas chamado por
-         * self-invocation, então {@code manga.getVolumes()} rodava sem sessão e lançava
+         * self-invocation, então {@code work.getVolumes()} rodava sem sessão e lançava
          * {@code LazyInitializationException} — o usuário permanecia {@code ACTIVE}. Agora a
          * coleção privada é apagada por {@code DeletePrivateCollectionForUserUseCase} (transação
-         * própria de {@code manga}, proxy AOP válido): os volumes são lidos dentro dessa tx, o
+         * própria de {@code work}, proxy AOP válido): os volumes são lidos dentro dessa tx, o
          * usuário é desativado e os arquivos são removidos do GCS depois (best-effort).
          */
         @Test
         void deactivatesAndDeletesCollection_whenInactive91Days_withPrivateCollection() {
             User user = activeUser("wipe91@inactivity.test", "wipe91User", 91);
-            Manga privateManga = privateMangaWith(user, "wipe-cover", "wipe-vol-1");
-            UUID mangaId = privateManga.getId();
+            Work privateWork = privateWorkWith(user, "wipe-cover", "wipe-vol-1");
+            UUID workId = privateWork.getId();
 
             runInactivityUseCase.run();
 
             assertThat(reload(user).getStatus()).isEqualTo(UserStatus.INACTIVE);
             // Coleção privada apagada do banco (mangá + volumes via cascade do agregado).
-            assertThat(mangaRepository.findById(mangaId)).isEmpty();
-            assertThat(volumeRepository.findByMangaId(mangaId)).isEmpty();
-            // GCS limpo com os object names retornados pelo use case de manga (capa + volume).
+            assertThat(workRepository.findById(workId)).isEmpty();
+            assertThat(volumeRepository.findByWorkId(workId)).isEmpty();
+            // GCS limpo com os object names retornados pelo use case de work (capa + volume).
             verify(storageClient, times(1)).delete("wipe-cover");
             verify(storageClient, times(1)).delete("wipe-vol-1");
             verify(emailService, never()).sendInactivityWarnings(anyList());
@@ -259,9 +259,9 @@ class InactivityJobIntegrationTest {
                 ids.add(user.getId());
             }
             // Alguns com coleção privada, para exercitar o fix do B1 em escala no mesmo lote.
-            privateMangaWith(userRepository.findById(ids.get(0)).orElseThrow(),
+            privateWorkWith(userRepository.findById(ids.get(0)).orElseThrow(),
                     "batch-cover-0", "batch-vol-0");
-            privateMangaWith(userRepository.findById(ids.get(total - 1)).orElseThrow(),
+            privateWorkWith(userRepository.findById(ids.get(total - 1)).orElseThrow(),
                     "batch-cover-last", "batch-vol-last");
 
             runInactivityUseCase.run();
@@ -335,8 +335,8 @@ class InactivityJobIntegrationTest {
             inactiveUser("inactive@dash.test", "dashInactive");
 
             // Owner tem 200MB privado + 500MB público; o dashboard só deve contar o privado.
-            privateMangaWith(owner, "dash-priv-cover", "dash-priv-vol");
-            publicMangaWith(owner, "dash-pub-cover", "dash-pub-vol");
+            privateWorkWith(owner, "dash-priv-cover", "dash-priv-vol");
+            publicWorkWith(owner, "dash-pub-cover", "dash-pub-vol");
 
             MvcResult result = mockMvc.perform(get("/admin/dashboard").with(auth(admin)))
                     .andExpect(status().isOk())
@@ -440,23 +440,23 @@ class InactivityJobIntegrationTest {
         return userRepository.save(user);
     }
 
-    private Manga privateMangaWith(User owner, String coverName, String volumeObjectName) {
-        Manga manga = Manga.createPrivate(uniqueSlug("private"), "Private", "synopsis", owner.getId());
-        manga.changeCover(coverName);
-        manga.addVolume(VolumeNumber.of(1), volumeObjectName,
+    private Work privateWorkWith(User owner, String coverName, String volumeObjectName) {
+        Work work = Work.createPrivate(uniqueSlug("private"), "Private", "synopsis", owner.getId());
+        work.changeCover(coverName);
+        work.addVolume(VolumeNumber.of(1), volumeObjectName,
                 FileHash.of("hash-" + volumeObjectName), PRIVATE_VOLUME_BYTES, owner.getId());
-        return mangaRepository.save(manga);
+        return workRepository.save(work);
     }
 
-    private Manga publicMangaWith(User owner, String coverName, String volumeObjectName) {
-        Manga manga = Manga.createPublic(uniqueSlug("public"), owner.getId());
-        manga.updateCatalogDetails("Public", List.of(), "synopsis",
-                MangaFormat.MANGA, null,
-                MangaStatusOrigin.ONGOING, MangaStatusSite.INCOMPLETE, null, List.of(), java.util.Set.of());
-        manga.changeCover(coverName);
-        manga.addVolume(VolumeNumber.of(1), volumeObjectName,
+    private Work publicWorkWith(User owner, String coverName, String volumeObjectName) {
+        Work work = Work.createPublic(uniqueSlug("public"), owner.getId());
+        work.updateCatalogDetails("Public", List.of(), "synopsis",
+                WorkFormat.MANGA, null,
+                WorkStatusOrigin.ONGOING, WorkStatusSite.INCOMPLETE, null, List.of(), java.util.Set.of());
+        work.changeCover(coverName);
+        work.addVolume(VolumeNumber.of(1), volumeObjectName,
                 FileHash.of("hash-" + volumeObjectName), PUBLIC_VOLUME_BYTES, owner.getId());
-        return mangaRepository.save(manga);
+        return workRepository.save(work);
     }
 
     private User reload(User user) {

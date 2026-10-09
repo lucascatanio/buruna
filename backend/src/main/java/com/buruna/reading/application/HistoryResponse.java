@@ -6,8 +6,8 @@ import java.util.UUID;
 public record HistoryResponse(
         UUID volumeId,
         int volumeNumber,
-        UUID mangaId,
-        String mangaTitle,
-        String mangaCoverUrl,
+        UUID workId,
+        String workTitle,
+        String workCoverUrl,
         OffsetDateTime readAt
 ) {}

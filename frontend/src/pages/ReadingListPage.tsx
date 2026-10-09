@@ -5,7 +5,7 @@ import type {ReadingListEntry, ReadingStatus} from "@/types/engagement";
 import {Button} from "@/components/ui/button";
 import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
-import {MangaCover} from "@/components/MangaCover";
+import {WorkCover} from "@/components/WorkCover";
 import {Macron} from "@/components/Macron";
 import {toast} from "sonner";
 import {X} from "lucide-react";
@@ -32,12 +32,12 @@ export function ReadingListPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    async function handleRemove(mangaId: string, title: string) {
+    async function handleRemove(workId: string, title: string) {
         if (!window.confirm(`Remover "${title}" da lista?`)) return;
-        setRemoving(mangaId);
+        setRemoving(workId);
         try {
-            await removeFromReadingList(mangaId);
-            setEntries(prev => prev.filter(e => e.mangaId !== mangaId));
+            await removeFromReadingList(workId);
+            setEntries(prev => prev.filter(e => e.workId !== workId));
             toast.success("Removido da lista");
         } catch {
             toast.error("Erro ao remover");
@@ -90,14 +90,14 @@ export function ReadingListPage() {
 
                                 <ul className="m-0 grid list-none grid-cols-3 gap-x-3 gap-y-6 p-0 sm:grid-cols-[repeat(auto-fill,minmax(140px,1fr))] sm:gap-x-5">
                                     {items.map(entry => (
-                                        <li key={entry.mangaId} className="flex flex-col gap-1">
-                                            <Link to={`/biblioteca/${entry.mangaSlug}`} className="group flex flex-col gap-2">
-                                                <MangaCover
-                                                    title={entry.mangaTitle}
-                                                    coverUrl={entry.mangaCoverUrl}
+                                        <li key={entry.workId} className="flex flex-col gap-1">
+                                            <Link to={`/biblioteca/${entry.workSlug}`} className="group flex flex-col gap-2">
+                                                <WorkCover
+                                                    title={entry.workTitle}
+                                                    coverUrl={entry.workCoverUrl}
                                                     className="transition-transform duration-200 group-hover:-translate-y-[3px]"
                                                 />
-                                                <span className="text-[13px] sm:text-sm font-medium leading-snug line-clamp-2">{entry.mangaTitle}</span>
+                                                <span className="text-[13px] sm:text-sm font-medium leading-snug line-clamp-2">{entry.workTitle}</span>
                                             </Link>
                                             <div className="flex items-center justify-between gap-1">
                                                 <span className="font-mono text-[11px] text-muted-foreground">
@@ -105,10 +105,10 @@ export function ReadingListPage() {
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    aria-label={`Remover ${entry.mangaTitle} da lista`}
+                                                    aria-label={`Remover ${entry.workTitle} da lista`}
                                                     className="-mr-1.5 flex size-8 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                                                    onClick={() => handleRemove(entry.mangaId, entry.mangaTitle)}
-                                                    disabled={removing === entry.mangaId}
+                                                    onClick={() => handleRemove(entry.workId, entry.workTitle)}
+                                                    disabled={removing === entry.workId}
                                                 >
                                                     <X className="size-4"/>
                                                 </button>

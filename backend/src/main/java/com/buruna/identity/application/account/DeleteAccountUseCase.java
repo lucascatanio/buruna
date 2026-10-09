@@ -1,6 +1,6 @@
 package com.buruna.identity.application.account;
 
-import com.buruna.manga.application.maintenance.DeletePrivateCollectionForUserUseCase;
+import com.buruna.work.application.maintenance.DeletePrivateCollectionForUserUseCase;
 import com.buruna.shared.storage.StorageClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,7 @@ import java.util.UUID;
  * catálogo continuam referenciando o id (FKs {@code RESTRICT}); eles ficam intactos.
  *
  * <p>Sem {@code @Transactional} aqui, como no {@code RunInactivityUseCase}: a coleção
- * privada é apagada na transação do use case de {@code manga}, a anonimização na sua, e o
+ * privada é apagada na transação do use case de {@code work}, a anonimização na sua, e o
  * storage fica fora de qualquer transação, best-effort. A coleção sai antes da
  * anonimização para que uma falha no meio deixe a conta ainda utilizável, e o pedido possa
  * ser repetido, em vez de uma conta anonimizada com coleção órfã.

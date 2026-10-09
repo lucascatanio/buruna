@@ -79,24 +79,24 @@ public class EmailService {
                 """.formatted(username, resetLink));
     }
 
-    public void sendMangaSubmissionNotification(List<String> adminEmails, String submitterUsername, String mangaTitle) {
+    public void sendWorkSubmissionNotification(List<String> adminEmails, String submitterUsername, String workTitle) {
         emailSender.sendToEach(adminEmails,
                 "[Burūna] New manga submission pending approval",
                 "User '%s' has submitted '%s' for publication and is awaiting your approval."
-                        .formatted(submitterUsername, mangaTitle));
+                        .formatted(submitterUsername, workTitle));
     }
 
-    public void sendMangaApprovalNotification(String userEmail, String mangaTitle) {
+    public void sendWorkApprovalNotification(String userEmail, String workTitle) {
         emailSender.send(userEmail,
                 "[Burūna] Your manga has been approved",
                 "Your manga '%s' has been approved and is now visible in the public library."
-                        .formatted(mangaTitle));
+                        .formatted(workTitle));
     }
 
-    public void sendMangaRejectionNotification(String userEmail, String mangaTitle, String reason) {
+    public void sendWorkRejectionNotification(String userEmail, String workTitle, String reason) {
         String body = (reason != null && !reason.isBlank())
-                ? "Your manga '%s' was not approved. Reason: %s".formatted(mangaTitle, reason)
-                : "Your manga '%s' was not approved.".formatted(mangaTitle);
+                ? "Your manga '%s' was not approved. Reason: %s".formatted(workTitle, reason)
+                : "Your manga '%s' was not approved.".formatted(workTitle);
         emailSender.send(userEmail, "[Burūna] Manga submission update", body);
     }
 }

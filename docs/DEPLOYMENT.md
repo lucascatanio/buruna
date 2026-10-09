@@ -25,7 +25,7 @@
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │            Cloud Run: buruna-backend (us-east1)                              │
 │            Spring Boot :8080 — Monolito Modular                              │
-│   contextos: identity · manga · reading · engagement · admin                 │
+│   contextos: identity · work · reading · engagement · admin                 │
 │   RateLimitFilter → JwtFilter → Controllers → Use cases                     │
 └──────────────────┬──────────────────────────────┬───────────────────────────┘
                    │ Direct VPC egress             │ HTTPS
@@ -33,7 +33,7 @@
     ┌──────────────────────────┐   ┌────────────────────────────────────────────┐
     │  GCE e2-micro (us-east1-b│   │  GCS: buruna-files-catanio                │
     │  PostgreSQL 16 em Docker │   │  (southamerica-east1)                     │
-    │  Tabelas via Flyway      │   │  volumes/{mangaId}/{uuid}.pdf (ADR-40)    │
+    │  Tabelas via Flyway      │   │  volumes/{workId}/{uuid}.pdf (ADR-40)    │
     └──────────────────────────┘   │  /uuid-da-capa.jpg     (capa ofuscada)    │
                                    │  URLs assinadas V4 (geradas pelo backend): │
                                    │    leitura de PDF:    30 min              │

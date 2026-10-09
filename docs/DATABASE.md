@@ -7,21 +7,21 @@
 ## 1. Diagrama de entidades
 
 ```
-User ──────────────────< Manga (owner_id)
+User ──────────────────< Work (owner_id)
                          │
                          ├──< Volume
                          │     └── file_url (objectName no GCS)
                          │         file_hash (MD5 via metadados GCS)
                          │
-                         └──>──< Tag (via MangaTag)
+                         └──>──< Tag (via WorkTag)
                                   └──> TagCategory
 
 Tag >──────────────────── TagCategory
 
 User ──< ReadingProgress >────── Volume
 User ──< ReadingHistory  >────── Volume
-User ──< ReadingList     >────── Manga
-User ──< Rating          >────── Manga
+User ──< ReadingList     >────── Work
+User ──< Rating          >────── Work
 User ──< RefreshToken
 User ──< PasswordResetToken
 ```
@@ -31,18 +31,18 @@ User ──< PasswordResetToken
 | Tabela                | Constraint / Índice                          | Observação                          |
 |-----------------------|------------------------------------------------|--------------------------------------|
 | users                 | UNIQUE(email), UNIQUE(username)                |                                       |
-| mangas                | UNIQUE(slug)                                   | Slug gerado com sufixo em conflito   |
-| volumes               | UNIQUE(manga_id, volume_number)                | Por mangá, não global                |
+| works                 | UNIQUE(slug)                                   | Slug gerado com sufixo em conflito   |
+| volumes               | UNIQUE(work_id, volume_number)                 | Por obra, não global                 |
 | volumes               | INDEX(file_hash)                               | Busca por duplicata no promote       |
-| manga_tags            | PK(manga_id, tag_id)                           | Composite PK                         |
+| work_tags             | PK(work_id, tag_id)                            | Composite PK                         |
 | reading_progress      | UNIQUE(user_id, volume_id)                     | Upsert de progresso                  |
-| reading_list          | UNIQUE(user_id, manga_id)                      |                                       |
-| ratings               | UNIQUE(user_id, manga_id)                      | Uma avaliação por usuário por mangá  |
+| reading_list          | UNIQUE(user_id, work_id)                       |                                       |
+| ratings               | UNIQUE(user_id, work_id)                       | Uma avaliação por usuário por obra   |
 | refresh_tokens        | INDEX(user_id)                                 | Lookup de tokens por usuário         |
 | reading_history       | INDEX(user_id), INDEX(volume_id)               | V16 adicionou index em volume_id     |
 | users                 | totp_secret, totp_enabled                      | V17 — colunas para 2FA TOTP          |
 | password_reset_tokens | UNIQUE(token), INDEX(user_id), INDEX(token)    | V18 — tokens de reset de senha       |
-| mangas                | submission_status, rejection_reason, submitted_at, reviewed_by, reviewed_at | V20 — fluxo de submissão/revisão |
+| works                 | submission_status, rejection_reason, submitted_at, reviewed_by, reviewed_at | V20 — fluxo de submissão/revisão |
 | users                 | totp_last_used_step, totp_failed_attempts, totp_locked_until | V21 — força bruta e replay de TOTP |
 | refresh_tokens        | token VARCHAR(64)                              | V22 — SHA-256 hex do token, não mais o valor em claro |
 | reading_progress      | total_pages, CHECK(current_page <= total_pages) | V23 — total de páginas do volume (nulo até o leitor informar) |
@@ -51,7 +51,7 @@ Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-in
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
 e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-## 3. Migrations Flyway (V1–V26)
+## 3. Migrations Flyway (V1–V27)
 
 > Verificado em `backend/src/main/resources/db/migration/` — atualize esta tabela ao
 > adicionar uma migration nova.
@@ -84,6 +84,7 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V24    | Adicionou valor `APPROVED` ao enum manga_submission_status                         |
 | V25    | Backfill: aprovados antigos (público + reviewed_at, status nulo) → `APPROVED`; público com `PENDING`/`REJECTED` (promovido com submissão aberta) → status e motivo nulos |
 | V26    | Adicionou valor `DELETED` ao enum user_status (conta anonimizada)                  |
+| V27    | Renomeia mangas → works, manga_tags → work_tags, colunas manga_id → work_id, tipos enum manga_* → work_* e constraints/índices ([ADR-45](adr/ADR-45-renomear-manga-para-work.md)) |
 
 > Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
 > transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill
@@ -97,5 +98,5 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 - Enums do domínio armazenados como `ENUM` nativo do Postgres (não string livre).
 - Migrations nomeadas `V{n}__{descricao}.sql`, nunca editadas após aplicadas em
   qualquer ambiente — mudança de schema é sempre uma nova migration.
-- `alternative_titles` e `content_warnings` em `mangas` são `TEXT` com JSON serializado,
+- `alternative_titles` e `content_warnings` em `works` são `TEXT` com JSON serializado,
   não `TEXT[]` nativo — ver [ADR-11](adr/ADR-11-alternative-titles-content-warnings-text-json.md).

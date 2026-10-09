@@ -32,7 +32,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void shouldMapDomainErrorTypeToHttpStatus_whenPureDomainExceptionThrown() {
-        when(request.getRequestURI()).thenReturn("/mangas");
+        when(request.getRequestURI()).thenReturn("/works");
 
         ResponseEntity<ErrorResponse> response =
                 handler.handleDomainException(new SampleConflictException(), request);
@@ -41,7 +41,7 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().status()).isEqualTo(409);
         assertThat(response.getBody().message()).isEqualTo("recurso já existe");
-        assertThat(response.getBody().path()).isEqualTo("/mangas");
+        assertThat(response.getBody().path()).isEqualTo("/works");
     }
 
     @Test
@@ -58,7 +58,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void shouldKeepSpringStatus_whenFrameworkExceptionCarriesClientError() {
-        when(request.getRequestURI()).thenReturn("/mangas");
+        when(request.getRequestURI()).thenReturn("/works");
 
         ResponseEntity<ErrorResponse> response = handler.handleGeneric(
                 new HttpRequestMethodNotSupportedException("PATCH"), request);
@@ -68,7 +68,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void shouldReturn500_whenUnexpectedExceptionThrown() {
-        when(request.getRequestURI()).thenReturn("/mangas");
+        when(request.getRequestURI()).thenReturn("/works");
 
         ResponseEntity<ErrorResponse> response =
                 handler.handleGeneric(new IllegalStateException("boom"), request);

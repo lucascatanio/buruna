@@ -4,7 +4,7 @@ import com.buruna.identity.domain.InactivityPolicy;
 import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.persistence.UserRepository;
-import com.buruna.manga.application.maintenance.DeletePrivateCollectionForUserUseCase;
+import com.buruna.work.application.maintenance.DeletePrivateCollectionForUserUseCase;
 import com.buruna.shared.notification.EmailRecipient;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
@@ -23,11 +23,11 @@ import java.util.List;
  * {@code POST /admin/jobs/inactivity} ({@code JobController}) — não roda mais como
  * {@code @Scheduled} interno (ADR-03, atualização 2026-09-24).
  *
- * <p>Depende de {@code manga} SÓ pela camada application ({@link DeletePrivateCollectionForUserUseCase}) —
- * sem acesso a {@code manga.persistence}/{@code manga.domain} (ADR-35).
+ * <p>Depende de {@code work} SÓ pela camada application ({@link DeletePrivateCollectionForUserUseCase}) —
+ * sem acesso a {@code work.persistence}/{@code work.domain} (ADR-35).
  *
  * <p><b>B1 (corrigido):</b> a leitura dos volumes da coleção privada ocorre DENTRO da transação
- * do use case de {@code manga}, invocado por proxy AOP válido — não há mais
+ * do use case de {@code work}, invocado por proxy AOP válido — não há mais
  * {@code LazyInitializationException} por self-invocation.
  *
  * <p><b>B2 (corrigido):</b> os candidatos são selecionados de uma vez via
@@ -100,7 +100,7 @@ public class RunInactivityUseCase {
     }
 
     private void deactivate(User user) {
-        // Coleção privada apagada na transação do use case de manga (proxy AOP válido): os
+        // Coleção privada apagada na transação do use case de work (proxy AOP válido): os
         // volumes são lidos dentro dessa tx, o que elimina o LazyInitializationException (B1).
         List<String> objectNames = deletePrivateCollectionForUser.handle(user.getId());
 

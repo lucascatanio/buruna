@@ -7,8 +7,8 @@ import java.util.UUID;
 
 public final class RatingNotFoundException extends DomainException {
 
-    public RatingNotFoundException(UUID mangaId) {
+    public RatingNotFoundException(UUID workId) {
         super(DomainErrorType.NOT_FOUND,
-                "Avaliação não encontrada para o mangá " + mangaId + ". Use POST para avaliar.");
+                "Avaliação não encontrada para o mangá " + workId + ". Use POST para avaliar.");
     }
 }
