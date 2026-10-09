@@ -15,8 +15,9 @@ import java.util.UUID;
 /**
  * COLLABORATOR/ADMIN promove o próprio mangá privado direto para o catálogo público. RBAC
  * fica na borda (@PreAuthorize); posse por {@code actorId} (ADR-35). Preserva a validação de
- * conflito (título/hash/slug) contra a biblioteca pública, agora com exceções de domínio
- * puras (ADR-33) em vez de HttpStatus na application.
+ * conflito (título/hash) contra a biblioteca pública, agora com exceções de domínio puras
+ * (ADR-33) em vez de HttpStatus na application. O slug não é revalidado: ele já é único na
+ * tabela inteira (privados e públicos), então o mangá promovido nunca conflita com outro.
  */
 @Service
 public class PromoteMangaUseCase {
@@ -24,18 +25,15 @@ public class PromoteMangaUseCase {
     private final MangaRepository mangaRepository;
     private final VolumeRepository volumeRepository;
     private final PrivateMangaAccess access;
-    private final SlugAllocator slugAllocator;
     private final PrivateMangaMapper mapper;
 
     public PromoteMangaUseCase(MangaRepository mangaRepository,
                                VolumeRepository volumeRepository,
                                PrivateMangaAccess access,
-                               SlugAllocator slugAllocator,
                                PrivateMangaMapper mapper) {
         this.mangaRepository = mangaRepository;
         this.volumeRepository = volumeRepository;
         this.access = access;
-        this.slugAllocator = slugAllocator;
         this.mapper = mapper;
     }
 
@@ -54,11 +52,6 @@ public class PromoteMangaUseCase {
                 .anyMatch(v -> volumeRepository.existsByFileHashAndMangaIsPublicTrue(v.getFileHash()));
         if (hasPublicHash) {
             throw new PublicVolumeConflictException();
-        }
-
-        // 3. slug em conflito: regenera se necessário
-        if (mangaRepository.existsBySlug(manga.getSlug())) {
-            manga.changeSlug(slugAllocator.allocate(manga.getTitle()));
         }
 
         manga.promoteToPublic();
