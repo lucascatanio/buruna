@@ -1127,6 +1127,21 @@ class MangaIntegrationTest {
         }
 
         @Test
+        void shouldKeepSlug_whenPromotedMangaHasNoSlugConflict() throws Exception {
+            // Arrange
+            String id = createPrivateManga("ITest Slug Promovido", collab);
+
+            // Act
+            mockMvc.perform(post("/my/mangas/{id}/promote", id).with(auth(collab)))
+                    .andExpect(status().isOk());
+
+            // Assert
+            org.assertj.core.api.Assertions.assertThat(
+                            mangaRepository.findById(UUID.fromString(id)).orElseThrow().getSlug())
+                    .isEqualTo("itest-slug-promovido");
+        }
+
+        @Test
         void promote_titleAlreadyPublic_returns409() throws Exception {
             createPublicManga("ITest Promote Conflict", collab);
             String privateId = createPrivateManga("ITest Promote Conflict", collab);

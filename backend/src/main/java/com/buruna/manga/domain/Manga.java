@@ -175,10 +175,6 @@ public class Manga {
         this.coverUrl = coverObjectName;
     }
 
-    public void changeSlug(Slug slug) {
-        this.slug = slug.value();
-    }
-
     public void applyRatingStats(BigDecimal avgRating, int ratingCount) {
         this.avgRating = avgRating;
         this.ratingCount = ratingCount;
