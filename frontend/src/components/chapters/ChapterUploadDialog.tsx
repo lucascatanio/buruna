@@ -15,7 +15,7 @@ const COMMON_LANGUAGES = ["pt-BR", "en", "es-419", "es", "ja", "ko", "zh"];
 interface ChapterUploadDialogProps {
     scope: ChapterScope;
     workId: string;
-    /** Formato da obra: livro em PDF não vira imagens, então PDF não é oferecido para LIVRO. */
+    /** Formato da obra. Num LIVRO, cada envio é uma edição inteira em PDF ou EPUB, sem número. */
     workFormat?: string;
     defaultLanguage: string;
     onClose: () => void;
@@ -29,13 +29,17 @@ function formatBytes(bytes: number): string {
     return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-function sourceFormatOf(file: File): ChapterSourceFormat | null {
+const COMIC_FORMATS: ChapterSourceFormat[] = ["cbz", "cbr", "pdf"];
+const BOOK_FORMATS: ChapterSourceFormat[] = ["pdf", "epub"];
+
+function sourceFormatOf(file: File, accepted: ChapterSourceFormat[]): ChapterSourceFormat | null {
     const extension = file.name.split(".").pop()?.toLowerCase();
-    return extension === "cbz" || extension === "cbr" || extension === "pdf" ? extension : null;
+    return accepted.find((format) => format === extension) ?? null;
 }
 
 export function ChapterUploadDialog({scope, workId, workFormat, defaultLanguage, onClose, onUploaded}: ChapterUploadDialogProps) {
-    const acceptsPdf = workFormat !== "LIVRO";
+    const isBook = workFormat === "LIVRO";
+    const accepted = isBook ? BOOK_FORMATS : COMIC_FORMATS;
     const [language, setLanguage] = useState(defaultLanguage);
     const [number, setNumber] = useState("");
     const [label, setLabel] = useState("");
@@ -45,11 +49,11 @@ export function ChapterUploadDialog({scope, workId, workFormat, defaultLanguage,
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const parsedNumber = number.trim() === "" ? null : Number(number.replace(",", "."));
+    const parsedNumber = isBook || number.trim() === "" ? null : Number(number.replace(",", "."));
     const numberInvalid = parsedNumber !== null && (Number.isNaN(parsedNumber) || parsedNumber < 0);
     const missingIdentity = parsedNumber === null && label.trim() === "";
-    const sourceFormat = file ? sourceFormatOf(file) : null;
-    const formatInvalid = !!file && (sourceFormat === null || (sourceFormat === "pdf" && !acceptsPdf));
+    const sourceFormat = file ? sourceFormatOf(file, accepted) : null;
+    const formatInvalid = !!file && sourceFormat === null;
     const canSubmit = !!file && !!sourceFormat && !formatInvalid && !uploading && !numberInvalid
         && !missingIdentity && language.trim() !== "";
 
@@ -66,14 +70,16 @@ export function ChapterUploadDialog({scope, workId, workFormat, defaultLanguage,
                 language,
                 number: parsedNumber,
                 label: label.trim() || null,
-                title: title.trim() || null,
+                title: isBook ? null : title.trim() || null,
                 scanlationGroup: group.trim() || null,
             });
-            toast.success("Capítulo enviado. Estamos preparando as páginas.");
+            toast.success(isBook
+                ? "Edição enviada. Estamos conferindo o arquivo."
+                : "Capítulo enviado. Estamos preparando as páginas.");
             onUploaded();
             onClose();
         } catch (e) {
-            toast.error(apiErrorMessage(e, "Não foi possível enviar o capítulo."));
+            toast.error(apiErrorMessage(e, isBook ? "Não foi possível enviar a edição." : "Não foi possível enviar o capítulo."));
         } finally {
             setUploading(false);
         }
@@ -84,7 +90,7 @@ export function ChapterUploadDialog({scope, workId, workFormat, defaultLanguage,
             <div role="dialog" aria-modal="true" aria-labelledby="chapter-upload-title"
                  className="bg-card border rounded-lg w-full max-w-md p-6 space-y-4 shadow-xl">
                 <div className="flex items-center justify-between">
-                    <h2 id="chapter-upload-title" className="text-base font-semibold">Adicionar capítulo</h2>
+                    <h2 id="chapter-upload-title" className="text-base font-semibold">{isBook ? "Adicionar edição" : "Adicionar capítulo"}</h2>
                     <button aria-label="Fechar" className="flex size-9 items-center justify-center" onClick={onClose}>
                         <X className="w-4 h-4 text-muted-foreground"/>
                     </button>
@@ -103,56 +109,68 @@ export function ChapterUploadDialog({scope, workId, workFormat, defaultLanguage,
                             {COMMON_LANGUAGES.map((l) => <option key={l} value={l}>{languageName(l)}</option>)}
                         </select>
                     </div>
-                    <div className="space-y-1.5">
-                        <Label htmlFor="chapter-number">Número</Label>
-                        <Input
-                            id="chapter-number"
-                            inputMode="decimal"
-                            placeholder="Ex.: 12 ou 12.5"
-                            value={number}
-                            onChange={(e) => setNumber(e.target.value)}
-                            aria-invalid={numberInvalid}
-                        />
-                    </div>
+                    {isBook ? (
+                        <div className="space-y-1.5">
+                            <Label htmlFor="chapter-group">Tradução</Label>
+                            <Input id="chapter-group" maxLength={255} placeholder="Quem traduziu"
+                                   value={group} onChange={(e) => setGroup(e.target.value)}/>
+                        </div>
+                    ) : (
+                        <div className="space-y-1.5">
+                            <Label htmlFor="chapter-number">Número</Label>
+                            <Input
+                                id="chapter-number"
+                                inputMode="decimal"
+                                placeholder="Ex.: 12 ou 12.5"
+                                value={number}
+                                onChange={(e) => setNumber(e.target.value)}
+                                aria-invalid={numberInvalid}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label htmlFor="chapter-label">Rótulo {parsedNumber === null && <span className="text-shu">*</span>}</Label>
+                    <Label htmlFor="chapter-label">
+                        {isBook ? "Nome da edição" : "Rótulo"} {parsedNumber === null && <span className="text-shu">*</span>}
+                    </Label>
                     <Input
                         id="chapter-label"
-                        placeholder="Para capítulo sem número: Extra, Oneshot…"
+                        placeholder={isBook ? "Ex.: 2ª edição, edição de bolso" : "Para capítulo sem número: Extra, Oneshot…"}
                         maxLength={100}
                         value={label}
                         onChange={(e) => setLabel(e.target.value)}
                     />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                        <Label htmlFor="chapter-title">Título</Label>
-                        <Input id="chapter-title" maxLength={255} value={title} onChange={(e) => setTitle(e.target.value)}/>
+                {!isBook && (
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="chapter-title">Título</Label>
+                            <Input id="chapter-title" maxLength={255} value={title} onChange={(e) => setTitle(e.target.value)}/>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="chapter-group">Grupo de tradução</Label>
+                            <Input id="chapter-group" maxLength={255} value={group} onChange={(e) => setGroup(e.target.value)}/>
+                        </div>
                     </div>
-                    <div className="space-y-1.5">
-                        <Label htmlFor="chapter-group">Grupo de tradução</Label>
-                        <Input id="chapter-group" maxLength={255} value={group} onChange={(e) => setGroup(e.target.value)}/>
-                    </div>
-                </div>
+                )}
 
                 <div className="space-y-1.5">
-                    <Label htmlFor="chapter-file">Arquivo ({acceptsPdf ? "CBZ, CBR ou PDF" : "CBZ ou CBR"})</Label>
+                    <Label htmlFor="chapter-file">Arquivo ({isBook ? "PDF ou EPUB" : "CBZ, CBR ou PDF"})</Label>
                     <FileInput id="chapter-file" ref={fileInputRef}
-                               accept={acceptsPdf ? ".cbz,.cbr,.pdf" : ".cbz,.cbr"}
+                               accept={accepted.map((format) => `.${format}`).join(",")}
                                onChange={(e) => setFile(e.target.files?.[0] ?? null)}/>
                     {file && <p className="text-xs text-muted-foreground">{file.name} · {formatBytes(file.size)}</p>}
                 </div>
 
                 {formatInvalid && (
                     <p className="text-xs text-destructive">
-                        {acceptsPdf ? "Envie um arquivo CBZ, CBR ou PDF." : "Livro em PDF ainda é enviado como volume. Aqui, use CBZ ou CBR."}
+                        {isBook ? "Envie um arquivo PDF ou EPUB." : "Envie um arquivo CBZ, CBR ou PDF."}
                     </p>
                 )}
                 {numberInvalid && <p className="text-xs text-destructive">Número inválido.</p>}
-                {missingIdentity && <p className="text-xs text-muted-foreground">Informe o número ou um rótulo.</p>}
+                {missingIdentity && !isBook && <p className="text-xs text-muted-foreground">Informe o número ou um rótulo.</p>}
 
                 <div className="flex gap-2 pt-1">
                     <Button variant="outline" className="flex-1" onClick={onClose} disabled={uploading}>

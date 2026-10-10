@@ -10,6 +10,9 @@ export interface ProgressResponse {
     /** Total de páginas do volume; nulo enquanto o volume não for aberto com o leitor atual. */
     totalPages: number | null;
     finished: boolean;
+    /** Num EPUB: a posição (CFI) e o andamento de 0 a 1. Nulos em capítulo de páginas. */
+    position: string | null;
+    percent: number | null;
     updatedAt: string;
 }
 
