@@ -300,6 +300,68 @@ class ChapterReadingIntegrationTest {
                 .andExpect(jsonPath("$[0].finished").value(true));
     }
 
+    // ── Livro (capítulo-arquivo) ────────────────────────────────────────────
+
+    Chapter publishedBook(Work work, com.buruna.work.domain.ChapterFileFormat format, Integer pageCount) {
+        Chapter book = Chapter.register(work.getId(), Language.of("pt-BR"), null, "Edição " + UUID.randomUUID(),
+                null, "Tradução de Fulana", ChapterKind.FILE, owner.getId());
+        book.attachSource("chapter-sources/livro/" + UUID.randomUUID() + "." + format.name().toLowerCase(), 4096);
+        book.publishFile(format, pageCount, PUBLISHED_AT);
+        return chapterRepository.save(book);
+    }
+
+    @Test
+    void shouldReturnTheFileWithoutPages_whenABookEditionIsOpened() throws Exception {
+        // Arrange
+        Chapter book = publishedBook(publicWork, com.buruna.work.domain.ChapterFileFormat.PDF, 120);
+
+        // Act
+        ResultActions result = mockMvc.perform(get("/reader/chapters/{id}", book.getId()).with(auth(reader)));
+
+        // Assert
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.kind").value("FILE"))
+                .andExpect(jsonPath("$.pages", hasSize(0)))
+                .andExpect(jsonPath("$.file.format").value("PDF"))
+                .andExpect(jsonPath("$.file.pageCount").value(120))
+                .andExpect(jsonPath("$.file.url").value(org.hamcrest.Matchers.startsWith("https://storage.example.com/chapter-sources/livro/")))
+                .andExpect(jsonPath("$.nextChapterId").value(nullValue()));
+    }
+
+    @Test
+    void shouldUseServerPageCount_whenProgressIsSavedInAPdfBook() throws Exception {
+        Chapter book = publishedBook(publicWork, com.buruna.work.domain.ChapterFileFormat.PDF, 120);
+
+        saveProgress(book, 120, reader)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalPages").value(120))
+                .andExpect(jsonPath("$.finished").value(true));
+    }
+
+    @Test
+    void shouldSavePositionAndPercent_whenReadingAnEpub() throws Exception {
+        // Arrange
+        Chapter book = publishedBook(publicWork, com.buruna.work.domain.ChapterFileFormat.EPUB, null);
+
+        // Act
+        ResultActions result = mockMvc.perform(post("/reader/chapters/{id}/progress", book.getId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"position\":\"epubcfi(/6/10!/4/2/1:0)\",\"percent\":0.42}").with(auth(reader)));
+
+        // Assert
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$.position").value("epubcfi(/6/10!/4/2/1:0)"))
+                .andExpect(jsonPath("$.percent").value(0.42))
+                .andExpect(jsonPath("$.finished").value(false));
+    }
+
+    @Test
+    void shouldReturn400_whenEpubProgressHasNoPosition() throws Exception {
+        Chapter book = publishedBook(publicWork, com.buruna.work.domain.ChapterFileFormat.EPUB, null);
+
+        saveProgress(book, 3, reader).andExpect(status().isBadRequest());
+    }
+
     // ── Lista de capítulos ──────────────────────────────────────────────────
 
     @Test

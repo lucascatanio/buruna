@@ -59,7 +59,7 @@ Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-in
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
 e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-## 3. Migrations Flyway (V1–V30)
+## 3. Migrations Flyway (V1–V31)
 
 > Verificado em `backend/src/main/resources/db/migration/` — atualize esta tabela ao
 > adicionar uma migration nova.
@@ -96,6 +96,7 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V28    | Tabelas chapters e chapter_pages, enums chapter_kind e chapter_status ([ADR-44](adr/ADR-44-capitulo-como-unidade-de-leitura.md)) |
 | V29    | Colunas source_object_name e source_size_bytes em chapters: arquivo enviado guardado até a extração das páginas ([ADR-48](adr/ADR-48-ingest-em-cloud-run-job.md)) |
 | V30    | reading_progress e reading_history ganham chapter_id (volume_id passa a ser opcional; CHECK de exatamente um dos dois) e UNIQUE(user_id, chapter_id) no progresso ([ADR-21](adr/ADR-21-progresso-leitura-por-volume.md), atualização) |
+| V31    | Capítulo-arquivo (livro): chapters.file_object_name, file_format (enum chapter_file_format: PDF, EPUB), file_size_bytes, file_page_count; reading_progress.position (CFI) e percent (0 a 1) para EPUB ([ADR-44](adr/ADR-44-capitulo-como-unidade-de-leitura.md), [ADR-21](adr/ADR-21-progresso-leitura-por-volume.md)) |
 
 > Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
 > transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill

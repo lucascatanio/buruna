@@ -74,6 +74,21 @@ public class Chapter {
     @Column(name = "source_size_bytes")
     private Long sourceSizeBytes;
 
+    // capítulo-arquivo (livro): o arquivo enviado vira o próprio conteúdo
+    @Column(name = "file_object_name", length = 500)
+    private String fileObjectName;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(name = "file_format", columnDefinition = "chapter_file_format")
+    private ChapterFileFormat fileFormat;
+
+    @Column(name = "file_size_bytes")
+    private Long fileSizeBytes;
+
+    @Column(name = "file_page_count")
+    private Integer filePageCount;
+
     @ElementCollection
     @CollectionTable(name = "chapter_pages", joinColumns = @JoinColumn(name = "chapter_id"))
     @OrderBy("position ASC")
@@ -102,6 +117,10 @@ public class Chapter {
         }
         if (trimmedLabel != null && trimmedLabel.length() > MAX_LABEL_LENGTH) {
             throw new InvalidChapterException("Rótulo do capítulo passa de " + MAX_LABEL_LENGTH + " caracteres");
+        }
+        // a edição de um livro é identificada pelo rótulo; número de capítulo não se aplica
+        if (kind == ChapterKind.FILE && number != null) {
+            throw new InvalidChapterException("Edição de livro não tem número de capítulo; use o nome da edição");
         }
         Chapter chapter = new Chapter();
         chapter.workId = workId;
@@ -141,13 +160,10 @@ public class Chapter {
     }
 
     /**
-     * Guarda o arquivo enviado (CBZ) de onde as páginas vão ser extraídas. Só um capítulo de
-     * imagens em processamento recebe arquivo, uma vez.
+     * Guarda o arquivo enviado: num capítulo de imagens, de onde as páginas vão ser extraídas; num
+     * capítulo-arquivo, o próprio livro, que é validado antes de publicar. Só uma vez.
      */
     public void attachSource(String objectName, long sizeBytes) {
-        if (kind != ChapterKind.PAGES) {
-            throw new InvalidChapterException("Capítulo de arquivo não recebe arquivo para extração");
-        }
         requireProcessing();
         if (sourceObjectName != null) {
             throw new InvalidChapterException("Capítulo já tem arquivo enviado");
@@ -184,6 +200,32 @@ public class Chapter {
         }
         status = ChapterStatus.PROCESSING;
         failureReason = null;
+    }
+
+    /**
+     * Conclui um capítulo-arquivo depois de o arquivo enviado ser validado: ele passa a ser o
+     * conteúdo do capítulo. {@code pageCount} só existe para PDF.
+     */
+    public void publishFile(ChapterFileFormat format, Integer pageCount, OffsetDateTime now) {
+        if (kind != ChapterKind.FILE) {
+            throw new InvalidChapterException("Capítulo de imagens não é publicado como arquivo");
+        }
+        requireProcessing();
+        if (sourceObjectName == null) {
+            throw new InvalidChapterException("Capítulo sem arquivo enviado");
+        }
+        if (pageCount != null && pageCount < 1) {
+            throw new InvalidChapterException("Livro sem páginas");
+        }
+        fileObjectName = sourceObjectName;
+        fileSizeBytes = sourceSizeBytes;
+        fileFormat = format;
+        filePageCount = pageCount;
+        sourceObjectName = null;
+        sourceSizeBytes = null;
+        status = ChapterStatus.PUBLISHED;
+        failureReason = null;
+        publishedAt = now;
     }
 
     /** O processamento não terminou; o número volta a ficar livre para uma nova tentativa. */
@@ -230,6 +272,22 @@ public class Chapter {
 
     public Optional<String> getSourceObjectName() {
         return Optional.ofNullable(sourceObjectName);
+    }
+
+    public Optional<String> getFileObjectName() {
+        return Optional.ofNullable(fileObjectName);
+    }
+
+    public Optional<ChapterFileFormat> getFileFormat() {
+        return Optional.ofNullable(fileFormat);
+    }
+
+    public Optional<Integer> getFilePageCount() {
+        return Optional.ofNullable(filePageCount);
+    }
+
+    public long getFileSizeBytes() {
+        return fileSizeBytes == null ? 0 : fileSizeBytes;
     }
 
     public long getSourceSizeBytes() {

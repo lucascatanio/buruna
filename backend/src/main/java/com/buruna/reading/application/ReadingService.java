@@ -1,5 +1,7 @@
 package com.buruna.reading.application;
 
+import com.buruna.reading.domain.InvalidReadingProgressException;
+import java.math.BigDecimal;
 import java.util.Objects;
 import java.util.HashSet;
 import com.buruna.work.application.GetChapterForReadingUseCase;
@@ -200,21 +202,35 @@ public class ReadingService {
                                 : windowedSignedUrls.urlFor(p.dataSaverObjectName()).toString(),
                         p.width(), p.height()))
                 .toList();
+        ChapterManifestResponse.File file = chapter.file() == null ? null
+                : new ChapterManifestResponse.File(windowedSignedUrls.urlFor(chapter.file().objectName()).toString(),
+                        chapter.file().format(), chapter.file().pageCount());
         return new ChapterManifestResponse(chapter.chapterId(), chapter.workId(), chapter.language(),
-                chapter.number(), chapter.label(), chapter.title(), chapter.scanlationGroup(), pages,
-                chapter.previousChapterId(), chapter.nextChapterId(), windowedSignedUrls.currentExpiry());
+                chapter.number(), chapter.label(), chapter.title(), chapter.scanlationGroup(), chapter.kind(),
+                pages, file, chapter.previousChapterId(), chapter.nextChapterId(), windowedSignedUrls.currentExpiry());
     }
 
-    /** O total de páginas vem do capítulo, não do cliente. */
+    /**
+     * O total de páginas vem do capítulo, não do cliente. Num EPUB, que não tem página fixa, vale a
+     * posição (CFI) e o andamento.
+     */
     @Transactional
-    public ProgressResponse saveChapterProgress(UUID chapterId, int currentPage, UUID actorId) {
+    public ProgressResponse saveChapterProgress(UUID chapterId, Integer currentPage, String position,
+                                                BigDecimal percent, UUID actorId) {
         ChapterAccessInfo access = chapterForReading.validateAccess(chapterId, actorId);
 
         ReadingProgress progress = progressRepository
                 .findByUserIdAndChapterId(actorId, chapterId)
                 .orElseGet(() -> ReadingProgress.startChapter(actorId, chapterId));
 
-        progress.recordPage(currentPage, access.pageCount());
+        if (access.epub()) {
+            progress.recordPosition(position, percent);
+        } else {
+            if (currentPage == null) {
+                throw new InvalidReadingProgressException("Página atual é obrigatória");
+            }
+            progress.recordPage(currentPage, access.pageCount());
+        }
         progressRepository.saveAndFlush(progress);
 
         return ProgressResponse.from(progress);

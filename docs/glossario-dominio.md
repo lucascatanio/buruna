@@ -46,7 +46,9 @@
 | **Volume** (entidade interna) | Arquivo (PDF ou imagem, conforme `WorkFormat`) de um número dentro de um `Work`. Identidade por (work, `VolumeNumber`); só mutável através do agregado `Work` (invariante de número único). |
 | **Chapter** (agregado raiz) | Capítulo: a unidade de leitura (ADR-44). Referencia a `Work` por `workId`, sem carregá-la. Tem idioma, número opcional ou rótulo, tipo (`ChapterKind`) e status (`ChapterStatus`). Métodos: `register()` (nasce `PROCESSING`), `publishPages()` (páginas de 1 a N, sem buraco), `fail()`. Número único por (obra, idioma) é regra do `RegisterChapterUseCase`, sob lock na obra (ADR-53). Convive com `Volume` até a migração do legado. |
 | **ChapterPage** (embutido) | Página de um capítulo de imagens: posição (a partir de 1), objeto no storage, variante opcional de economia de dados, largura e altura (para o leitor reservar espaço). |
-| **ChapterKind** (enum) | `PAGES` (imagens por página: mangá, manhwa) e `FILE` (arquivo único: livro em PDF ou EPUB). |
+| **ChapterKind** (enum) | `PAGES` (imagens por página: mangá, manhwa) e `FILE` (arquivo único: livro em PDF ou EPUB). O formato da obra decide (`Work.chapterKindFor`): `LIVRO` aceita PDF e EPUB como `FILE`; quadrinhos aceitam CBZ, CBR e PDF como `PAGES`. |
+| **Edição de livro** | Um capítulo-arquivo (`FILE`) de uma obra `LIVRO`, sem número: o rótulo é o nome da edição (ex.: "Penguin, 2015") e o crédito é a tradução. Um idioma pode ter várias edições. |
+| **ChapterFileFormat** (enum) | Formato de um capítulo-arquivo: `PDF` (lido por páginas, com o total vindo do servidor) ou `EPUB` (lido por posição, CFI + andamento). |
 | **ChapterStatus** (enum) | `PROCESSING` (conteúdo sendo extraído ou baixado) → `PUBLISHED` (visível) ou `FAILED` (não ocupa o número; dá para tentar de novo). `UNPUBLISHED`: tirado do ar sem apagar. |
 | **ChapterNumber** (VO) | Número do capítulo: decimal >= 0 com até 2 casas (10.5 existe). 10 e 10.0 são o mesmo número. |
 | **Language** (VO) | Idioma do capítulo como tag BCP 47 normalizada (`pt-br` → `pt-BR`). Códigos próprios de uma fonte externa são traduzidos por quem integra a fonte. |

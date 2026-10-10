@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Objetos de storage dos capítulos (páginas, variante de economia e arquivo enviado), para
+ * Objetos de storage dos capítulos (páginas, variante de economia, arquivo de livro e arquivo enviado), para
  * quem apaga capítulo ou obra. As linhas saem do banco por cascata; os objetos, não.
  */
 @Component
@@ -46,6 +46,7 @@ public class ChapterStorageCleaner {
             page.getDataSaverObjectName().ifPresent(names::add);
         }
         chapter.getSourceObjectName().ifPresent(names::add);
+        chapter.getFileObjectName().ifPresent(names::add);
         return names;
     }
 

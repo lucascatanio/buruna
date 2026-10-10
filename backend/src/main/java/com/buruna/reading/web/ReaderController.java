@@ -91,7 +91,8 @@ public class ReaderController {
             @PathVariable UUID chapterId,
             @Valid @RequestBody ChapterProgressRequest request,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(readingService.saveChapterProgress(chapterId, request.currentPage(), user.getId()));
+        return ResponseEntity.ok(readingService.saveChapterProgress(chapterId, request.currentPage(),
+                request.position(), request.percent(), user.getId()));
     }
 
     @GetMapping("/chapters/{chapterId}/progress")

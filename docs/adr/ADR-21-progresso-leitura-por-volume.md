@@ -15,3 +15,8 @@ capítulo, até a migração do legado. Diferenças em relação ao volume: o to
 capítulo no servidor, não do cliente; e o "continuar lendo" de uma obra é o progresso mais
 recente entre os capítulos dela (`GET /reader/works/{workId}/chapter-progress`), não o do
 maior número, porque capítulos de idiomas diferentes têm numerações independentes.
+
+**Atualização (2026-10-10), EPUB:** EPUB não tem página fixa. O progresso guarda a posição
+(`position`, um CFI) e o andamento (`percent`, de 0 a 1, V31), e a partir de 0,99 conta como lido,
+porque o leitor não chega a 1 na última tela de um trecho curto. Livro em PDF continua por
+página, com o total vindo do servidor.

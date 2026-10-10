@@ -1,5 +1,6 @@
 package com.buruna.reading.application;
 
+import java.math.BigDecimal;
 import com.buruna.reading.domain.ReadingProgress;
 
 import java.time.OffsetDateTime;
@@ -12,6 +13,9 @@ public record ProgressResponse(
         int currentPage,
         Integer totalPages,
         boolean finished,
+        /** Num EPUB: a posição (CFI) e o andamento de 0 a 1. Nulos em capítulo de páginas. */
+        String position,
+        BigDecimal percent,
         OffsetDateTime updatedAt
 ) {
     public static ProgressResponse from(ReadingProgress progress) {
@@ -21,6 +25,8 @@ public record ProgressResponse(
                 progress.getCurrentPage(),
                 progress.getTotalPages(),
                 progress.isFinished(),
+                progress.getPosition().orElse(null),
+                progress.getPercent().orElse(null),
                 progress.getUpdatedAt());
     }
 }

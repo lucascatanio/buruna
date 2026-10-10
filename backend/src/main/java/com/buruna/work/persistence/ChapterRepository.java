@@ -36,6 +36,10 @@ public interface ChapterRepository extends JpaRepository<Chapter, UUID> {
             + "WHERE c.workId IN (SELECT w.id FROM Work w WHERE w.ownerId = :ownerId AND w.isPublic = false)")
     long sumPrivateSourceBytesByOwnerId(@Param("ownerId") UUID ownerId);
 
+    @Query("SELECT COALESCE(SUM(c.fileSizeBytes), 0) FROM Chapter c "
+            + "WHERE c.workId IN (SELECT w.id FROM Work w WHERE w.ownerId = :ownerId AND w.isPublic = false)")
+    long sumPrivateFileBytesByOwnerId(@Param("ownerId") UUID ownerId);
+
     // ordem de leitura: número crescente; capítulos sem número (extras) por último, na ordem de envio
     @Query("SELECT c FROM Chapter c WHERE c.workId = :workId AND c.status IN :statuses "
             + "ORDER BY c.number ASC NULLS LAST, c.createdAt ASC")

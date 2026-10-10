@@ -207,12 +207,50 @@ class ChapterTest {
                 .isInstanceOf(InvalidChapterException.class);
     }
 
-    @Test
-    void shouldThrowInvalidChapter_whenFileChapterReceivesSource() {
-        Chapter chapter = Chapter.register(WORK_ID, Language.of("pt-BR"), null, "Livro",
-                null, null, ChapterKind.FILE, UPLOADER_ID);
+    static Chapter bookEdition() {
+        return Chapter.register(WORK_ID, Language.of("pt-BR"), null, "Penguin, 2015",
+                null, "Tradução de Fulana", ChapterKind.FILE, UPLOADER_ID);
+    }
 
-        assertThatThrownBy(() -> chapter.attachSource("chapter-sources/w/f.cbz", 4096))
+    @Test
+    void shouldPublishTheSentFileAsContent_whenBookIsValidated() {
+        // Arrange
+        Chapter book = bookEdition();
+        book.attachSource("chapter-sources/w/f.pdf", 4096);
+
+        // Act
+        book.publishFile(ChapterFileFormat.PDF, 320, NOW);
+
+        // Assert
+        assertThat(book.getStatus()).isEqualTo(ChapterStatus.PUBLISHED);
+        assertThat(book.getFileObjectName()).contains("chapter-sources/w/f.pdf");
+        assertThat(book.getFileFormat()).contains(ChapterFileFormat.PDF);
+        assertThat(book.getFilePageCount()).contains(320);
+        assertThat(book.getFileSizeBytes()).isEqualTo(4096);
+        assertThat(book.getSourceObjectName()).isEmpty();
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenBookEditionHasANumber() {
+        assertThatThrownBy(() -> Chapter.register(WORK_ID, Language.of("pt-BR"), ChapterNumber.of(BigDecimal.ONE),
+                "Edição", null, null, ChapterKind.FILE, UPLOADER_ID))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenImageChapterIsPublishedAsFile() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.attachSource("chapter-sources/w/f.cbz", 4096);
+
+        // Act / Assert
+        assertThatThrownBy(() -> chapter.publishFile(ChapterFileFormat.PDF, 1, NOW))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenBookIsPublishedWithoutSource() {
+        assertThatThrownBy(() -> bookEdition().publishFile(ChapterFileFormat.EPUB, null, NOW))
                 .isInstanceOf(InvalidChapterException.class);
     }
 }

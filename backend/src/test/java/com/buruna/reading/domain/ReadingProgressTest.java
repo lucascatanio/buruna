@@ -103,4 +103,34 @@ class ReadingProgressTest {
         assertThatThrownBy(() -> progress.recordPage(193, null))
                 .isInstanceOf(InvalidReadingProgressException.class);
     }
+
+    @Test
+    void shouldCountAsFinished_whenEpubReachesTheEnd() {
+        // Arrange
+        ReadingProgress progress = ReadingProgress.startChapter(java.util.UUID.randomUUID(), java.util.UUID.randomUUID());
+
+        // Act
+        progress.recordPosition("epubcfi(/6/14!/4/2/1:0)", new java.math.BigDecimal("0.995"));
+
+        // Assert
+        org.assertj.core.api.Assertions.assertThat(progress.isFinished()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(progress.getPosition()).contains("epubcfi(/6/14!/4/2/1:0)");
+    }
+
+    @Test
+    void shouldNotBeFinished_whenEpubIsHalfway() {
+        ReadingProgress progress = ReadingProgress.startChapter(java.util.UUID.randomUUID(), java.util.UUID.randomUUID());
+
+        progress.recordPosition("epubcfi(/6/8!/4/2/1:0)", new java.math.BigDecimal("0.5"));
+
+        org.assertj.core.api.Assertions.assertThat(progress.isFinished()).isFalse();
+    }
+
+    @Test
+    void shouldThrowInvalidReadingProgress_whenPercentIsAboveOne() {
+        ReadingProgress progress = ReadingProgress.startChapter(java.util.UUID.randomUUID(), java.util.UUID.randomUUID());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> progress.recordPosition("epubcfi(/6/2)", new java.math.BigDecimal("1.2")))
+                .isInstanceOf(InvalidReadingProgressException.class);
+    }
 }

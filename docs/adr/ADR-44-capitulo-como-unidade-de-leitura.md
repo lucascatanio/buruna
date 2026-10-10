@@ -32,3 +32,11 @@ continuam lidos pelo leitor de PDF até lá.
 de `Work` (`addVolume`), e vai para o use case com lock ([ADR-53](ADR-53-regra-de-negocio-na-aplicacao-sem-unique.md)).
 Em troca, uma obra com 1.000 capítulos não precisa ser carregada inteira a cada capítulo
 novo, e o sync não disputa a linha da obra com a edição de metadados.
+
+**Atualização (2026-10-10), livros:** o formato da obra decide o tipo de capítulo
+(`Work.chapterKindFor`). Em obra `LIVRO`, PDF e EPUB viram **capítulo-arquivo** (`FILE`), sem
+número. Cada **edição** do livro é um capítulo-arquivo, identificada pelo rótulo (nome livre,
+ex.: "Penguin, 2015"), com a tradução no campo de crédito. Um idioma pode ter várias edições. O
+arquivo enviado é validado no Job (o PDF precisa abrir e informa o total de páginas; o EPUB
+precisa de `mimetype`, `container.xml` e OPF) e passa a ser o conteúdo do capítulo (`file_*`,
+V31), sem conversão. Quadrinhos aceitam CBZ, CBR e PDF como páginas; EPUB fica só para livro.

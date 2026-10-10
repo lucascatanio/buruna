@@ -3,10 +3,13 @@ package com.buruna.work.application;
 import com.buruna.shared.exception.StorageObjectNotFoundException;
 import com.buruna.shared.media.ArchiveLimits;
 import com.buruna.shared.media.ArchiveFormat;
+import com.buruna.shared.media.BookFileValidator;
 import com.buruna.shared.media.PageExtractor;
 import com.buruna.shared.media.InvalidArchiveException;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.work.domain.Chapter;
+import com.buruna.work.domain.ChapterFileFormat;
+import com.buruna.work.domain.ChapterKind;
 import com.buruna.work.domain.ChapterObjectName;
 import com.buruna.work.domain.ChapterPage;
 import com.buruna.work.domain.ChapterSourceFormat;
@@ -34,7 +37,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Extrai as páginas do arquivo enviado (CBZ, CBR ou PDF) e publica o capítulo (ADR-48). Roda no Cloud Run
+ * Extrai as páginas do arquivo enviado (CBZ, CBR ou PDF) e publica o capítulo (ADR-48). Num
+ * livro (PDF ou EPUB), só valida o arquivo, que passa a ser o conteúdo do capítulo. Roda no Cloud Run
  * Job, ou na própria requisição no profile local.
  *
  * <p>Sem transação longa: baixar e gravar páginas leva minutos, e segurar uma conexão do pool
@@ -52,6 +56,7 @@ public class ProcessChapterSourceUseCase {
     private final ChapterRepository chapterRepository;
     private final StorageClient storageClient;
     private final PageExtractor extractor;
+    private final BookFileValidator bookValidator;
     private final FailChapterIngestUseCase failChapterIngest;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
@@ -60,6 +65,7 @@ public class ProcessChapterSourceUseCase {
     public ProcessChapterSourceUseCase(ChapterRepository chapterRepository,
                                        StorageClient storageClient,
                                        PageExtractor extractor,
+                                       BookFileValidator bookValidator,
                                        FailChapterIngestUseCase failChapterIngest,
                                        PlatformTransactionManager transactionManager,
                                        Clock clock,
@@ -69,6 +75,7 @@ public class ProcessChapterSourceUseCase {
         this.chapterRepository = chapterRepository;
         this.storageClient = storageClient;
         this.extractor = extractor;
+        this.bookValidator = bookValidator;
         this.failChapterIngest = failChapterIngest;
         // transação própria sempre: no profile local isto roda dentro do afterCommit de quem fez
         // o upload, e uma transação REQUIRED ali entraria na que acabou de terminar, sem commit
@@ -79,13 +86,15 @@ public class ProcessChapterSourceUseCase {
     }
 
     public void handle(UUID chapterId) {
-        Optional<String> source = transactionTemplate.execute(tx -> chapterRepository.findById(chapterId)
+        Optional<Pending> pending = transactionTemplate.execute(tx -> chapterRepository.findById(chapterId)
                 .filter(chapter -> chapter.getStatus() == ChapterStatus.PROCESSING)
-                .flatMap(Chapter::getSourceObjectName));
-        if (source == null || source.isEmpty()) {
-            log.info("Capítulo {} não está aguardando extração; nada a fazer", chapterId);
+                .flatMap(chapter -> chapter.getSourceObjectName().map(name -> new Pending(name, chapter.getKind()))));
+        if (pending == null || pending.isEmpty()) {
+            log.info("Capítulo {} não está aguardando processamento; nada a fazer", chapterId);
             return;
         }
+        Optional<String> source = pending.map(Pending::sourceObjectName);
+        boolean isBook = pending.get().kind() == ChapterKind.FILE;
 
         List<ChapterPage> pages = new ArrayList<>();
         Path tempFile = null;
@@ -94,6 +103,10 @@ public class ProcessChapterSourceUseCase {
             tempFile = Files.createTempFile("chapter-" + chapterId, "." + format.extension());
             try (InputStream in = storageClient.openRead(source.get())) {
                 Files.copy(in, tempFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+            if (isBook) {
+                publishBook(chapterId, format, tempFile);
+                return;
             }
             extractor.extract(tempFile, ArchiveFormat.valueOf(format.name()), limits, page -> {
                 String objectName = ChapterObjectName.page(chapterId, page.position(), page.extension());
@@ -124,6 +137,27 @@ public class ProcessChapterSourceUseCase {
                 }
             }
         }
+    }
+
+    private record Pending(String sourceObjectName, ChapterKind kind) {
+    }
+
+    /**
+     * Livro: o arquivo enviado não é convertido, só validado, e passa a ser o conteúdo do
+     * capítulo. O PDF informa o total de páginas para o progresso.
+     */
+    private void publishBook(UUID chapterId, ChapterSourceFormat format, Path file) {
+        ChapterFileFormat fileFormat = format == ChapterSourceFormat.EPUB ? ChapterFileFormat.EPUB : ChapterFileFormat.PDF;
+        Integer pageCount = null;
+        if (fileFormat == ChapterFileFormat.PDF) {
+            pageCount = bookValidator.validatePdf(file);
+        } else {
+            bookValidator.validateEpub(file);
+        }
+        Integer pages = pageCount;
+        transactionTemplate.executeWithoutResult(tx -> chapterRepository.findById(chapterId)
+                .filter(chapter -> chapter.getStatus() == ChapterStatus.PROCESSING)
+                .ifPresent(chapter -> chapter.publishFile(fileFormat, pages, OffsetDateTime.now(clock))));
     }
 
     private record Publication(boolean published, Optional<String> discardedSource) {

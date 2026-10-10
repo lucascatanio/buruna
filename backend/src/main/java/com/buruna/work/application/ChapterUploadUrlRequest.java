@@ -11,6 +11,6 @@ import java.math.BigDecimal;
 public record ChapterUploadUrlRequest(
         @NotBlank String language,
         BigDecimal number,
-        /** Extensão do arquivo: cbz, cbr ou pdf. Ausente vale cbz, como antes do upload de CBR e PDF. */
+        /** Extensão do arquivo: cbz, cbr, pdf ou epub. Ausente vale cbz, como antes do upload de outros formatos. */
         String format
 ) {}

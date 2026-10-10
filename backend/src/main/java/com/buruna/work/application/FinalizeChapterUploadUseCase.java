@@ -13,8 +13,8 @@ import java.util.UUID;
 
 /**
  * Fase 2 do upload de capítulo: confere que o pendente é desta obra (ADR-40), cobra a quota no
- * escopo privado, registra o capítulo em processamento com o arquivo e pede a extração das
- * páginas depois do commit (ADR-48).
+ * escopo privado, registra o capítulo em processamento com o arquivo e pede, depois do commit, a
+ * extração das páginas ou, num livro, a validação do arquivo (ADR-48).
  */
 @Service
 public class FinalizeChapterUploadUseCase {
@@ -42,7 +42,7 @@ public class FinalizeChapterUploadUseCase {
                                   ChapterActor actor) {
         Work work = access.findWork(workId, scope, actor);
         ChapterObjectName pending = ChapterObjectName.parsePending(request.objectName(), workId);
-        work.assertAcceptsPagesFrom(pending.format());
+        ChapterKind kind = work.chapterKindFor(pending.format());
 
         // objeto ausente = finalize repetido ou upload nunca feito: 404, não 500
         long sizeBytes;
@@ -59,7 +59,7 @@ public class FinalizeChapterUploadUseCase {
         // a lifecycle rule o limpa, em vez de virar órfão em chapter-sources/
         ChapterResponse chapter = registerChapter.handle(new RegisterChapterCommand(
                 workId, request.language(), request.number(), request.label(), request.title(),
-                request.scanlationGroup(), ChapterKind.PAGES, actor.actorId(),
+                request.scanlationGroup(), kind, actor.actorId(),
                 pending.sourceObjectName(), sizeBytes));
         try {
             storageClient.move(pending.pendingObjectName(), pending.sourceObjectName());
