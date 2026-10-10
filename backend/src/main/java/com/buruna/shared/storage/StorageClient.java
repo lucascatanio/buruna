@@ -32,6 +32,12 @@ public interface StorageClient {
 
     FileMetadata getFileMetadata(String objectName);
 
+    /**
+     * Abre o conteúdo do objeto para leitura. Quem chama fecha o stream. Objeto ausente →
+     * {@code StorageObjectNotFoundException}.
+     */
+    InputStream openRead(String objectName);
+
     /** Lista todos os objetos cujo nome começa com {@code prefix}, com a data de criação de cada um. */
     List<StoredObject> list(String prefix);
 }

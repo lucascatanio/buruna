@@ -1,5 +1,6 @@
 package com.buruna.work.application.maintenance;
 
+import com.buruna.work.application.ChapterStorageCleaner;
 import com.buruna.work.application.VolumeFileCleaner;
 import com.buruna.work.domain.Work;
 import com.buruna.work.persistence.WorkRepository;
@@ -36,11 +37,14 @@ public class DeletePrivateCollectionForUserUseCase {
 
     private final WorkRepository workRepository;
     private final VolumeFileCleaner volumeFileCleaner;
+    private final ChapterStorageCleaner chapterStorageCleaner;
 
     public DeletePrivateCollectionForUserUseCase(WorkRepository workRepository,
-                                                  VolumeFileCleaner volumeFileCleaner) {
+                                                  VolumeFileCleaner volumeFileCleaner,
+                                                  ChapterStorageCleaner chapterStorageCleaner) {
         this.workRepository = workRepository;
         this.volumeFileCleaner = volumeFileCleaner;
+        this.chapterStorageCleaner = chapterStorageCleaner;
     }
 
     /**
@@ -62,6 +66,9 @@ public class DeletePrivateCollectionForUserUseCase {
                 }
             });
         }
+
+        objectNames.addAll(chapterStorageCleaner.objectNamesOfWorks(
+                privateWorks.stream().map(Work::getId).toList()));
 
         workRepository.deleteAll(privateWorks);
         return objectNames;

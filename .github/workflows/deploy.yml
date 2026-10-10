@@ -44,6 +44,15 @@ jobs:
             --region ${{ env.REGION }} \
             --quiet
 
+      # o Job fixa o digest da imagem quando é atualizado: sem este passo ele seguiria rodando
+      # o código do deploy anterior (ADR-48)
+      - name: Update ingest job image
+        run: |
+          gcloud run jobs update buruna-ingest \
+            --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-backend:latest \
+            --region ${{ env.REGION }} \
+            --quiet
+
   deploy-frontend:
     needs: deploy-backend
     runs-on: ubuntu-latest

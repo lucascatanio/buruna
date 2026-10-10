@@ -1,5 +1,12 @@
 package com.buruna.work;
 
+import com.buruna.work.domain.Chapter;
+import com.buruna.work.domain.ChapterKind;
+import com.buruna.work.domain.ChapterNumber;
+import com.buruna.work.domain.ChapterPage;
+import com.buruna.work.domain.Language;
+import com.buruna.work.persistence.ChapterRepository;
+import java.time.OffsetDateTime;
 import com.buruna.work.application.maintenance.DeletePrivateCollectionForUserUseCase;
 import com.buruna.work.domain.FileHash;
 import com.buruna.work.domain.Work;
@@ -52,6 +59,7 @@ class DeletePrivateCollectionForUserIntegrationTest {
     @Autowired DeletePrivateCollectionForUserUseCase useCase;
     @Autowired WorkRepository workRepository;
     @Autowired VolumeRepository volumeRepository;
+    @Autowired ChapterRepository chapterRepository;
     @Autowired UserRepository userRepository;
     @MockitoBean StorageClient storageClient;
 
@@ -98,6 +106,29 @@ class DeletePrivateCollectionForUserIntegrationTest {
         assertThat(volumeRepository.findByWorkId(publicId)).hasSize(1);
 
         // 4. O StorageClient NÃO é chamado dentro do use case — o GCS é apagado fora da tx
+        verifyNoInteractions(storageClient);
+    }
+
+    @Test
+    void shouldReturnChapterPagesAndSources_whenPrivateWorkHasChapters() {
+        // Arrange
+        Work privateWork = privateWorkWithVolumes("Private Chapters", "cover-c");
+        Chapter published = Chapter.register(privateWork.getId(), Language.of("pt-BR"), ChapterNumber.of(BigDecimal.ONE),
+                null, null, null, ChapterKind.PAGES, owner.getId());
+        published.publishPages(List.of(ChapterPage.of(1, "chapters/c1/1.jpg", null, 800, 1200, 10)),
+                OffsetDateTime.parse("2026-10-09T12:00:00Z"));
+        Chapter failed = Chapter.register(privateWork.getId(), Language.of("pt-BR"), ChapterNumber.of(BigDecimal.TWO),
+                null, null, null, ChapterKind.PAGES, owner.getId());
+        failed.attachSource("chapter-sources/w/f.cbz", 4096);
+        failed.fail("GCS fora do ar");
+        chapterRepository.saveAll(List.of(published, failed));
+
+        // Act
+        List<String> objectNames = useCase.handle(owner.getId());
+
+        // Assert
+        assertThat(objectNames).containsExactlyInAnyOrder("cover-c", "chapters/c1/1.jpg", "chapter-sources/w/f.cbz");
+        assertThat(chapterRepository.count()).isZero();
         verifyNoInteractions(storageClient);
     }
 

@@ -195,6 +195,33 @@ backend nunca toca os bytes do arquivo — ver [ADR-24](adr/ADR-24-upload-direto
 [ADR-25](adr/ADR-25-hash-blob-getmd5-gcs.md) e [ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)
 (objectName vinculado à obra + prefixo `pending/`).
 
+### 6.4.1 Upload de capítulo (CBZ)
+
+Mesmo desenho em duas fases do volume, com a extração das páginas fora da requisição
+([ADR-48](adr/ADR-48-ingest-em-cloud-run-job.md)). Rotas `/my/works/{id}/chapters/...`
+(coleção privada, com quota; `PrivateChapterController`) e `/works/{id}/chapters/...`
+(catálogo, colaborador dono ou ADMIN; `ChapterController`).
+
+```
+BROWSER                       BACKEND (work)                              GCS / Cloud Run Job
+  │── POST .../upload-url ───►│ número livre? (aviso antecipado)           │
+  │◄── URL de PUT ────────────│ pending/chapters/{workId}/{uuid}.cbz        │
+  │── PUT <signed URL> ─────────────────────────────────────────────────────►│
+  │── POST .../finalize ─────►│ ChapterObjectName.parsePending (ADR-40)     │
+  │                           │ quota (privado) + RegisterChapterUseCase     │
+  │                           │   (lock na obra, ADR-53) → PROCESSING        │
+  │                           │ move → chapter-sources/                      │
+  │◄── 201 PROCESSING ────────│ após o commit: jobs.run(chapterId) ─────────►│ buruna-ingest
+  │                           │                                              │ extrai páginas →
+  │                           │                                              │ chapters/{id}/{n}.{ext}
+  │                           │                                              │ PUBLISHED ou FAILED
+```
+
+Use cases: `GenerateChapterUploadUrlUseCase`, `FinalizeChapterUploadUseCase`,
+`ProcessChapterSourceUseCase` (no Job), `RetryChapterIngestUseCase`, `DeleteChapterUseCase`.
+A extração (`ComicArchiveExtractor`, `ImageInspector`) mora em `shared/media`. Apagar obra,
+coleção ou conta também apaga os objetos dos capítulos (`ChapterStorageCleaner`).
+
 ### 6.5 Upload privado + submissão/promoção
 
 Controller `work.web.PrivateWorkController` (`/my/works`). Use cases:

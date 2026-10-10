@@ -135,6 +135,15 @@ public class GcsStorageClient implements StorageClient {
     }
 
     @Override
+    public InputStream openRead(String objectName) {
+        Blob blob = storage.get(bucketName, objectName);
+        if (blob == null) {
+            throw new StorageObjectNotFoundException("Objeto não encontrado no GCS: " + objectName);
+        }
+        return java.nio.channels.Channels.newInputStream(blob.reader());
+    }
+
+    @Override
     public List<StoredObject> list(String prefix) {
         List<StoredObject> objects = new ArrayList<>();
         for (Blob blob : storage.list(bucketName, Storage.BlobListOption.prefix(prefix)).iterateAll()) {

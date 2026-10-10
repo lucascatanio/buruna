@@ -70,6 +70,15 @@ app:
     from: ${APP_MAIL_FROM:Burūna <noreply@buruna.com.br>}
   upload:
     max-file-size-mb: ${MAX_FILE_SIZE_MB:500}
+  ingest:
+    # Cloud Run Job que extrai as páginas dos capítulos enviados, no formato
+    # projects/<projeto>/locations/<região>/jobs/<job>. Obrigatório fora do profile "local",
+    # onde o processamento roda na própria requisição. Ver docs/DEPLOYMENT.md.
+    job-name: ${APP_INGEST_JOB_NAME:}
+    # Limites ao abrir um CBZ enviado por usuário (zip bomb, arquivo malicioso).
+    max-pages: ${APP_INGEST_MAX_PAGES:1000}
+    max-total-mb: ${APP_INGEST_MAX_TOTAL_MB:1024}
+    max-page-mb: ${APP_INGEST_MAX_PAGE_MB:50}
   security:
     # Quantos saltos de proxy confiável (infra própria) precedem a entrada do
     # cliente no X-Forwarded-For. Ver docs/DEPLOYMENT.md.

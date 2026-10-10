@@ -9,10 +9,13 @@ import com.buruna.work.domain.WorkNotFoundException;
 import com.buruna.work.persistence.ChapterRepository;
 import com.buruna.work.persistence.WorkRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Registra um capítulo em processamento. A regra "número único por obra e idioma" é checada
@@ -37,19 +40,47 @@ public class RegisterChapterUseCase {
 
     @Transactional
     public ChapterResponse handle(RegisterChapterCommand command) {
-        workRepository.lockById(command.workId())
-                .orElseThrow(() -> new WorkNotFoundException(command.workId()));
-
+        lockWork(command.workId());
+        assertNumberFree(command.workId(), command.language(), command.number());
         Language language = Language.of(command.language());
         ChapterNumber number = command.number() == null ? null : ChapterNumber.of(command.number());
 
-        if (number != null && chapterRepository.existsByWorkIdAndLanguageAndNumberAndStatusIn(
-                command.workId(), language.value(), number.value(), OCCUPYING_NUMBER)) {
-            throw new DuplicateChapterException(number, language);
-        }
-
         Chapter chapter = Chapter.register(command.workId(), language, number, command.label(),
                 command.title(), command.scanlationGroup(), command.kind(), command.uploadedById());
+        if (command.sourceObjectName() != null) {
+            chapter.attachSource(command.sourceObjectName(),
+                    command.sourceSizeBytes() == null ? 0 : command.sourceSizeBytes());
+        }
         return ChapterResponse.from(chapterRepository.save(chapter));
+    }
+
+    /** Trava a obra para serializar os registros de capítulo dela. Exige transação ativa. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void lockWork(UUID workId) {
+        workRepository.lockById(workId).orElseThrow(() -> new WorkNotFoundException(workId));
+    }
+
+    /** Só tem efeito sob {@link #lockWork}: sem o lock, dois registros simultâneos passariam. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void assertNumberFree(UUID workId, String languageTag, BigDecimal rawNumber) {
+        assertNumberFree(workId, languageTag, rawNumber, null);
+    }
+
+    /** Igual ao anterior, sem contar o próprio capítulo ({@code ignoredChapterId}), para o retry. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void assertNumberFree(UUID workId, String languageTag, BigDecimal rawNumber, UUID ignoredChapterId) {
+        if (rawNumber == null) {
+            return;
+        }
+        Language language = Language.of(languageTag);
+        ChapterNumber number = ChapterNumber.of(rawNumber);
+        boolean taken = ignoredChapterId == null
+                ? chapterRepository.existsByWorkIdAndLanguageAndNumberAndStatusIn(
+                        workId, language.value(), number.value(), OCCUPYING_NUMBER)
+                : chapterRepository.existsByWorkIdAndLanguageAndNumberAndStatusInAndIdNot(
+                        workId, language.value(), number.value(), OCCUPYING_NUMBER, ignoredChapterId);
+        if (taken) {
+            throw new DuplicateChapterException(number, language);
+        }
     }
 }
