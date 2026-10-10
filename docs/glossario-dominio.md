@@ -44,6 +44,12 @@
 |---|---|
 | **Work** (agregado raiz) | Obra. Um único agregado cobre **público** (catálogo) e **privado** (coleção do dono), distinguido por `isPublic`. Contém `Volume` por composição (cascade/orphanRemoval). Métodos de negócio: `submitForApproval()`, `approve(reviewerId)`, `reject(reviewerId, reason)`, `promoteToPublic()`. |
 | **Volume** (entidade interna) | Arquivo (PDF ou imagem, conforme `WorkFormat`) de um número dentro de um `Work`. Identidade por (work, `VolumeNumber`); só mutável através do agregado `Work` (invariante de número único). |
+| **Chapter** (agregado raiz) | Capítulo: a unidade de leitura (ADR-44). Referencia a `Work` por `workId`, sem carregá-la. Tem idioma, número opcional ou rótulo, tipo (`ChapterKind`) e status (`ChapterStatus`). Métodos: `register()` (nasce `PROCESSING`), `publishPages()` (páginas de 1 a N, sem buraco), `fail()`. Número único por (obra, idioma) é regra do `RegisterChapterUseCase`, sob lock na obra (ADR-53). Convive com `Volume` até a migração do legado. |
+| **ChapterPage** (embutido) | Página de um capítulo de imagens: posição (a partir de 1), objeto no storage, variante opcional de economia de dados, largura e altura (para o leitor reservar espaço). |
+| **ChapterKind** (enum) | `PAGES` (imagens por página: mangá, manhwa) e `FILE` (arquivo único: livro em PDF ou EPUB). |
+| **ChapterStatus** (enum) | `PROCESSING` (conteúdo sendo extraído ou baixado) → `PUBLISHED` (visível) ou `FAILED` (não ocupa o número; dá para tentar de novo). `UNPUBLISHED`: tirado do ar sem apagar. |
+| **ChapterNumber** (VO) | Número do capítulo: decimal >= 0 com até 2 casas (10.5 existe). 10 e 10.0 são o mesmo número. |
+| **Language** (VO) | Idioma do capítulo como tag BCP 47 normalizada (`pt-br` → `pt-BR`). Códigos próprios de uma fonte externa são traduzidos por quem integra a fonte. |
 | **Owner** | Usuário dono de um `Work` privado (referenciado por UUID — nunca a entidade `User`, ADR-35/ADR-39). |
 | **Promote** | `COLLABORATOR`+ move o **próprio** `Work` privado direto para público via `promoteToPublic()` — caminho direto, sem revisão. |
 | **Submission** | Qualquer usuário `ACTIVE` pede publicação via `submitForApproval()`; um `ADMIN` decide com `approve()`/`reject()`. Dois caminhos (promote × submit→approve) coexistem por decisão de domínio. |

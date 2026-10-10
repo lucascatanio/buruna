@@ -9,9 +9,13 @@
 ```
 User ──────────────────< Work (owner_id)
                          │
-                         ├──< Volume
+                         ├──< Volume (legado, até a migração para capítulos)
                          │     └── file_url (objectName no GCS)
                          │         file_hash (MD5 via metadados GCS)
+                         │
+                         ├──< Chapter (work_id, sem FK de agregado: ADR-44)
+                         │     ├── language, number?, label?, kind, status
+                         │     └──< ChapterPage (chapter_pages: posição, objectName, largura, altura)
                          │
                          └──>──< Tag (via WorkTag)
                                   └──> TagCategory
@@ -46,12 +50,14 @@ User ──< PasswordResetToken
 | users                 | totp_last_used_step, totp_failed_attempts, totp_locked_until | V21 — força bruta e replay de TOTP |
 | refresh_tokens        | token VARCHAR(64)                              | V22 — SHA-256 hex do token, não mais o valor em claro |
 | reading_progress      | total_pages, CHECK(current_page <= total_pages) | V23 — total de páginas do volume (nulo até o leitor informar) |
+| chapters              | INDEX(work_id, language, number), CHECK(number OR label) | V28 — sem UNIQUE: número único por obra e idioma é regra da aplicação, sob lock na obra ([ADR-53](adr/ADR-53-regra-de-negocio-na-aplicacao-sem-unique.md)) |
+| chapter_pages         | PK(chapter_id, page_index)                     | V28 — páginas de um capítulo de imagens |
 
 Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-indices-seletivos-banco.md).
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
 e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-## 3. Migrations Flyway (V1–V27)
+## 3. Migrations Flyway (V1–V28)
 
 > Verificado em `backend/src/main/resources/db/migration/` — atualize esta tabela ao
 > adicionar uma migration nova.
@@ -85,6 +91,7 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V25    | Backfill: aprovados antigos (público + reviewed_at, status nulo) → `APPROVED`; público com `PENDING`/`REJECTED` (promovido com submissão aberta) → status e motivo nulos |
 | V26    | Adicionou valor `DELETED` ao enum user_status (conta anonimizada)                  |
 | V27    | Renomeia mangas → works, manga_tags → work_tags, colunas manga_id → work_id, tipos enum manga_* → work_* e constraints/índices ([ADR-45](adr/ADR-45-renomear-manga-para-work.md)) |
+| V28    | Tabelas chapters e chapter_pages, enums chapter_kind e chapter_status ([ADR-44](adr/ADR-44-capitulo-como-unidade-de-leitura.md)) |
 
 > Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
 > transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill

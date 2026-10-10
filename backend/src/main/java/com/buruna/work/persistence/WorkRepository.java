@@ -46,4 +46,10 @@ public interface WorkRepository extends JpaRepository<Work, UUID>, JpaSpecificat
     List<Work> lockPrivateByOwnerId(@Param("ownerId") UUID ownerId);
 
     Page<Work> findBySubmissionStatus(WorkSubmissionStatus status, Pageable pageable);
+
+    // trava (FOR UPDATE) a obra para serializar o registro de capítulos dela: a regra de número
+    // único é checada por consulta, sem UNIQUE no banco (ADR-53)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM Work w WHERE w.id = :id")
+    Optional<Work> lockById(@Param("id") UUID id);
 }
