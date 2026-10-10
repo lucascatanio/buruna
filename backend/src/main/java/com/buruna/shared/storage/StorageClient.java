@@ -26,7 +26,11 @@ public interface StorageClient {
 
     URL generateSignedUrl(String fileName, Duration expiration);
 
-    SignedUpload generateUploadSignedUrl(String objectName, Duration expiration);
+    /**
+     * URL de PUT assinada para {@code contentType}. O {@code Content-Type} volta em
+     * {@code requiredHeaders}: o cliente precisa enviar exatamente o tipo assinado.
+     */
+    SignedUpload generateUploadSignedUrl(String objectName, String contentType, Duration expiration);
 
     void move(String from, String to);
 

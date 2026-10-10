@@ -80,14 +80,14 @@ public class GcsStorageClient implements StorageClient {
     }
 
     @Override
-    public SignedUpload generateUploadSignedUrl(String objectName, Duration expiration) {
+    public SignedUpload generateUploadSignedUrl(String objectName, String contentType, Duration expiration) {
         BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(bucketName, objectName))
-                .setContentType("application/pdf")
+                .setContentType(contentType)
                 .build();
         // x-goog-content-length-range faz parte da assinatura: o GCS recusa o PUT se o
         // Content-Length do corpo estiver fora de [0, maxUploadBytes] — sem
         // isso, um upload sem finalize nunca é limitado em tamanho.
-        Map<String, String> requiredHeaders =
+        Map<String, String> signedExtHeaders =
                 Map.of("x-goog-content-length-range", "0," + maxUploadBytes);
         URL url = storage.signUrl(
                 blobInfo,
@@ -97,9 +97,12 @@ public class GcsStorageClient implements StorageClient {
                 Storage.SignUrlOption.withV4Signature(),
                 Storage.SignUrlOption.signWith(serviceAccountCredentials),
                 Storage.SignUrlOption.withContentType(),
-                Storage.SignUrlOption.withExtHeaders(requiredHeaders)
+                Storage.SignUrlOption.withExtHeaders(signedExtHeaders)
         );
-        return new SignedUpload(url, requiredHeaders);
+        // o Content-Type entra na assinatura por withContentType(), não como extension header
+        return new SignedUpload(url, Map.of(
+                "x-goog-content-length-range", signedExtHeaders.get("x-goog-content-length-range"),
+                "Content-Type", contentType));
     }
 
     @Override

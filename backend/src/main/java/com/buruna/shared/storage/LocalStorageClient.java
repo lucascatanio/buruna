@@ -85,12 +85,12 @@ public class LocalStorageClient implements StorageClient {
     }
 
     @Override
-    public SignedUpload generateUploadSignedUrl(String objectName, Duration expiration) {
+    public SignedUpload generateUploadSignedUrl(String objectName, String contentType, Duration expiration) {
         log.debug("generateUploadSignedUrl ignorou expiração (local mode). Expiration solicitado: {}", expiration);
         try {
             // modo local não assina headers: não há GCS para impor x-goog-content-length-range.
             return new SignedUpload(
-                    new URL(baseUrl + "/api/local-storage/upload/" + objectName), Map.of());
+                    new URL(baseUrl + "/api/local-storage/upload/" + objectName), Map.of("Content-Type", contentType));
         } catch (IOException e) {
             throw new StorageException("Falha ao gerar upload URL local para: " + objectName, e);
         }

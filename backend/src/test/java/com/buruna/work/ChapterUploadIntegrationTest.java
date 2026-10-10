@@ -95,7 +95,7 @@ class ChapterUploadIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        when(storageClient.generateUploadSignedUrl(anyString(), any(Duration.class)))
+        when(storageClient.generateUploadSignedUrl(anyString(), anyString(), any(Duration.class)))
                 .thenReturn(new StorageClient.SignedUpload(new URL("https://storage.example.com/put"), Map.of()));
         when(storageClient.getFileMetadata(anyString())).thenReturn(new StorageClient.FileMetadata("md5", 4096L));
 
@@ -297,6 +297,18 @@ class ChapterUploadIntegrationTest {
         result.andExpect(status().isConflict());
         verify(storageClient, never()).move(eq(secondPending), anyString());
         assertThat(chapterRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void shouldSignTheUploadForCbz_whenUploadUrlIsRequested() throws Exception {
+        // Arrange
+        String workId = createPrivateWork(owner);
+
+        // Act
+        String pending = requestUploadUrl("/my/works", workId, "1", owner);
+
+        // Assert: o front repete o Content-Type assinado, que precisa ser o de CBZ e não o de PDF
+        verify(storageClient).generateUploadSignedUrl(eq(pending), eq("application/vnd.comicbook+zip"), any(Duration.class));
     }
 
     @Test
