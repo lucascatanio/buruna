@@ -22,8 +22,8 @@ User ──────────────────< Work (owner_id)
 
 Tag >──────────────────── TagCategory
 
-User ──< ReadingProgress >────── Volume
-User ──< ReadingHistory  >────── Volume
+User ──< ReadingProgress >────── Volume | Chapter
+User ──< ReadingHistory  >────── Volume | Chapter
 User ──< ReadingList     >────── Work
 User ──< Rating          >────── Work
 User ──< RefreshToken
@@ -52,12 +52,14 @@ User ──< PasswordResetToken
 | reading_progress      | total_pages, CHECK(current_page <= total_pages) | V23 — total de páginas do volume (nulo até o leitor informar) |
 | chapters              | INDEX(work_id, language, number), CHECK(number OR label) | V28 — sem UNIQUE: número único por obra e idioma é regra da aplicação, sob lock na obra ([ADR-53](adr/ADR-53-regra-de-negocio-na-aplicacao-sem-unique.md)) |
 | chapter_pages         | PK(chapter_id, page_index)                     | V28 — páginas de um capítulo de imagens |
+| reading_progress      | UNIQUE(user_id, chapter_id), CHECK(volume_id XOR chapter_id) | V30 — progresso por capítulo, convivendo com o de volume |
+| reading_history       | INDEX(chapter_id), CHECK(volume_id XOR chapter_id) | V30 |
 
 Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-indices-seletivos-banco.md).
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
 e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-## 3. Migrations Flyway (V1–V29)
+## 3. Migrations Flyway (V1–V30)
 
 > Verificado em `backend/src/main/resources/db/migration/` — atualize esta tabela ao
 > adicionar uma migration nova.
@@ -93,6 +95,7 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V27    | Renomeia mangas → works, manga_tags → work_tags, colunas manga_id → work_id, tipos enum manga_* → work_* e constraints/índices ([ADR-45](adr/ADR-45-renomear-manga-para-work.md)) |
 | V28    | Tabelas chapters e chapter_pages, enums chapter_kind e chapter_status ([ADR-44](adr/ADR-44-capitulo-como-unidade-de-leitura.md)) |
 | V29    | Colunas source_object_name e source_size_bytes em chapters: arquivo enviado guardado até a extração das páginas ([ADR-48](adr/ADR-48-ingest-em-cloud-run-job.md)) |
+| V30    | reading_progress e reading_history ganham chapter_id (volume_id passa a ser opcional; CHECK de exatamente um dos dois) e UNIQUE(user_id, chapter_id) no progresso ([ADR-21](adr/ADR-21-progresso-leitura-por-volume.md), atualização) |
 
 > Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
 > transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill

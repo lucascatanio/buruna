@@ -35,4 +35,33 @@ public interface ChapterRepository extends JpaRepository<Chapter, UUID> {
     @Query("SELECT COALESCE(SUM(c.sourceSizeBytes), 0) FROM Chapter c "
             + "WHERE c.workId IN (SELECT w.id FROM Work w WHERE w.ownerId = :ownerId AND w.isPublic = false)")
     long sumPrivateSourceBytesByOwnerId(@Param("ownerId") UUID ownerId);
+
+    // ordem de leitura: número crescente; capítulos sem número (extras) por último, na ordem de envio
+    @Query("SELECT c FROM Chapter c WHERE c.workId = :workId AND c.status IN :statuses "
+            + "ORDER BY c.number ASC NULLS LAST, c.createdAt ASC")
+    List<Chapter> findInReadingOrder(@Param("workId") UUID workId,
+                                     @Param("statuses") Collection<ChapterStatus> statuses);
+
+    @Query("SELECT c FROM Chapter c WHERE c.workId = :workId AND c.language = :language AND c.status IN :statuses "
+            + "ORDER BY c.number ASC NULLS LAST, c.createdAt ASC")
+    List<Chapter> findInReadingOrder(@Param("workId") UUID workId, @Param("language") String language,
+                                     @Param("statuses") Collection<ChapterStatus> statuses);
+
+    @Query("SELECT c.id FROM Chapter c WHERE c.workId = :workId AND c.language = :language AND c.status = :status "
+            + "ORDER BY c.number ASC NULLS LAST, c.createdAt ASC")
+    List<UUID> findIdsInReadingOrder(@Param("workId") UUID workId, @Param("language") String language,
+                                     @Param("status") ChapterStatus status);
+
+    interface LanguageCount {
+        String getLanguage();
+
+        long getChapterCount();
+    }
+
+    @Query("SELECT c.language AS language, COUNT(c) AS chapterCount FROM Chapter c "
+            + "WHERE c.workId = :workId AND c.status = :status GROUP BY c.language ORDER BY c.language")
+    List<LanguageCount> countByLanguage(@Param("workId") UUID workId, @Param("status") ChapterStatus status);
+
+    @Query("SELECT c.id FROM Chapter c WHERE c.workId = :workId AND c.status = :status")
+    List<UUID> findIdsByWorkIdAndStatus(@Param("workId") UUID workId, @Param("status") ChapterStatus status);
 }

@@ -12,4 +12,8 @@ public interface ReadingProgressRepository extends JpaRepository<ReadingProgress
     Optional<ReadingProgress> findByUserIdAndVolumeId(UUID userId, UUID volumeId);
 
     List<ReadingProgress> findByUserIdAndVolumeIdIn(UUID userId, List<UUID> volumeIds);
+
+    Optional<ReadingProgress> findByUserIdAndChapterId(UUID userId, UUID chapterId);
+
+    List<ReadingProgress> findByUserIdAndChapterIdIn(UUID userId, List<UUID> chapterIds);
 }
