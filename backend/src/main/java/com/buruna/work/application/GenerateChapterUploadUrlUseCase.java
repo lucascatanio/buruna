@@ -13,6 +13,7 @@ import java.util.UUID;
 public class GenerateChapterUploadUrlUseCase {
 
     private static final Duration UPLOAD_URL_EXPIRATION = Duration.ofMinutes(15);
+    private static final String CBZ_CONTENT_TYPE = "application/vnd.comicbook+zip";
 
     private final ChapterUploadAccess access;
     private final RegisterChapterUseCase registerChapter;
@@ -33,7 +34,7 @@ public class GenerateChapterUploadUrlUseCase {
         registerChapter.assertNumberFree(workId, request.language(), request.number());
 
         String objectName = ChapterObjectName.pendingFor(workId);
-        var signedUpload = storageClient.generateUploadSignedUrl(objectName, UPLOAD_URL_EXPIRATION);
+        var signedUpload = storageClient.generateUploadSignedUrl(objectName, CBZ_CONTENT_TYPE, UPLOAD_URL_EXPIRATION);
         return new ChapterUploadUrlResponse(signedUpload.url().toString(), objectName, signedUpload.requiredHeaders());
     }
 }
