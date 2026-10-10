@@ -124,7 +124,7 @@ class WorkIntegrationTest {
     @BeforeEach
     void setUp() {
         when(storageClient.generateSignedUrl(anyString(), any(Duration.class))).thenReturn(FAKE_URL);
-        when(storageClient.generateUploadSignedUrl(anyString(), any(Duration.class)))
+        when(storageClient.generateUploadSignedUrl(anyString(), anyString(), any(Duration.class)))
                 .thenReturn(new StorageClient.SignedUpload(FAKE_URL, java.util.Map.of()));
         // por padrão cada objectName tem um hash único e tamanho pequeno (1 KB). O hash é
         // derivado do objectName (não copiado dele): objectName pendente agora carrega o

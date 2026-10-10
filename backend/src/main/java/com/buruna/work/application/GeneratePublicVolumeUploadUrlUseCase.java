@@ -20,6 +20,7 @@ import java.util.UUID;
 public class GeneratePublicVolumeUploadUrlUseCase {
 
     private static final Duration UPLOAD_URL_EXPIRATION = Duration.ofMinutes(15);
+    private static final String PDF_CONTENT_TYPE = "application/pdf";
 
     private final VolumeRepository volumeRepository;
     private final StorageClient storageClient;
@@ -46,7 +47,7 @@ public class GeneratePublicVolumeUploadUrlUseCase {
         }
 
         String objectName = VolumeObjectName.pendingFor(workId);
-        var signedUpload = storageClient.generateUploadSignedUrl(objectName, UPLOAD_URL_EXPIRATION);
+        var signedUpload = storageClient.generateUploadSignedUrl(objectName, PDF_CONTENT_TYPE, UPLOAD_URL_EXPIRATION);
 
         return new VolumeUploadUrlResponse(
                 signedUpload.url().toString(), objectName, signedUpload.requiredHeaders());
