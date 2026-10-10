@@ -21,8 +21,12 @@ public class ReadingProgress {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "volume_id", nullable = false)
+    /** Volume (legado) ou capítulo: exatamente um dos dois (V30). */
+    @Column(name = "volume_id")
     private UUID volumeId;
+
+    @Column(name = "chapter_id")
+    private UUID chapterId;
 
     @Column(name = "current_page", nullable = false)
     private int currentPage = 1;
@@ -38,6 +42,13 @@ public class ReadingProgress {
         ReadingProgress progress = new ReadingProgress();
         progress.userId = userId;
         progress.volumeId = volumeId;
+        return progress;
+    }
+
+    public static ReadingProgress startChapter(UUID userId, UUID chapterId) {
+        ReadingProgress progress = new ReadingProgress();
+        progress.userId = userId;
+        progress.chapterId = chapterId;
         return progress;
     }
 
@@ -60,7 +71,7 @@ public class ReadingProgress {
         this.currentPage = page;
     }
 
-    /** Volume lido até a última página (só se sabe quando o total é conhecido). */
+    /** Lido até a última página (só se sabe quando o total é conhecido). */
     public boolean isFinished() {
         return totalPages != null && currentPage >= totalPages;
     }

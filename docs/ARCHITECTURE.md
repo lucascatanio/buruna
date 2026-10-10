@@ -182,6 +182,25 @@ o front antigo) e serão removidas na seguinte — ver [ADR-45](adr/ADR-45-renom
 Controller `reading.web.ReaderController`, serviço `reading.application.ReadingService`.
 Se a signed URL expirar (403 do GCS), o frontend pede uma nova via o mesmo endpoint.
 
+### 6.3.1 Leitura de capítulo
+
+```
+BROWSER                                  BACKEND                                     GCS
+  │── GET /works/{id}/chapters/languages ►│ (work) ListChaptersUseCase                 │
+  │── GET /works/{id}/chapters?language= ►│ publicados, em ordem de leitura            │
+  │── GET /reader/works/{id}/chapter-progress ►│ (reading) "continuar lendo" + lidos   │
+  │── GET /reader/chapters/{id} ─────────►│ (reading) → work.GetChapterForReadingUseCase
+  │                                       │   acesso, view_count, vizinhos no idioma   │
+  │                                       │ histórico + WindowedSignedUrls (ADR-07)     │
+  │◄── páginas [{url, w, h}], anterior/próximo, urlsExpireAt ─│                         │
+  │── GET <url da página> (prefetch) ─────────────────────────────────────────────────►│
+  │── POST /reader/chapters/{id}/progress { currentPage } ►│ total vem do capítulo     │
+```
+
+Capítulo em processamento, que falhou ou tirado do ar responde 404; capítulo de obra privada
+de outro usuário, 403. As listas de quem lê só têm capítulos publicados; o dono da obra (e o
+ADMIN, no catálogo) vê também os em processamento e os que falharam, com o motivo.
+
 ### 6.4 Upload de volume público (duas fases)
 
 Use cases: `GeneratePublicVolumeUploadUrlUseCase` (fase 1 — gera Signed URL de PUT para

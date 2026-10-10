@@ -79,7 +79,7 @@
 
 | Termo | Definição |
 |---|---|
-| **ReadingProgress** (agregado raiz) | Página atual (`PageNumber`) de um usuário num `Volume`; um registro por (user, volume), upsert. |
+| **ReadingProgress** (agregado raiz) | Página atual de um usuário num `Volume` (legado) ou num `Chapter`: exatamente um dos dois. Um registro por (user, volume) ou (user, chapter), com upsert. No capítulo, o total de páginas vem do servidor. |
 | **ReadingHistory** | Registro de acesso de leitura (view count / histórico), gravado no mesmo fluxo da URL assinada. |
 | **Signed URL de leitura** | `GET /reader/{volumeId}/url`; expira em 30 min; incrementa `view_count` e grava `ReadingHistory` no mesmo fluxo (R2). |
 
