@@ -209,6 +209,17 @@ public class Work {
 
     // ── Submissão / moderação / promoção (sem receber User — ADR-35) ─────────
 
+    /**
+     * Confere se um arquivo pode virar um capítulo de imagens nesta obra. Livro em PDF continua
+     * PDF (lido como arquivo), então não é convertido em páginas.
+     */
+    public void assertAcceptsPagesFrom(ChapterSourceFormat source) {
+        if (source == ChapterSourceFormat.PDF && format == WorkFormat.LIVRO) {
+            throw new UnsupportedChapterSourceException(
+                    "Livro em PDF ainda é enviado como volume.");
+        }
+    }
+
     public void submitForApproval() {
         if (isPublic) {
             throw new WorkAlreadyPublicException();

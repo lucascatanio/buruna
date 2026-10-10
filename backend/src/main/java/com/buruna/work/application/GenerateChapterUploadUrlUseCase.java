@@ -2,6 +2,9 @@ package com.buruna.work.application;
 
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.work.domain.ChapterObjectName;
+import com.buruna.work.domain.ChapterSourceFormat;
+import com.buruna.work.domain.UnsupportedChapterSourceException;
+import com.buruna.work.domain.Work;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,7 +16,6 @@ import java.util.UUID;
 public class GenerateChapterUploadUrlUseCase {
 
     private static final Duration UPLOAD_URL_EXPIRATION = Duration.ofMinutes(15);
-    private static final String CBZ_CONTENT_TYPE = "application/vnd.comicbook+zip";
 
     private final ChapterUploadAccess access;
     private final RegisterChapterUseCase registerChapter;
@@ -30,11 +32,17 @@ public class GenerateChapterUploadUrlUseCase {
     @Transactional
     public ChapterUploadUrlResponse handle(UUID workId, ChapterScope scope, ChapterUploadUrlRequest request,
                                            ChapterActor actor) {
-        access.findWork(workId, scope, actor);
+        Work work = access.findWork(workId, scope, actor);
+        ChapterSourceFormat format = request.format() == null || request.format().isBlank()
+                ? ChapterSourceFormat.CBZ
+                : ChapterSourceFormat.fromExtension(request.format())
+                        .orElseThrow(() -> new UnsupportedChapterSourceException(
+                                "Formato de arquivo não aceito: " + request.format() + ". Envie CBZ, CBR ou PDF."));
+        work.assertAcceptsPagesFrom(format);
         registerChapter.assertNumberFree(workId, request.language(), request.number());
 
-        String objectName = ChapterObjectName.pendingFor(workId);
-        var signedUpload = storageClient.generateUploadSignedUrl(objectName, CBZ_CONTENT_TYPE, UPLOAD_URL_EXPIRATION);
+        String objectName = ChapterObjectName.pendingFor(workId, format);
+        var signedUpload = storageClient.generateUploadSignedUrl(objectName, format.contentType(), UPLOAD_URL_EXPIRATION);
         return new ChapterUploadUrlResponse(signedUpload.url().toString(), objectName, signedUpload.requiredHeaders());
     }
 }

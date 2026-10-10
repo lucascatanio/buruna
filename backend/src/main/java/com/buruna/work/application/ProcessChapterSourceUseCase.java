@@ -2,12 +2,14 @@ package com.buruna.work.application;
 
 import com.buruna.shared.exception.StorageObjectNotFoundException;
 import com.buruna.shared.media.ArchiveLimits;
-import com.buruna.shared.media.ComicArchiveExtractor;
+import com.buruna.shared.media.ArchiveFormat;
+import com.buruna.shared.media.PageExtractor;
 import com.buruna.shared.media.InvalidArchiveException;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.work.domain.Chapter;
 import com.buruna.work.domain.ChapterObjectName;
 import com.buruna.work.domain.ChapterPage;
+import com.buruna.work.domain.ChapterSourceFormat;
 import com.buruna.work.domain.ChapterStatus;
 import com.buruna.work.persistence.ChapterRepository;
 import org.slf4j.Logger;
@@ -32,7 +34,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Extrai as páginas do arquivo enviado (CBZ) e publica o capítulo (ADR-48). Roda no Cloud Run
+ * Extrai as páginas do arquivo enviado (CBZ, CBR ou PDF) e publica o capítulo (ADR-48). Roda no Cloud Run
  * Job, ou na própria requisição no profile local.
  *
  * <p>Sem transação longa: baixar e gravar páginas leva minutos, e segurar uma conexão do pool
@@ -49,7 +51,7 @@ public class ProcessChapterSourceUseCase {
 
     private final ChapterRepository chapterRepository;
     private final StorageClient storageClient;
-    private final ComicArchiveExtractor extractor;
+    private final PageExtractor extractor;
     private final FailChapterIngestUseCase failChapterIngest;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
@@ -57,7 +59,7 @@ public class ProcessChapterSourceUseCase {
 
     public ProcessChapterSourceUseCase(ChapterRepository chapterRepository,
                                        StorageClient storageClient,
-                                       ComicArchiveExtractor extractor,
+                                       PageExtractor extractor,
                                        FailChapterIngestUseCase failChapterIngest,
                                        PlatformTransactionManager transactionManager,
                                        Clock clock,
@@ -88,11 +90,12 @@ public class ProcessChapterSourceUseCase {
         List<ChapterPage> pages = new ArrayList<>();
         Path tempFile = null;
         try {
-            tempFile = Files.createTempFile("chapter-" + chapterId, ".cbz");
+            ChapterSourceFormat format = ChapterObjectName.formatOfSource(source.get());
+            tempFile = Files.createTempFile("chapter-" + chapterId, "." + format.extension());
             try (InputStream in = storageClient.openRead(source.get())) {
                 Files.copy(in, tempFile, StandardCopyOption.REPLACE_EXISTING);
             }
-            extractor.extractCbz(tempFile, limits, page -> {
+            extractor.extract(tempFile, ArchiveFormat.valueOf(format.name()), limits, page -> {
                 String objectName = ChapterObjectName.page(chapterId, page.position(), page.extension());
                 storageClient.upload(new ByteArrayInputStream(page.content()), objectName,
                         page.contentType(), page.content().length);

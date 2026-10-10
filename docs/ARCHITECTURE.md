@@ -214,7 +214,7 @@ backend nunca toca os bytes do arquivo — ver [ADR-24](adr/ADR-24-upload-direto
 [ADR-25](adr/ADR-25-hash-blob-getmd5-gcs.md) e [ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)
 (objectName vinculado à obra + prefixo `pending/`).
 
-### 6.4.1 Upload de capítulo (CBZ)
+### 6.4.1 Upload de capítulo (CBZ, CBR ou PDF)
 
 Mesmo desenho em duas fases do volume, com a extração das páginas fora da requisição
 ([ADR-48](adr/ADR-48-ingest-em-cloud-run-job.md)). Rotas `/my/works/{id}/chapters/...`
@@ -238,7 +238,8 @@ BROWSER                       BACKEND (work)                              GCS / 
 
 Use cases: `GenerateChapterUploadUrlUseCase`, `FinalizeChapterUploadUseCase`,
 `ProcessChapterSourceUseCase` (no Job), `RetryChapterIngestUseCase`, `DeleteChapterUseCase`.
-A extração (`ComicArchiveExtractor`, `ImageInspector`) mora em `shared/media`. Apagar obra,
+A extração (`PageExtractor`, com CBZ via `ZipFile`, CBR via `bsdtar` e PDF via PDFBox, mais o
+`ImageInspector`) mora em `shared/media`. Em obra `LIVRO`, PDF não vira imagens. Apagar obra,
 coleção ou conta também apaga os objetos dos capítulos (`ChapterStorageCleaner`).
 
 ### 6.5 Upload privado + submissão/promoção

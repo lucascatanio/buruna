@@ -192,6 +192,7 @@ export function ChapterSection({scope, workId, workTitle, workSlug, format, back
                 <ChapterUploadDialog
                     scope={scope}
                     workId={workId}
+                    workFormat={format}
                     defaultLanguage={language ?? DEFAULT_LANGUAGE}
                     onClose={() => setShowUpload(false)}
                     onUploaded={() => loadManaged().catch(() => undefined)}

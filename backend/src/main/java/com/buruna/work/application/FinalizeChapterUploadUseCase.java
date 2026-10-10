@@ -5,6 +5,7 @@ import com.buruna.shared.storage.StorageClient;
 import com.buruna.work.domain.ChapterKind;
 import com.buruna.work.domain.ChapterObjectName;
 import com.buruna.work.domain.PendingUploadNotFoundException;
+import com.buruna.work.domain.Work;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,8 +40,9 @@ public class FinalizeChapterUploadUseCase {
     @Transactional
     public ChapterResponse handle(UUID workId, ChapterScope scope, ChapterFinalizeRequest request,
                                   ChapterActor actor) {
-        access.findWork(workId, scope, actor);
+        Work work = access.findWork(workId, scope, actor);
         ChapterObjectName pending = ChapterObjectName.parsePending(request.objectName(), workId);
+        work.assertAcceptsPagesFrom(pending.format());
 
         // objeto ausente = finalize repetido ou upload nunca feito: 404, não 500
         long sizeBytes;

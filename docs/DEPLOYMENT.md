@@ -331,7 +331,7 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   gcloud run jobs create buruna-ingest --region us-east1 \
     --image <imagem atual do buruna-backend> \
     --service-account <SA_BACKEND> \
-    --memory 2Gi --cpu 1 --task-timeout 3600 --max-retries 1 \
+    --memory 4Gi --cpu 1 --task-timeout 3600 --max-retries 1 \
     --network default --subnet default --network-tags buruna-backend --vpc-egress private-ranges-only \
     --set-env-vars SPRING_PROFILES_ACTIVE=ingest,<mesmas variáveis do backend> \
     --set-secrets <mesmos segredos do backend>
@@ -342,8 +342,11 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
 
   No backend (e no Job), `APP_INGEST_JOB_NAME=projects/<projeto>/locations/us-east1/jobs/buruna-ingest`
   é **obrigatório** fora do profile `local` (`IngestJobConfig` falha no startup sem ele).
-  Limites opcionais do CBZ: `APP_INGEST_MAX_PAGES` (1000), `APP_INGEST_MAX_TOTAL_MB` (1024),
-  `APP_INGEST_MAX_PAGE_MB` (50). A conta de deploy do GitHub Actions precisa poder atualizar
+  Limites opcionais do arquivo enviado (CBZ, CBR ou PDF): `APP_INGEST_MAX_PAGES` (1000),
+  `APP_INGEST_MAX_TOTAL_MB` (1024), `APP_INGEST_MAX_PAGE_MB` (50). O Job usa 4 GiB porque, no
+  Cloud Run, o `/tmp` fica em memória e um CBR é extraído para lá (ADR-48). O CBR é aberto pelo
+  `bsdtar` (libarchive), instalado na imagem pelo Dockerfile; `APP_INGEST_BSDTAR_PATH` só é
+  preciso se o binário estiver fora do `PATH`. A conta de deploy do GitHub Actions precisa poder atualizar
   o Job (`run.jobs.update`, coberto por `roles/run.developer`).
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`

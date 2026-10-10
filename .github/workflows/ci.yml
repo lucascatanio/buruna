@@ -23,6 +23,10 @@ jobs:
 
       # O runner ubuntu-latest já vem com Docker em execução,
       # necessário para os testes de integração com Testcontainers.
+      # bsdtar para os testes de CBR (RAR); sem ele, esses testes são pulados
+      - name: Install bsdtar
+        run: sudo apt-get update -q && sudo apt-get install -y -q libarchive-tools && bsdtar --version
+
       - name: Run tests
         working-directory: backend
         run: ./mvnw -B clean test

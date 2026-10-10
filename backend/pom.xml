@@ -38,9 +38,30 @@
         <!-- Boot: 1.49.0. Só o cliente do GCS usa (transitivo); 1.62.0 corrige CVE-2026-45292
              (DoS por memória sem limite). O BOM do Boot lê esta propriedade. -->
         <opentelemetry.version>1.62.0</opentelemetry.version>
+        <pdfbox.version>3.0.8</pdfbox.version>
+        <jbig2-imageio.version>3.0.5</jbig2-imageio.version>
     </properties>
 
     <dependencies>
+        <!-- Páginas de PDF (extrator de mídia). Sem JPEG2000 de propósito: o PDF com JPX é recusado. -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
+            <!-- o Spring Boot já faz a ponte do commons-logging (spring-jcl); os dois juntos geram aviso de conflito -->
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Decodificador JBIG2 (Apache-2.0) para PDFs escaneados em preto e branco -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>jbig2-imageio</artifactId>
+            <version>${jbig2-imageio.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

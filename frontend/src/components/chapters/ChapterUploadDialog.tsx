@@ -1,7 +1,7 @@
 import {useRef, useState} from "react";
 import {toast} from "sonner";
 import {Upload, X} from "lucide-react";
-import {finalizeChapterUpload, getChapterUploadUrl, type ChapterScope} from "@/api/chapterApi";
+import {finalizeChapterUpload, getChapterUploadUrl, type ChapterScope, type ChapterSourceFormat} from "@/api/chapterApi";
 import {uploadSignedFile} from "@/api/volumeUpload";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
@@ -15,6 +15,8 @@ const COMMON_LANGUAGES = ["pt-BR", "en", "es-419", "es", "ja", "ko", "zh"];
 interface ChapterUploadDialogProps {
     scope: ChapterScope;
     workId: string;
+    /** Formato da obra: livro em PDF não vira imagens, então PDF não é oferecido para LIVRO. */
+    workFormat?: string;
     defaultLanguage: string;
     onClose: () => void;
     /** Chamado depois do finalize: o capítulo entra na lista como "processando". */
@@ -27,7 +29,13 @@ function formatBytes(bytes: number): string {
     return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-export function ChapterUploadDialog({scope, workId, defaultLanguage, onClose, onUploaded}: ChapterUploadDialogProps) {
+function sourceFormatOf(file: File): ChapterSourceFormat | null {
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    return extension === "cbz" || extension === "cbr" || extension === "pdf" ? extension : null;
+}
+
+export function ChapterUploadDialog({scope, workId, workFormat, defaultLanguage, onClose, onUploaded}: ChapterUploadDialogProps) {
+    const acceptsPdf = workFormat !== "LIVRO";
     const [language, setLanguage] = useState(defaultLanguage);
     const [number, setNumber] = useState("");
     const [label, setLabel] = useState("");
@@ -40,15 +48,18 @@ export function ChapterUploadDialog({scope, workId, defaultLanguage, onClose, on
     const parsedNumber = number.trim() === "" ? null : Number(number.replace(",", "."));
     const numberInvalid = parsedNumber !== null && (Number.isNaN(parsedNumber) || parsedNumber < 0);
     const missingIdentity = parsedNumber === null && label.trim() === "";
-    const canSubmit = !!file && !uploading && !numberInvalid && !missingIdentity && language.trim() !== "";
+    const sourceFormat = file ? sourceFormatOf(file) : null;
+    const formatInvalid = !!file && (sourceFormat === null || (sourceFormat === "pdf" && !acceptsPdf));
+    const canSubmit = !!file && !!sourceFormat && !formatInvalid && !uploading && !numberInvalid
+        && !missingIdentity && language.trim() !== "";
 
     async function handleSubmit() {
-        if (!file || !canSubmit) return;
+        if (!file || !sourceFormat || !canSubmit) return;
         setUploading(true);
         try {
             // o número é conferido já na URL: um capítulo repetido falha antes de subir o arquivo
             const {uploadUrl, objectName, requiredHeaders} =
-                await getChapterUploadUrl(scope, workId, language, parsedNumber);
+                await getChapterUploadUrl(scope, workId, language, parsedNumber, sourceFormat);
             await uploadSignedFile(uploadUrl, requiredHeaders, file);
             await finalizeChapterUpload(scope, workId, {
                 objectName,
@@ -128,12 +139,18 @@ export function ChapterUploadDialog({scope, workId, defaultLanguage, onClose, on
                 </div>
 
                 <div className="space-y-1.5">
-                    <Label htmlFor="chapter-file">Arquivo (CBZ)</Label>
-                    <FileInput id="chapter-file" ref={fileInputRef} accept=".cbz,application/vnd.comicbook+zip,application/zip"
+                    <Label htmlFor="chapter-file">Arquivo ({acceptsPdf ? "CBZ, CBR ou PDF" : "CBZ ou CBR"})</Label>
+                    <FileInput id="chapter-file" ref={fileInputRef}
+                               accept={acceptsPdf ? ".cbz,.cbr,.pdf" : ".cbz,.cbr"}
                                onChange={(e) => setFile(e.target.files?.[0] ?? null)}/>
                     {file && <p className="text-xs text-muted-foreground">{file.name} · {formatBytes(file.size)}</p>}
                 </div>
 
+                {formatInvalid && (
+                    <p className="text-xs text-destructive">
+                        {acceptsPdf ? "Envie um arquivo CBZ, CBR ou PDF." : "Livro em PDF ainda é enviado como volume. Aqui, use CBZ ou CBR."}
+                    </p>
+                )}
                 {numberInvalid && <p className="text-xs text-destructive">Número inválido.</p>}
                 {missingIdentity && <p className="text-xs text-muted-foreground">Informe o número ou um rótulo.</p>}
 

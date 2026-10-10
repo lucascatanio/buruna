@@ -26,9 +26,11 @@ export function listChapterLanguages(workId: string): Promise<ChapterLanguage[]>
     return api.get<ChapterLanguage[]>(`/works/${workId}/chapters/languages`).then((r) => r.data);
 }
 
+export type ChapterSourceFormat = "cbz" | "cbr" | "pdf";
+
 export function getChapterUploadUrl(scope: ChapterScope, workId: string, language: string,
-                                    number: number | null): Promise<ChapterUploadUrlResponse> {
-    return api.post<ChapterUploadUrlResponse>(`${base(scope, workId)}/upload-url`, {language, number})
+                                    number: number | null, format: ChapterSourceFormat): Promise<ChapterUploadUrlResponse> {
+    return api.post<ChapterUploadUrlResponse>(`${base(scope, workId)}/upload-url`, {language, number, format})
         .then((r) => r.data);
 }
 
