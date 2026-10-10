@@ -125,7 +125,7 @@ Sem Clean Architecture no frontend — o custo não se paga para uma SPA
 convenções:
 
 - `frontend/src/api/` — uma chamada Axios tipada por contexto (`identityApi.ts`,
-  `workApi.ts`, `privateWorkApi.ts`, `readingApi.ts`, `engagementApi.ts`, `adminApi.ts`,
+  `workApi.ts`, `privateWorkApi.ts`, `chapterApi.ts`, `readingApi.ts`, `engagementApi.ts`, `adminApi.ts`,
   `feedbackApi.ts`).
 - `frontend/src/types/` — contratos TypeScript espelhando os DTOs do backend, um arquivo
   por contexto.
