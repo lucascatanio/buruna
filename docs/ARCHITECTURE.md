@@ -238,7 +238,7 @@ BROWSER                       BACKEND (work)                              GCS / 
 
 Use cases: `GenerateChapterUploadUrlUseCase`, `FinalizeChapterUploadUseCase`,
 `ProcessChapterSourceUseCase` (no Job), `RetryChapterIngestUseCase`, `DeleteChapterUseCase`.
-A extração (`PageExtractor`, com CBZ via `ZipFile`, CBR via `7zz` e PDF via PDFBox, mais o
+A extração (`PageExtractor`, com CBZ via `ZipFile`, CBR via `bsdtar` e PDF via PDFBox, mais o
 `ImageInspector`) mora em `shared/media`. Em obra `LIVRO`, PDF não vira imagens. Apagar obra,
 coleção ou conta também apaga os objetos dos capítulos (`ChapterStorageCleaner`).
 

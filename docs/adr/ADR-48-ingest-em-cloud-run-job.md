@@ -58,17 +58,20 @@ e arquivos de capítulo que sobrarem de um delete com falha no storage não são
 **Atualização (2026-10-10):** o upload por capítulo passou a aceitar CBR e PDF, além de CBZ
 (`PageExtractor`, em `shared/media`).
 
-- **CBR (RAR4 e RAR5):** extraído pelo binário `7zz` (pacote `7zip` do Alpine, instalado na
-  imagem). O processo roda sem shell e sem stdin, então um RAR com senha não trava esperando.
-  - Antes de extrair, a listagem recusa arquivos com senha, tamanho declarado acima do limite
-    ou páginas demais.
+- **CBR (RAR4 e RAR5):** extraído pelo `bsdtar` (libarchive, licença BSD, pacote
+  `libarchive-tools` do Alpine, instalado na imagem). O processo roda sem shell e sem stdin.
+  - Antes de extrair, a listagem (`bsdtar -tvf`) recusa arquivos com senha, tamanho declarado
+    acima do limite ou páginas demais.
   - Durante a extração, um vigia mede o diretório a cada 200 ms e mata o processo se passar
     de `APP_INGEST_MAX_TOTAL_MB` ou de 5 min.
   - Depois, só arquivos regulares são lidos: symlinks são ignorados e caminho real fora do
-    diretório recusa o arquivo.
-  - Se um RAR malicioso tentar gravar fora do diretório, a defesa é a proteção do próprio
-    7-Zip contra links e caminhos perigosos. Mesmo que algo escape, o estrago fica no container
-    do Job, que existe só para aquele capítulo.
+    diretório recusa o arquivo. O `bsdtar` já recusa caminho absoluto e `..` por padrão. Mesmo
+    que algo escape, o estrago fica no container do Job, que existe só para aquele capítulo.
+  - A primeira escolha foi o `7zz` (7-Zip). Os pacotes `7zip` do Alpine e do Ubuntu, porém, vêm
+    compilados **sem o código do unRAR**, por licença, e não abrem RAR nenhum. Isso foi conferido
+    com os fixtures num container da imagem base e na CI. As outras saídas eram baixar o binário
+    oficial no build ou trocar a imagem para Ubuntu com `7zip-rar`. O `bsdtar` não abre RAR com
+    senha, que já é recusado, e pode falhar em recursos raros do RAR5.
 - **PDF (PDFBox):**
   - Página escaneada com um único JPEG que cobre a página sai com os **bytes originais**.
   - O resto (texto, vetor, várias imagens, Flate, JBIG2) é renderizado em JPEG 0,85 com

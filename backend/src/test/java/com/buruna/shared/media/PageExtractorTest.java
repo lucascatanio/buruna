@@ -27,7 +27,7 @@ class PageExtractorTest {
     Path tmp;
 
     private final PageExtractor extractor = new PageExtractor(
-            new ComicArchiveExtractor(), new RarArchiveExtractor("7zz"), new PdfPageExtractor());
+            new ComicArchiveExtractor(), new RarArchiveExtractor("bsdtar"), new PdfPageExtractor());
 
     @Test
     void shouldExtractCbzPages_whenFormatIsCbz() throws IOException {

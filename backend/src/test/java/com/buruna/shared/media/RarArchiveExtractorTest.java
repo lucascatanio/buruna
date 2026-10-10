@@ -27,9 +27,9 @@ class RarArchiveExtractorTest {
     @TempDir
     Path tmp;
 
-    private static boolean sevenZipInstalled() {
+    private static boolean bsdtarInstalled() {
         try {
-            Process process = new ProcessBuilder("7zz", "i").redirectErrorStream(true)
+            Process process = new ProcessBuilder("bsdtar", "--version").redirectErrorStream(true)
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD).start();
             process.getOutputStream().close();
             return process.waitFor() == 0;
@@ -41,8 +41,8 @@ class RarArchiveExtractorTest {
         }
     }
 
-    private static void assumeSevenZip() {
-        assumeTrue(sevenZipInstalled(), "7zz não está no PATH");
+    private static void assumeBsdtar() {
+        assumeTrue(bsdtarInstalled(), "bsdtar não está no PATH");
     }
 
     private static void assumeUnix() {
@@ -75,13 +75,13 @@ class RarArchiveExtractorTest {
         return file;
     }
 
-    // --- Com o 7zz real ---
+    // --- Com o bsdtar real ---
 
     @Test
     void shouldExtractRegularFiles_whenArchiveIsRar5() throws IOException {
-        assumeSevenZip();
+        assumeBsdtar();
         Path rar = fixture("rar5-stored.rar");
-        RarArchiveExtractor extractor = new RarArchiveExtractor("7zz");
+        RarArchiveExtractor extractor = new RarArchiveExtractor("bsdtar");
 
         List<String> names = extractor.withExtractedFiles(rar, BIG,
                 files -> files.stream().map(RarArchiveExtractor.ExtractedFile::name).toList());
@@ -91,21 +91,21 @@ class RarArchiveExtractorTest {
 
     @Test
     void shouldIgnoreSymlink_whenArchiveIsRar4() throws IOException {
-        assumeSevenZip();
+        assumeBsdtar();
         Path rar = fixture("rar4-with-symlink.rar");
-        RarArchiveExtractor extractor = new RarArchiveExtractor("7zz");
+        RarArchiveExtractor extractor = new RarArchiveExtractor("bsdtar");
 
         List<String> names = extractor.withExtractedFiles(rar, BIG,
                 files -> files.stream().map(RarArchiveExtractor.ExtractedFile::name).toList());
 
-        assertThat(names).contains("test.txt", "testdir/test.txt").doesNotContain("testlink");
+        assertThat(names).containsExactlyInAnyOrder("test.txt", "testdir/test.txt");
     }
 
     @Test
     void shouldDeleteTempDirectory_whenExtractionFinishes() throws IOException {
-        assumeSevenZip();
+        assumeBsdtar();
         Path rar = fixture("rar5-stored.rar");
-        RarArchiveExtractor extractor = new RarArchiveExtractor("7zz");
+        RarArchiveExtractor extractor = new RarArchiveExtractor("bsdtar");
         List<Path> paths = new ArrayList<>();
 
         extractor.withExtractedFiles(rar, BIG, files -> {
@@ -119,9 +119,9 @@ class RarArchiveExtractorTest {
 
     @Test
     void shouldDeleteTempDirectory_whenActionFails() throws IOException {
-        assumeSevenZip();
+        assumeBsdtar();
         Path rar = fixture("rar5-stored.rar");
-        RarArchiveExtractor extractor = new RarArchiveExtractor("7zz");
+        RarArchiveExtractor extractor = new RarArchiveExtractor("bsdtar");
         List<Path> dirs = new ArrayList<>();
 
         assertThatThrownBy(() -> extractor.withExtractedFiles(rar, BIG, files -> {
@@ -134,11 +134,11 @@ class RarArchiveExtractorTest {
 
     @Test
     void shouldExtractPagesInOrder_whenCbrIsRenamedZip() throws IOException {
-        assumeSevenZip();
+        assumeBsdtar();
         Path cbr = zipRenamedToCbr("p10.png", "p2.png", "__MACOSX/p1.png", "notes.txt");
         List<ExtractedPage> pages = new ArrayList<>();
 
-        new RarArchiveExtractor("7zz").extractCbr(cbr, BIG, pages::add);
+        new RarArchiveExtractor("bsdtar").extractCbr(cbr, BIG, pages::add);
 
         assertThat(pages).extracting(ExtractedPage::position).containsExactly(1, 2);
         assertThat(pages).allSatisfy(p -> {
@@ -150,10 +150,10 @@ class RarArchiveExtractorTest {
 
     @Test
     void shouldRejectArchive_whenPageCountExceedsLimit() throws IOException {
-        assumeSevenZip();
+        assumeBsdtar();
         Path cbr = zipRenamedToCbr("1.png", "2.png", "3.png");
 
-        assertThatThrownBy(() -> new RarArchiveExtractor("7zz")
+        assertThatThrownBy(() -> new RarArchiveExtractor("bsdtar")
                 .extractCbr(cbr, new ArchiveLimits(2, 100_000_000L, 50_000_000L), p -> { }))
                 .isInstanceOf(InvalidArchiveException.class)
                 .hasMessageContaining("mais de 2 páginas");
@@ -161,10 +161,10 @@ class RarArchiveExtractorTest {
 
     @Test
     void shouldRejectArchive_whenDeclaredTotalExceedsLimit() throws IOException {
-        assumeSevenZip();
+        assumeBsdtar();
         Path cbr = zipRenamedToCbr("1.png", "2.png");
 
-        assertThatThrownBy(() -> new RarArchiveExtractor("7zz")
+        assertThatThrownBy(() -> new RarArchiveExtractor("bsdtar")
                 .extractCbr(cbr, new ArchiveLimits(10, 50L, 50_000_000L), p -> { }))
                 .isInstanceOf(InvalidArchiveException.class)
                 .hasMessage("O arquivo é grande demais depois de descompactado");
@@ -172,16 +172,16 @@ class RarArchiveExtractorTest {
 
     @Test
     void shouldRejectArchive_whenFileIsNeitherRarNorZip() throws IOException {
-        assumeSevenZip();
+        assumeBsdtar();
         Path garbage = tmp.resolve("garbage.cbr");
         Files.write(garbage, "isto não é um arquivo compactado".getBytes());
 
-        assertThatThrownBy(() -> new RarArchiveExtractor("7zz").extractCbr(garbage, BIG, p -> { }))
+        assertThatThrownBy(() -> new RarArchiveExtractor("bsdtar").extractCbr(garbage, BIG, p -> { }))
                 .isInstanceOf(InvalidArchiveException.class)
                 .hasMessage("O arquivo não é um CBR válido");
     }
 
-    // --- Sem o 7zz: lógica que não depende do binário ---
+    // --- Sem o bsdtar: lógica que não depende do binário ---
 
     @Test
     void shouldListOnlyRegularFilesInsideDirectory_whenDirectoryHasSymlinks() throws IOException {
@@ -203,51 +203,45 @@ class RarArchiveExtractorTest {
     }
 
     @Test
-    void shouldParseSizesAndEncryption_whenListingHasSeveralEntries() {
+    void shouldParseRegularFilesOnly_whenListingHasLinksAndDirectories() {
         String output = """
-                7-Zip (z) 24.08
-
-                Listing archive: x.rar
-
-                --
-                Path = x.rar
-                Type = Rar5
-                Size = 999
-
-                ----------
-                Path = a/1.jpg
-                Folder = -
-                Size = 100
-                Encrypted = -
-
-                Path = a
-                Folder = +
-                Size = 0
-
-                Path = 2.jpg
-                Folder = -
-                Size = 50
-                Encrypted = +
+                -rw-r--r--  0 0      0          20 Jun 26  2011 test.txt
+                lrwxrwxrwx  0 0      0           0 Jun 24  2011 testlink -> test.txt
+                -rw-r--r--  0 0      0          20 Jun 26  2011 testdir/test.txt
+                drwxr-xr-x  0 0      0           0 Jun 26  2011 testdir
+                linha que nao casa
                 """;
 
         List<RarArchiveExtractor.ListedEntry> entries = RarArchiveExtractor.parseListing(output);
 
         assertThat(entries).containsExactly(
-                new RarArchiveExtractor.ListedEntry("a/1.jpg", 100, false),
-                new RarArchiveExtractor.ListedEntry("2.jpg", 50, true));
+                new RarArchiveExtractor.ListedEntry("test.txt", 20),
+                new RarArchiveExtractor.ListedEntry("testdir/test.txt", 20));
+    }
+
+    @Test
+    void shouldKeepFullName_whenFileNameHasSpaces() {
+        String output = "-rw-r--r--  0 0      0        1234 Jun 26  2011 meu arquivo 01.png\n"
+                + "-rw-r--r--  0 0      0          99 Oct 10 14:32 outro arquivo.jpg\n";
+
+        List<RarArchiveExtractor.ListedEntry> entries = RarArchiveExtractor.parseListing(output);
+
+        assertThat(entries).containsExactly(
+                new RarArchiveExtractor.ListedEntry("meu arquivo 01.png", 1234),
+                new RarArchiveExtractor.ListedEntry("outro arquivo.jpg", 99));
     }
 
     @Test
     void shouldRefuseAndCleanUp_whenExtractedBytesExceedLimit() throws IOException {
         assumeUnix();
-        Path script = fakeSevenZip("""
+        Path script = fakeBsdtar("""
                 #!/bin/sh
-                if [ "$1" = "l" ]; then
-                  printf -- '----------\\nPath = a.png\\nFolder = -\\nSize = 10\\n\\n'
+                if [ "$1" = "-tvf" ]; then
+                  echo '-rw-r--r--  0 0      0          10 Jun 26  2011 a.png'
                   exit 0
                 fi
                 out=""
-                for arg in "$@"; do case "$arg" in -o*) out="${arg#-o}";; esac; done
+                while [ $# -gt 0 ]; do if [ "$1" = "-C" ]; then out="$2"; fi; shift; done
                 head -c 5000 /dev/zero > "$out/a.png"
                 sleep 30
                 """);
@@ -260,15 +254,16 @@ class RarArchiveExtractorTest {
     }
 
     @Test
-    void shouldRefuse_whenSevenZipExitsWithError() throws IOException {
+    void shouldRefuse_whenBsdtarExitsWithError() throws IOException {
         assumeUnix();
-        Path script = fakeSevenZip("""
+        Path script = fakeBsdtar("""
                 #!/bin/sh
-                if [ "$1" = "l" ]; then
-                  printf -- '----------\\nPath = a.png\\nFolder = -\\nSize = 10\\n\\n'
+                if [ "$1" = "-tvf" ]; then
+                  echo '-rw-r--r--  0 0      0          10 Jun 26  2011 a.png'
                   exit 0
                 fi
-                exit 2
+                echo 'bsdtar: Damaged archive' >&2
+                exit 1
                 """);
         Path archive = Files.writeString(tmp.resolve("x.cbr"), "x");
 
@@ -278,11 +273,12 @@ class RarArchiveExtractorTest {
     }
 
     @Test
-    void shouldRefuse_whenListingShowsEncryptedEntries() throws IOException {
+    void shouldRefuseAsPasswordProtected_whenListingFailsWithEncryptedMessage() throws IOException {
         assumeUnix();
-        Path script = fakeSevenZip("""
+        Path script = fakeBsdtar("""
                 #!/bin/sh
-                printf -- '----------\\nPath = a.png\\nFolder = -\\nSize = 10\\nEncrypted = +\\n\\n'
+                echo 'bsdtar: Encrypted file is unsupported' >&2
+                exit 1
                 """);
         Path archive = Files.writeString(tmp.resolve("x.cbr"), "x");
 
@@ -291,8 +287,27 @@ class RarArchiveExtractorTest {
                 .hasMessage("O CBR está protegido por senha");
     }
 
-    private Path fakeSevenZip(String content) throws IOException {
-        Path script = Files.createTempFile(tmp, "fake7zz", ".sh");
+    @Test
+    void shouldRefuseAsPasswordProtected_whenExtractionFailsWithEncryptedMessage() throws IOException {
+        assumeUnix();
+        Path script = fakeBsdtar("""
+                #!/bin/sh
+                if [ "$1" = "-tvf" ]; then
+                  echo '-rw-r--r--  0 0      0          10 Jun 26  2011 a.png'
+                  exit 0
+                fi
+                echo 'bsdtar: Encrypted file is unsupported' >&2
+                exit 1
+                """);
+        Path archive = Files.writeString(tmp.resolve("x.cbr"), "x");
+
+        assertThatThrownBy(() -> new RarArchiveExtractor(script.toString()).extractCbr(archive, BIG, p -> { }))
+                .isInstanceOf(InvalidArchiveException.class)
+                .hasMessage("O CBR está protegido por senha");
+    }
+
+    private Path fakeBsdtar(String content) throws IOException {
+        Path script = Files.createTempFile(tmp, "fakebsdtar", ".sh");
         Files.writeString(script, content);
         script.toFile().setExecutable(true);
         return script;

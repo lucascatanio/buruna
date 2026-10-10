@@ -14,17 +14,20 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
- * Extrai as páginas de um CBR usando o binário {@code 7zz} (7-Zip), que abre RAR4 e RAR5 e também
- * um ZIP renomeado para .cbr. O arquivo vem de usuário não confiável: nada passa por shell, o que
+ * Extrai as páginas de um CBR usando o binário {@code bsdtar} (libarchive), que abre RAR4 e RAR5 e
+ * também um ZIP renomeado para .cbr. O arquivo vem de usuário não confiável: nada passa por shell, o que
  * foi escrito em disco é vigiado e só arquivos regulares dentro do diretório temporário são lidos.
  */
 @Component
@@ -34,12 +37,14 @@ public class RarArchiveExtractor {
     private static final Duration EXTRACTION_TIMEOUT = Duration.ofMinutes(5);
     private static final Duration LIST_TIMEOUT = Duration.ofSeconds(30);
     private static final Duration WATCH_INTERVAL = Duration.ofMillis(200);
+    private static final String PASSWORD_MESSAGE = "O CBR está protegido por senha";
     private static final int LIST_OUTPUT_LIMIT_BYTES = 16 * 1024 * 1024;
+    private static final int ERROR_OUTPUT_LIMIT_BYTES = 64 * 1024;
 
-    private final String sevenZipPath;
+    private final String bsdtarPath;
 
-    public RarArchiveExtractor(@Value("${app.ingest.sevenzip-path:7zz}") String sevenZipPath) {
-        this.sevenZipPath = sevenZipPath;
+    public RarArchiveExtractor(@Value("${app.ingest.bsdtar-path:bsdtar}") String bsdtarPath) {
+        this.bsdtarPath = bsdtarPath;
     }
 
     /** Arquivo regular extraído; {@code name} é o caminho relativo ao diretório temporário, com {@code /}. */
@@ -74,10 +79,7 @@ public class RarArchiveExtractor {
 
     // Recusa antecipada: o tamanho declarado pode mentir, a vigia da extração é a defesa real.
     private void checkDeclaredSizes(Path archive, ArchiveLimits limits) {
-        List<ListedEntry> entries = parseListing(runList(archive));
-        if (entries.stream().anyMatch(ListedEntry::encrypted)) {
-            throw new InvalidArchiveException("O CBR está protegido por senha");
-        }
+        List<ListedEntry> entries = runList(archive);
         long declaredTotal = entries.stream().mapToLong(ListedEntry::size).sum();
         if (declaredTotal > limits.maxTotalBytes()) {
             throw new InvalidArchiveException("O arquivo é grande demais depois de descompactado");
@@ -86,18 +88,19 @@ public class RarArchiveExtractor {
         ArchivePages.checkPageCount((int) Math.min(candidates, Integer.MAX_VALUE), limits);
     }
 
-    private String runList(Path archive) {
-        Process process = start(List.of(sevenZipPath, "l", "-slt", "--", archive.toString()), false);
+    private List<ListedEntry> runList(Path archive) {
+        Process process = start(List.of(bsdtarPath, "-tvf", archive.toString()));
         CompletableFuture<byte[]> output = CompletableFuture.supplyAsync(() -> readBounded(process));
         try {
             byte[] bytes = output.get(LIST_TIMEOUT.toSeconds(), TimeUnit.SECONDS);
             if (bytes.length > LIST_OUTPUT_LIMIT_BYTES) {
                 throw new InvalidArchiveException("O arquivo tem itens demais para um capítulo");
             }
+            String text = new String(bytes, StandardCharsets.UTF_8);
             if (!process.waitFor(LIST_TIMEOUT.toSeconds(), TimeUnit.SECONDS) || process.exitValue() != 0) {
-                throw new InvalidArchiveException(INVALID_MESSAGE);
+                throw failure(text);
             }
-            return new String(bytes, StandardCharsets.UTF_8);
+            return parseListing(text);
         } catch (TimeoutException e) {
             throw new InvalidArchiveException(INVALID_MESSAGE, e);
         } catch (ExecutionException e) {
@@ -108,6 +111,12 @@ public class RarArchiveExtractor {
         } finally {
             process.destroyForcibly();
         }
+    }
+
+    // O bsdtar não tem código de saída próprio para senha: a mensagem ("Encrypted file is unsupported") é o único sinal.
+    private static InvalidArchiveException failure(String output) {
+        boolean encrypted = output.toLowerCase(Locale.ROOT).contains("ncrypt");
+        return new InvalidArchiveException(encrypted ? PASSWORD_MESSAGE : INVALID_MESSAGE);
     }
 
     private static byte[] readBounded(Process process) {
@@ -122,44 +131,20 @@ public class RarArchiveExtractor {
         }
     }
 
-    record ListedEntry(String path, long size, boolean encrypted) {
+    record ListedEntry(String path, long size) {
     }
 
-    /** Lê a saída de {@code 7zz l -slt}: blocos "Chave = valor" depois da linha "----------". */
+    // Linha do "bsdtar -tvf": permissões, links, dono, grupo, tamanho, data (mês dia ano|hora) e nome.
+    private static final Pattern LISTING_LINE = Pattern.compile(
+            "^(\\S)\\S*\\s+\\d+\\s+\\S+\\s+\\S+\\s+(\\d+)\\s+[A-Za-z]{3}\\s+\\d{1,2}\\s+(?:\\d{4}|\\d{1,2}:\\d{2}) (.+)$");
+
+    /** Lê a saída de {@code bsdtar -tvf}. Só entradas regulares (tipo {@code -}) contam; o resto é ignorado. */
     static List<ListedEntry> parseListing(String output) {
         List<ListedEntry> entries = new ArrayList<>();
-        boolean inEntries = false;
-        String path = null;
-        long size = 0;
-        boolean folder = false;
-        boolean encrypted = false;
-        for (String line : (output + "\n\n").split("\r?\n", -1)) {
-            if (!inEntries) {
-                inEntries = line.equals("----------");
-                continue;
-            }
-            if (line.isBlank()) {
-                if (path != null && !folder) {
-                    entries.add(new ListedEntry(path, size, encrypted));
-                }
-                path = null;
-                size = 0;
-                folder = false;
-                encrypted = false;
-                continue;
-            }
-            int separator = line.indexOf(" = ");
-            if (separator < 0) {
-                continue;
-            }
-            String key = line.substring(0, separator);
-            String value = line.substring(separator + 3);
-            switch (key) {
-                case "Path" -> path = value;
-                case "Size" -> size = parseLongOrZero(value);
-                case "Folder" -> folder = value.equals("+");
-                case "Encrypted" -> encrypted = value.equals("+");
-                default -> { }
+        for (String line : output.split("\r?\n")) {
+            Matcher matcher = LISTING_LINE.matcher(line);
+            if (matcher.matches() && matcher.group(1).equals("-")) {
+                entries.add(new ListedEntry(matcher.group(3), parseLongOrZero(matcher.group(2))));
             }
         }
         return entries;
@@ -174,8 +159,10 @@ public class RarArchiveExtractor {
     }
 
     private void runExtraction(Path archive, Path directory, long maxTotalBytes) {
-        Process process = start(
-                List.of(sevenZipPath, "x", "-y", "-o" + directory, "--", archive.toString()), true);
+        // Sem -P: o bsdtar recusa caminhos absolutos e "..", o que reforça a checagem de toRealPath.
+        Process process = start(List.of(
+                bsdtarPath, "-x", "-f", archive.toString(), "-C", directory.toString(), "--no-same-owner"));
+        CompletableFuture<byte[]> errors = CompletableFuture.supplyAsync(() -> drainKeepingHead(process));
         try {
             ExtractionWatchdog.Outcome outcome = ExtractionWatchdog.supervise(
                     process, directory, maxTotalBytes, EXTRACTION_TIMEOUT, WATCH_INTERVAL);
@@ -184,7 +171,7 @@ public class RarArchiveExtractor {
                 case TIMED_OUT -> throw new InvalidArchiveException("A extração do arquivo demorou demais");
                 case COMPLETED -> {
                     if (process.exitValue() != 0) {
-                        throw new InvalidArchiveException(INVALID_MESSAGE);
+                        throw failure(new String(awaitErrors(errors), StandardCharsets.UTF_8));
                     }
                 }
             }
@@ -193,19 +180,38 @@ public class RarArchiveExtractor {
         }
     }
 
-    // Sem shell: argumentos em lista. Saída descartada para o buffer do pipe nunca travar o processo.
-    private Process start(List<String> command, boolean discardOutput) {
-        ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true);
-        if (discardOutput) {
-            builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+    private static byte[] awaitErrors(CompletableFuture<byte[]> errors) {
+        try {
+            return errors.get(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return new byte[0];
+        } catch (ExecutionException | TimeoutException e) {
+            return new byte[0];
         }
+    }
+
+    // Guarda só o começo da saída e consome o resto, para o buffer do pipe nunca travar o processo.
+    private static byte[] drainKeepingHead(Process process) {
+        try (InputStream in = process.getInputStream()) {
+            byte[] head = in.readNBytes(ERROR_OUTPUT_LIMIT_BYTES);
+            in.transferTo(java.io.OutputStream.nullOutputStream());
+            return head;
+        } catch (IOException e) {
+            return new byte[0];
+        }
+    }
+
+    // Sem shell: argumentos em lista. A saída (stdout + stderr) é lida pelo chamador.
+    private Process start(List<String> command) {
+        ProcessBuilder builder = new ProcessBuilder(command).redirectErrorStream(true);
         try {
             Process process = builder.start();
-            // Sem stdin: se o 7zz pedir senha, recebe fim de arquivo em vez de esperar para sempre.
+            // Sem stdin: se o bsdtar pedir algo, recebe fim de arquivo em vez de esperar para sempre.
             process.getOutputStream().close();
             return process;
         } catch (IOException e) {
-            throw new IllegalStateException("Não foi possível executar o 7zz (" + sevenZipPath + ")", e);
+            throw new IllegalStateException("Não foi possível executar o bsdtar (" + bsdtarPath + ")", e);
         }
     }
 

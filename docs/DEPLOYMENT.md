@@ -345,8 +345,8 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   Limites opcionais do arquivo enviado (CBZ, CBR ou PDF): `APP_INGEST_MAX_PAGES` (1000),
   `APP_INGEST_MAX_TOTAL_MB` (1024), `APP_INGEST_MAX_PAGE_MB` (50). O Job usa 4 GiB porque, no
   Cloud Run, o `/tmp` fica em memória e um CBR é extraído para lá (ADR-48). O CBR é aberto pelo
-  `7zz`, instalado na imagem pelo Dockerfile; `APP_INGEST_SEVENZIP_PATH` só é preciso se o
-  binário estiver fora do `PATH`. A conta de deploy do GitHub Actions precisa poder atualizar
+  `bsdtar` (libarchive), instalado na imagem pelo Dockerfile; `APP_INGEST_BSDTAR_PATH` só é
+  preciso se o binário estiver fora do `PATH`. A conta de deploy do GitHub Actions precisa poder atualizar
   o Job (`run.jobs.update`, coberto por `roles/run.developer`).
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
