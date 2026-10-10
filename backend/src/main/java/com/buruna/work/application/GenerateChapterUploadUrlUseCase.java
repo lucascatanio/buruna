@@ -1,6 +1,7 @@
 package com.buruna.work.application;
 
 import com.buruna.shared.storage.StorageClient;
+import com.buruna.work.domain.ChapterKind;
 import com.buruna.work.domain.ChapterObjectName;
 import com.buruna.work.domain.ChapterSourceFormat;
 import com.buruna.work.domain.UnsupportedChapterSourceException;
@@ -37,9 +38,11 @@ public class GenerateChapterUploadUrlUseCase {
                 ? ChapterSourceFormat.CBZ
                 : ChapterSourceFormat.fromExtension(request.format())
                         .orElseThrow(() -> new UnsupportedChapterSourceException(
-                                "Formato de arquivo não aceito: " + request.format() + ". Envie CBZ, CBR ou PDF."));
-        work.assertAcceptsPagesFrom(format);
-        registerChapter.assertNumberFree(workId, request.language(), request.number());
+                                "Formato de arquivo não aceito: " + request.format() + ". Envie CBZ, CBR, PDF ou EPUB."));
+        // edição de livro não tem número; só capítulo de imagens tem número a conferir
+        if (work.chapterKindFor(format) == ChapterKind.PAGES) {
+            registerChapter.assertNumberFree(workId, request.language(), request.number());
+        }
 
         String objectName = ChapterObjectName.pendingFor(workId, format);
         var signedUpload = storageClient.generateUploadSignedUrl(objectName, format.contentType(), UPLOAD_URL_EXPIRATION);

@@ -4,11 +4,12 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Optional;
 
-/** Formato do arquivo enviado para um capítulo de imagens. Define a extensão no storage e o Content-Type assinado. */
+/** Formato do arquivo enviado para um capítulo. Define a extensão no storage e o Content-Type assinado. */
 public enum ChapterSourceFormat {
     CBZ("cbz", "application/vnd.comicbook+zip"),
     CBR("cbr", "application/vnd.comicbook-rar"),
-    PDF("pdf", "application/pdf");
+    PDF("pdf", "application/pdf"),
+    EPUB("epub", "application/epub+zip");
 
     private final String extension;
     private final String contentType;

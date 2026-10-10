@@ -52,11 +52,12 @@ public class QuotaService {
     }
 
     private Quota quotaFor(UUID actorId, BigDecimal limitGb) {
-        // conta o que está guardado: volumes, páginas de capítulos e arquivos enviados que ainda
-        // não foram extraídos ou falharam com o arquivo mantido para nova tentativa
+        // conta o que está guardado: volumes, páginas de capítulos, arquivos de livro e arquivos
+        // enviados que ainda não foram processados ou falharam com o arquivo mantido para nova tentativa
         long usedBytes = volumeRepository.sumPrivateFileSizeByOwnerId(actorId)
                 + chapterRepository.sumPrivatePageBytesByOwnerId(actorId)
-                + chapterRepository.sumPrivateSourceBytesByOwnerId(actorId);
+                + chapterRepository.sumPrivateSourceBytesByOwnerId(actorId)
+                + chapterRepository.sumPrivateFileBytesByOwnerId(actorId);
         return Quota.of(limitGb, usedBytes);
     }
 }

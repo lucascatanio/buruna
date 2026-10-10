@@ -385,20 +385,130 @@ class ChapterUploadIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    void shouldReturn400_whenPdfIsSentAsImageChapterOfABook() throws Exception {
-        // Arrange
+    String createBook() throws Exception {
         String body = mockMvc.perform(post("/works").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"Livro " + UUID.randomUUID() + "\",\"format\":\"LIVRO\","
                                 + "\"statusOrigin\":\"COMPLETED\",\"statusSite\":\"COMPLETE\"}")
                         .with(auth(collab)))
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-        String bookId = JsonPath.read(body, "$.id");
+        return JsonPath.read(body, "$.id");
+    }
 
-        // Act / Assert
+    /** Sobe uma edição de livro no catálogo e devolve o id do capítulo-arquivo. */
+    UUID uploadBook(String bookId, String format, String edition, byte[] content) throws Exception {
+        String body = mockMvc.perform(post("/works/{id}/chapters/upload-url", bookId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"pt-BR\",\"format\":\"" + format + "\"}").with(auth(collab)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String pending = JsonPath.read(body, "$.objectName");
+        when(storageClient.openRead(sourceOf(pending))).thenAnswer(inv -> new ByteArrayInputStream(content));
+        String finalized = mockMvc.perform(post("/works/{id}/chapters/finalize", bookId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"objectName\":\"" + pending + "\",\"language\":\"pt-BR\",\"label\":\""
+                                + edition + "\",\"scanlationGroup\":\"Tradução de Fulana\"}")
+                        .with(auth(collab)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return UUID.fromString(JsonPath.read(finalized, "$.id"));
+    }
+
+    static byte[] textPdf(int pages) throws IOException {
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            for (int i = 0; i < pages; i++) {
+                doc.addPage(new org.apache.pdfbox.pdmodel.PDPage());
+            }
+            doc.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    static byte[] minimalEpub() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(out)) {
+            zip.putNextEntry(new ZipEntry("mimetype"));
+            zip.write("application/epub+zip".getBytes());
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("META-INF/container.xml"));
+            zip.write(("<?xml version=\"1.0\"?><container version=\"1.0\" "
+                    + "xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles>"
+                    + "<rootfile full-path=\"OEBPS/content.opf\" media-type=\"application/oebps-package+xml\"/>"
+                    + "</rootfiles></container>").getBytes());
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("OEBPS/content.opf"));
+            zip.write("<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\"/>".getBytes());
+            zip.closeEntry();
+        }
+        return out.toByteArray();
+    }
+
+    @Test
+    void shouldPublishPdfAsFileWithPageCount_whenBookEditionIsUploaded() throws Exception {
+        // Arrange
+        String bookId = createBook();
+
+        // Act
+        UUID chapterId = uploadBook(bookId, "pdf", "Penguin, 2015", textPdf(3));
+
+        // Assert: o PDF de livro continua PDF, sem virar imagens
+        Chapter book = reload(chapterId);
+        assertThat(book.getStatus()).isEqualTo(ChapterStatus.PUBLISHED);
+        assertThat(book.getKind()).isEqualTo(com.buruna.work.domain.ChapterKind.FILE);
+        assertThat(book.getFilePageCount()).contains(3);
+        assertThat(book.getPages()).isEmpty();
+        assertThat(book.getLabel()).contains("Penguin, 2015");
+        verify(storageClient, never()).upload(any(), startsWith("chapters/"), anyString(), anyLong());
+    }
+
+    @Test
+    void shouldPublishEpub_whenStructureIsValid() throws Exception {
+        String bookId = createBook();
+
+        UUID chapterId = uploadBook(bookId, "epub", "Edição de bolso", minimalEpub());
+
+        Chapter book = reload(chapterId);
+        assertThat(book.getStatus()).isEqualTo(ChapterStatus.PUBLISHED);
+        assertThat(book.getFileFormat()).contains(com.buruna.work.domain.ChapterFileFormat.EPUB);
+        assertThat(book.getFilePageCount()).isEmpty();
+    }
+
+    @Test
+    void shouldFailWithReason_whenEpubIsBroken() throws Exception {
+        String bookId = createBook();
+
+        UUID chapterId = uploadBook(bookId, "epub", "Quebrada", "não é zip".getBytes());
+
+        Chapter book = reload(chapterId);
+        assertThat(book.getStatus()).isEqualTo(ChapterStatus.FAILED);
+        assertThat(book.getFailureReason()).contains("O arquivo não é um EPUB válido");
+    }
+
+    @Test
+    void shouldAllowTwoEditionsInTheSameLanguage_whenBookHasSeveralTranslations() throws Exception {
+        String bookId = createBook();
+
+        uploadBook(bookId, "pdf", "Penguin, 2015", textPdf(1));
+        uploadBook(bookId, "pdf", "Companhia das Letras, 2020", textPdf(1));
+
+        assertThat(chapterRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void shouldReturn400_whenCbzIsSentToABook() throws Exception {
+        String bookId = createBook();
+
         mockMvc.perform(post("/works/{id}/chapters/upload-url", bookId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"language\":\"pt-BR\",\"number\":1,\"format\":\"pdf\"}").with(auth(collab)))
+                        .content("{\"language\":\"pt-BR\",\"format\":\"cbz\"}").with(auth(collab)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400_whenEpubIsSentToAComic() throws Exception {
+        String workId = createPrivateWork(owner);
+
+        mockMvc.perform(post("/my/works/{id}/chapters/upload-url", workId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"pt-BR\",\"number\":1,\"format\":\"epub\"}").with(auth(owner)))
                 .andExpect(status().isBadRequest());
     }
 

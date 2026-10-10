@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 
 /**
  * Nomes dos objetos de um capítulo no storage, no mesmo desenho do {@link VolumeObjectName}
- * (ADR-40): o upload vai para {@code pending/chapters/{workId}/{uuid}.{cbz|cbr|pdf}}, e o finalize só
+ * (ADR-40): o upload vai para {@code pending/chapters/{workId}/{uuid}.{cbz|cbr|pdf|epub}}, e o finalize só
  * aceita um pendente cujo {@code workId} no caminho é o da obra do request. Depois do
  * finalize, o arquivo vai para {@code chapter-sources/}, fora do alcance da lifecycle rule de
  * {@code pending/}, até as páginas serem extraídas para {@code chapters/{chapterId}/}.
@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 public final class ChapterObjectName {
 
     private static final Pattern PENDING_PATTERN = Pattern.compile(
-            "^pending/chapters/([0-9a-fA-F-]{36})/([0-9a-fA-F-]{36})\\.(cbz|cbr|pdf)$"
+            "^pending/chapters/([0-9a-fA-F-]{36})/([0-9a-fA-F-]{36})\\.(cbz|cbr|pdf|epub)$"
     );
 
     private final UUID workId;

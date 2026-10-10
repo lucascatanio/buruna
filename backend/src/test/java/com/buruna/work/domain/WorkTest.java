@@ -161,4 +161,26 @@ class WorkTest {
         work.registerView();
         assertThat(work.getViewCount()).isEqualTo(1);
     }
+
+    @Test
+    void shouldMakeAFileChapter_whenBookReceivesPdfOrEpub() {
+        Work book = Work.createPublic(Slug.of("livro-teste"), java.util.UUID.randomUUID());
+        book.updateCatalogDetails("Livro", java.util.List.of(), null, WorkFormat.LIVRO, null,
+                WorkStatusOrigin.COMPLETED, WorkStatusSite.COMPLETE, null, java.util.List.of(), java.util.Set.of());
+
+        org.assertj.core.api.Assertions.assertThat(book.chapterKindFor(ChapterSourceFormat.PDF)).isEqualTo(ChapterKind.FILE);
+        org.assertj.core.api.Assertions.assertThat(book.chapterKindFor(ChapterSourceFormat.EPUB)).isEqualTo(ChapterKind.FILE);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> book.chapterKindFor(ChapterSourceFormat.CBZ))
+                .isInstanceOf(UnsupportedChapterSourceException.class);
+    }
+
+    @Test
+    void shouldMakePages_whenComicReceivesPdfButRejectEpub() {
+        Work comic = Work.createPrivate(Slug.of("manga-teste"), "Mangá", null, java.util.UUID.randomUUID());
+
+        org.assertj.core.api.Assertions.assertThat(comic.chapterKindFor(ChapterSourceFormat.PDF)).isEqualTo(ChapterKind.PAGES);
+        org.assertj.core.api.Assertions.assertThat(comic.chapterKindFor(ChapterSourceFormat.CBR)).isEqualTo(ChapterKind.PAGES);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> comic.chapterKindFor(ChapterSourceFormat.EPUB))
+                .isInstanceOf(UnsupportedChapterSourceException.class);
+    }
 }

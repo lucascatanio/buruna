@@ -32,7 +32,7 @@ public record ChapterResponse(
                 chapter.getScanlationGroup().orElse(null),
                 chapter.getKind().name(),
                 chapter.getStatus().name(),
-                chapter.getPages().size(),
+                chapter.getFilePageCount().orElse(chapter.getPages().size()),
                 chapter.getPublishedAt().orElse(null)
         );
     }

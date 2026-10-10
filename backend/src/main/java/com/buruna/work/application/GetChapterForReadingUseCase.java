@@ -2,6 +2,7 @@ package com.buruna.work.application;
 
 import com.buruna.work.domain.Chapter;
 import com.buruna.work.domain.ChapterAccessDeniedException;
+import com.buruna.work.domain.ChapterFileFormat;
 import com.buruna.work.domain.ChapterKind;
 import com.buruna.work.domain.ChapterNotFoundException;
 import com.buruna.work.domain.ChapterNumber;
@@ -49,6 +50,13 @@ public class GetChapterForReadingUseCase {
             work.registerView();
         }
 
+        if (chapter.getKind() == ChapterKind.FILE) {
+            // edições de um livro não têm ordem de leitura entre si: sem anterior nem próximo
+            ChapterReadingView.File file = new ChapterReadingView.File(chapter.getFileObjectName().orElseThrow(),
+                    chapter.getFileFormat().orElseThrow().name(), chapter.getFilePageCount().orElse(null));
+            return view(chapter, List.of(), file, null, null);
+        }
+
         List<UUID> sameLanguage = chapterRepository.findIdsInReadingOrder(chapter.getWorkId(),
                 chapter.getLanguage().value(), ChapterStatus.PUBLISHED);
         int position = sameLanguage.indexOf(chapterId);
@@ -59,10 +67,15 @@ public class GetChapterForReadingUseCase {
                 .map(p -> new ChapterReadingView.Page(p.getObjectName(),
                         p.getDataSaverObjectName().orElse(null), p.getWidth(), p.getHeight()))
                 .toList();
+        return view(chapter, pages, null, previous, next);
+    }
+
+    private static ChapterReadingView view(Chapter chapter, List<ChapterReadingView.Page> pages,
+                                           ChapterReadingView.File file, UUID previous, UUID next) {
         return new ChapterReadingView(chapter.getId(), chapter.getWorkId(), chapter.getLanguage().value(),
                 chapter.getNumber().map(ChapterNumber::value).orElse(null), chapter.getLabel().orElse(null),
                 chapter.getTitle().orElse(null), chapter.getScanlationGroup().orElse(null),
-                pages, previous, next);
+                chapter.getKind().name(), pages, file, previous, next);
     }
 
     /** Confere o acesso sem efeito colateral, para salvar progresso. */
@@ -71,7 +84,11 @@ public class GetChapterForReadingUseCase {
         Chapter chapter = chapterRepository.findWithPagesById(chapterId)
                 .orElseThrow(() -> new ChapterNotFoundException(chapterId));
         readableWork(chapter, actorId);
-        return new ChapterAccessInfo(chapter.getId(), chapter.getWorkId(), chapter.getPages().size());
+        if (chapter.getKind() == ChapterKind.FILE) {
+            boolean epub = chapter.getFileFormat().orElseThrow() == ChapterFileFormat.EPUB;
+            return new ChapterAccessInfo(chapter.getId(), chapter.getWorkId(), chapter.getFilePageCount().orElse(null), epub);
+        }
+        return new ChapterAccessInfo(chapter.getId(), chapter.getWorkId(), chapter.getPages().size(), false);
     }
 
     /** Capítulos publicados da obra, para o progresso por obra ("continuar lendo"). */
@@ -97,7 +114,7 @@ public class GetChapterForReadingUseCase {
     }
 
     private Work readableWork(Chapter chapter, UUID actorId) {
-        if (chapter.getStatus() != ChapterStatus.PUBLISHED || chapter.getKind() != ChapterKind.PAGES) {
+        if (chapter.getStatus() != ChapterStatus.PUBLISHED) {
             throw new ChapterNotFoundException(chapter.getId());
         }
         Work work = workRepository.findById(chapter.getWorkId())

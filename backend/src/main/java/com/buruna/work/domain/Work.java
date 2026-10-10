@@ -210,14 +210,20 @@ public class Work {
     // ── Submissão / moderação / promoção (sem receber User — ADR-35) ─────────
 
     /**
-     * Confere se um arquivo pode virar um capítulo de imagens nesta obra. Livro em PDF continua
-     * PDF (lido como arquivo), então não é convertido em páginas.
+     * Que tipo de capítulo um arquivo vira nesta obra. Livro aceita PDF e EPUB, lidos como
+     * arquivo (o PDF de livro continua PDF); quadrinhos aceitam CBZ, CBR e PDF, que viram páginas.
      */
-    public void assertAcceptsPagesFrom(ChapterSourceFormat source) {
-        if (source == ChapterSourceFormat.PDF && format == WorkFormat.LIVRO) {
-            throw new UnsupportedChapterSourceException(
-                    "Livro em PDF ainda é enviado como volume.");
+    public ChapterKind chapterKindFor(ChapterSourceFormat source) {
+        if (format == WorkFormat.LIVRO) {
+            if (source == ChapterSourceFormat.PDF || source == ChapterSourceFormat.EPUB) {
+                return ChapterKind.FILE;
+            }
+            throw new UnsupportedChapterSourceException("Livro aceita arquivo PDF ou EPUB.");
         }
+        if (source == ChapterSourceFormat.EPUB) {
+            throw new UnsupportedChapterSourceException("EPUB só é aceito em obra do formato livro.");
+        }
+        return ChapterKind.PAGES;
     }
 
     public void submitForApproval() {

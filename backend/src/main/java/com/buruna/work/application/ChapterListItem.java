@@ -19,6 +19,10 @@ public record ChapterListItem(
         String label,
         String title,
         String scanlationGroup,
+        /** PAGES (imagens) ou FILE (livro). */
+        String kind,
+        /** PDF ou EPUB num livro; nulo num capítulo de imagens. */
+        String fileFormat,
         String status,
         String failureReason,
         OffsetDateTime publishedAt,
@@ -33,6 +37,8 @@ public record ChapterListItem(
                 chapter.getLabel().orElse(null),
                 chapter.getTitle().orElse(null),
                 chapter.getScanlationGroup().orElse(null),
+                chapter.getKind().name(),
+                chapter.getFileFormat().map(Enum::name).orElse(null),
                 chapter.getStatus().name(),
                 chapter.getFailureReason().orElse(null),
                 chapter.getPublishedAt().orElse(null),
