@@ -77,11 +77,13 @@ public class ReaderController {
 
     // ── Capítulos (ADR-44) ───────────────────────────────────────────────────
 
+    /** {@code prefetch=true}: o leitor pré-carregando o próximo capítulo, sem histórico nem visualização. */
     @GetMapping("/chapters/{chapterId}")
     public ResponseEntity<ChapterManifestResponse> openChapter(
             @PathVariable UUID chapterId,
+            @RequestParam(defaultValue = "false") boolean prefetch,
             @AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(readingService.openChapter(chapterId, user.getId()));
+        return ResponseEntity.ok(readingService.openChapter(chapterId, user.getId(), prefetch));
     }
 
     @PostMapping("/chapters/{chapterId}/progress")

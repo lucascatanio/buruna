@@ -21,11 +21,18 @@ import {PrivateWorkDetailPage} from "@/pages/PrivateWorkDetailPage.tsx";
 import {ReadingHistoryPage} from "@/pages/ReadingHistoryPage.tsx";
 import {ReadingListPage} from "@/pages/ReadingListPage.tsx";
 import {ReaderPage} from "@/pages/ReaderPage.tsx";
+import {ChapterReaderPage} from "@/pages/ChapterReaderPage.tsx";
 import {useParams} from "react-router-dom";
 
 function ReaderPageWrapper() {
     const {volumeId} = useParams();
     return <ReaderPage key={volumeId}/>;
+}
+
+// remonta a cada capítulo: o "próximo capítulo" navega para a mesma rota com outro id
+function ChapterReaderPageWrapper() {
+    const {chapterId} = useParams();
+    return <ChapterReaderPage key={chapterId}/>;
 }
 
 // rota antiga, de antes do rename mangá → obra (ADR-45): links salvos continuam funcionando
@@ -64,6 +71,7 @@ export default function App() {
                         <Route path="/seguranca" element={<SecuritySettingsPage/>}/>
                     </Route>
                     <Route element={<ProtectedRoute/>}>
+                        <Route path="/leitor/capitulo/:chapterId" element={<ChapterReaderPageWrapper/>}/>
                         <Route path="/leitor/:volumeId" element={<ReaderPageWrapper/>}/>
                     </Route>
                 </Route>

@@ -18,6 +18,7 @@ import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
 import {PageHeader} from "@/components/PageHeader";
 import {FileInput} from "@/components/ui/file-input";
+import {ChapterSection} from "@/components/chapters/ChapterSection";
 import {toast} from "sonner";
 import {Upload, Trash2, Pencil, Check, X, Globe, BookOpen, Send, AlertCircle, Clock} from "lucide-react";
 
@@ -249,6 +250,15 @@ export function PrivateWorkDetailPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <ChapterSection
+                scope="private"
+                workId={work.id}
+                workTitle={work.title}
+                backUrl={`/colecao/${work.id}`}
+                canManage
+                className="flex flex-col gap-5"
+            />
 
             <Card>
                 <CardHeader className="pb-3">

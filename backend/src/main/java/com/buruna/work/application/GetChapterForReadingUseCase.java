@@ -36,13 +36,18 @@ public class GetChapterForReadingUseCase {
         this.workRepository = workRepository;
     }
 
-    /** Abre o capítulo para leitura e conta a visualização da obra. */
+    /**
+     * Abre o capítulo para leitura. {@code countView} falso é o pré-carregamento do próximo
+     * capítulo pelo leitor: devolve as páginas sem contar visualização.
+     */
     @Transactional
-    public ChapterReadingView open(UUID chapterId, UUID actorId) {
+    public ChapterReadingView open(UUID chapterId, UUID actorId, boolean countView) {
         Chapter chapter = chapterRepository.findWithPagesById(chapterId)
                 .orElseThrow(() -> new ChapterNotFoundException(chapterId));
         Work work = readableWork(chapter, actorId);
-        work.registerView();
+        if (countView) {
+            work.registerView();
+        }
 
         List<UUID> sameLanguage = chapterRepository.findIdsInReadingOrder(chapter.getWorkId(),
                 chapter.getLanguage().value(), ChapterStatus.PUBLISHED);

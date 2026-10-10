@@ -180,6 +180,21 @@ class ChapterReadingIntegrationTest {
     }
 
     @Test
+    void shouldSkipHistoryAndViewCount_whenNextChapterIsPrefetched() throws Exception {
+        // Arrange
+        Chapter chapter = published(publicWork, "pt-BR", "1", 2);
+
+        // Act
+        ResultActions result = mockMvc.perform(get("/reader/chapters/{id}", chapter.getId())
+                .param("prefetch", "true").with(auth(reader)));
+
+        // Assert
+        result.andExpect(status().isOk()).andExpect(jsonPath("$.pages", hasSize(2)));
+        assertThat(historyRepository.count()).isZero();
+        assertThat(workRepository.findById(publicWork.getId()).orElseThrow().getViewCount()).isZero();
+    }
+
+    @Test
     void shouldReturn404_whenChapterIsStillProcessing() throws Exception {
         Chapter chapter = processing(publicWork, "pt-BR", "1");
 

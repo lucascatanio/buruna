@@ -1,4 +1,5 @@
 import {useEffect, useState} from "react";
+import {chapterName, languageName} from "@/lib/chapterLabel";
 import {Link, useNavigate} from "react-router-dom";
 import {getHistory} from "@/api/readingApi";
 import type {HistoryEntry} from "@/types/reading";
@@ -59,7 +60,7 @@ export function ReadingHistoryPage() {
 
     return (
         <div className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-10 flex flex-col gap-7">
-            <PageHeader title="Histórico de leitura" description="Os volumes que você abriu, do mais recente."/>
+            <PageHeader title="Histórico de leitura" description="Os capítulos e volumes que você abriu, do mais recente."/>
 
             {loading ? (
                 <div className="space-y-2">
@@ -70,7 +71,7 @@ export function ReadingHistoryPage() {
             ) : entries.length === 0 ? (
                 <EmptyState
                     title="Nenhuma leitura registrada ainda"
-                    description="Os volumes que você abrir aparecem aqui, com a página onde parou."
+                    description="Os capítulos e volumes que você abrir aparecem aqui."
                     action={<Button onClick={() => navigate("/biblioteca")}>Explorar a biblioteca</Button>}
                 />
             ) : (
@@ -80,9 +81,9 @@ export function ReadingHistoryPage() {
                             <h2 className="m-0 font-mono text-xs font-medium uppercase tracking-widest text-muted-foreground">{day}</h2>
                             <ul className="m-0 list-none divide-y border-y p-0">
                                 {items.map((entry, idx) => (
-                                    <li key={`${entry.volumeId}-${idx}`}>
+                                    <li key={`${entry.chapterId ?? entry.volumeId}-${idx}`}>
                                         <Link
-                                            to={`/leitor/${entry.volumeId}`}
+                                            to={entry.chapterId ? `/leitor/capitulo/${entry.chapterId}` : `/leitor/${entry.volumeId}`}
                                             state={{
                                                 workTitle: entry.workTitle,
                                                 workId: entry.workId,
@@ -94,7 +95,12 @@ export function ReadingHistoryPage() {
                                             <WorkCover title={entry.workTitle} coverUrl={entry.workCoverUrl} compact className="w-11 shrink-0 shadow-none"/>
                                             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                                                 <span className="truncate text-[15px] font-medium">{entry.workTitle}</span>
-                                                <span className="font-mono text-xs text-muted-foreground">Vol. {String(entry.volumeNumber).padStart(2, "0")}</span>
+                                                <span className="font-mono text-xs text-muted-foreground">
+                                                    {entry.chapterId
+                                                        ? [chapterName({number: entry.chapterNumber, label: entry.chapterLabel}),
+                                                            entry.language && languageName(entry.language)].filter(Boolean).join(" · ")
+                                                        : `Vol. ${String(entry.volumeNumber).padStart(2, "0")}`}
+                                                </span>
                                             </div>
                                             <span className="shrink-0 font-mono text-xs text-muted-foreground">
                                                 {new Date(entry.readAt).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"})}

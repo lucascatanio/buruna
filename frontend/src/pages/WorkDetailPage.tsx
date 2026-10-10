@@ -23,6 +23,7 @@ import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {EmptyState} from "@/components/EmptyState";
 import {WorkCover} from "@/components/WorkCover";
+import {ChapterSection} from "@/components/chapters/ChapterSection";
 import {Macron} from "@/components/Macron";
 import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
@@ -522,7 +523,19 @@ export function WorkDetailPage() {
                 </div>
             </section>
 
-            {/* Volumes: cada um é um painel; o que tem progresso salvo fica em destaque */}
+            <ChapterSection
+                scope="public"
+                workId={work.id}
+                workTitle={work.title}
+                workSlug={work.slug}
+                format={work.format}
+                backUrl={`/biblioteca/${work.slug}`}
+                canManage={!!canModify}
+            />
+
+            {/* Volumes antigos convivem com os capítulos até a migração do legado. Quem envia
+                ainda vê a seção, porque PDF só entra como volume até o upload de PDF por capítulo. */}
+            {(volumes.length > 0 || canModify) && (
             <section className="max-w-7xl w-full mx-auto px-4 md:px-8 pt-9 pb-16 flex flex-col gap-5">
                 <div className="flex items-end justify-between gap-4">
                     <div className="flex flex-col gap-2">
@@ -593,6 +606,7 @@ export function WorkDetailPage() {
                     </div>
                 )}
             </section>
+            )}
         </div>
     );
 }
