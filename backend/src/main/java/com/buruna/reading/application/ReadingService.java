@@ -177,15 +177,21 @@ public class ReadingService {
 
     // ── Capítulos (ADR-44) ───────────────────────────────────────────────────
 
-    /** Abre um capítulo: registra no histórico e devolve as páginas com URL assinada. */
+    /**
+     * Abre um capítulo e devolve as páginas com URL assinada. Leitura de fato registra no
+     * histórico e conta a visualização; o pré-carregamento do próximo capítulo ({@code prefetch})
+     * não, para o histórico não ganhar um capítulo que o leitor nem abriu.
+     */
     @Transactional
-    public ChapterManifestResponse openChapter(UUID chapterId, UUID actorId) {
-        ChapterReadingView chapter = chapterForReading.open(chapterId, actorId);
+    public ChapterManifestResponse openChapter(UUID chapterId, UUID actorId, boolean prefetch) {
+        ChapterReadingView chapter = chapterForReading.open(chapterId, actorId, !prefetch);
 
-        ReadingHistory entry = new ReadingHistory();
-        entry.setUserId(actorId);
-        entry.setChapterId(chapterId);
-        historyRepository.save(entry);
+        if (!prefetch) {
+            ReadingHistory entry = new ReadingHistory();
+            entry.setUserId(actorId);
+            entry.setChapterId(chapterId);
+            historyRepository.save(entry);
+        }
 
         List<ChapterManifestResponse.Page> pages = chapter.pages().stream()
                 .map(p -> new ChapterManifestResponse.Page(
