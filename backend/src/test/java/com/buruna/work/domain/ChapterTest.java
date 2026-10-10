@@ -147,4 +147,72 @@ class ChapterTest {
         assertThatThrownBy(() -> ChapterPage.of(1, "chapters/c/1.jpg", null, 0, 1200, 1024))
                 .isInstanceOf(InvalidChapterException.class);
     }
+
+    @Test
+    void shouldReturnToProcessingWithSource_whenFailedChapterIsRetried() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.attachSource("chapter-sources/w/f.cbz", 4096);
+        chapter.fail("GCS fora do ar");
+
+        // Act
+        chapter.retry();
+
+        // Assert
+        assertThat(chapter.getStatus()).isEqualTo(ChapterStatus.PROCESSING);
+        assertThat(chapter.getFailureReason()).isEmpty();
+        assertThat(chapter.getSourceObjectName()).contains("chapter-sources/w/f.cbz");
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenRetryingWithoutSource() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.fail("arquivo inválido");
+
+        // Act / Assert
+        assertThatThrownBy(chapter::retry).isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenRetryingAChapterThatDidNotFail() {
+        Chapter chapter = pagesChapter();
+
+        assertThatThrownBy(chapter::retry).isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldReturnSourceAndForgetIt_whenSourceIsDiscarded() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.attachSource("chapter-sources/w/f.cbz", 4096);
+
+        // Act
+        var discarded = chapter.discardSource();
+
+        // Assert
+        assertThat(discarded).contains("chapter-sources/w/f.cbz");
+        assertThat(chapter.getSourceObjectName()).isEmpty();
+        assertThat(chapter.getSourceSizeBytes()).isZero();
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenAttachingSourceTwice() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.attachSource("chapter-sources/w/f.cbz", 4096);
+
+        // Act / Assert
+        assertThatThrownBy(() -> chapter.attachSource("chapter-sources/w/g.cbz", 4096))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenFileChapterReceivesSource() {
+        Chapter chapter = Chapter.register(WORK_ID, Language.of("pt-BR"), null, "Livro",
+                null, null, ChapterKind.FILE, UPLOADER_ID);
+
+        assertThatThrownBy(() -> chapter.attachSource("chapter-sources/w/f.cbz", 4096))
+                .isInstanceOf(InvalidChapterException.class);
+    }
 }

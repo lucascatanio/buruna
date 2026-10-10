@@ -68,6 +68,12 @@ public class Chapter {
     @Column(name = "uploaded_by", nullable = false, updatable = false)
     private UUID uploadedById;
 
+    @Column(name = "source_object_name", length = 500)
+    private String sourceObjectName;
+
+    @Column(name = "source_size_bytes")
+    private Long sourceSizeBytes;
+
     @ElementCollection
     @CollectionTable(name = "chapter_pages", joinColumns = @JoinColumn(name = "chapter_id"))
     @OrderBy("position ASC")
@@ -134,6 +140,52 @@ public class Chapter {
         publishedAt = now;
     }
 
+    /**
+     * Guarda o arquivo enviado (CBZ) de onde as páginas vão ser extraídas. Só um capítulo de
+     * imagens em processamento recebe arquivo, uma vez.
+     */
+    public void attachSource(String objectName, long sizeBytes) {
+        if (kind != ChapterKind.PAGES) {
+            throw new InvalidChapterException("Capítulo de arquivo não recebe arquivo para extração");
+        }
+        requireProcessing();
+        if (sourceObjectName != null) {
+            throw new InvalidChapterException("Capítulo já tem arquivo enviado");
+        }
+        if (objectName == null || objectName.isBlank() || sizeBytes < 1) {
+            throw new InvalidChapterException("Arquivo enviado inválido");
+        }
+        sourceObjectName = objectName;
+        sourceSizeBytes = sizeBytes;
+    }
+
+    /**
+     * Solta o arquivo enviado e devolve o nome dele, para quem chama apagar do storage depois
+     * do commit. Vazio se o capítulo não tinha arquivo.
+     */
+    public Optional<String> discardSource() {
+        Optional<String> discarded = Optional.ofNullable(sourceObjectName);
+        sourceObjectName = null;
+        sourceSizeBytes = null;
+        return discarded;
+    }
+
+    /**
+     * Volta um capítulo que falhou para processamento, reaproveitando o arquivo já enviado.
+     * O número pode ter sido ocupado por outro capítulo nesse meio-tempo; isso é checado por
+     * quem chama, sob lock na obra.
+     */
+    public void retry() {
+        if (status != ChapterStatus.FAILED) {
+            throw new InvalidChapterException("Só um capítulo que falhou pode ser processado de novo");
+        }
+        if (sourceObjectName == null) {
+            throw new InvalidChapterException("O arquivo deste capítulo não foi guardado; envie de novo");
+        }
+        status = ChapterStatus.PROCESSING;
+        failureReason = null;
+    }
+
     /** O processamento não terminou; o número volta a ficar livre para uma nova tentativa. */
     public void fail(String reason) {
         requireProcessing();
@@ -174,6 +226,14 @@ public class Chapter {
 
     public Optional<String> getFailureReason() {
         return Optional.ofNullable(failureReason);
+    }
+
+    public Optional<String> getSourceObjectName() {
+        return Optional.ofNullable(sourceObjectName);
+    }
+
+    public long getSourceSizeBytes() {
+        return sourceSizeBytes == null ? 0 : sourceSizeBytes;
     }
 
     public Optional<OffsetDateTime> getPublishedAt() {

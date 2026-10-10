@@ -3,6 +3,7 @@ package com.buruna.work.application;
 import com.buruna.work.domain.InsufficientStorageQuotaException;
 import com.buruna.work.domain.Quota;
 import com.buruna.work.persistence.WorkRepository;
+import com.buruna.work.persistence.ChapterRepository;
 import com.buruna.work.persistence.VolumeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -20,10 +21,13 @@ import java.util.UUID;
 public class QuotaService {
 
     private final VolumeRepository volumeRepository;
+    private final ChapterRepository chapterRepository;
     private final WorkRepository workRepository;
 
-    public QuotaService(VolumeRepository volumeRepository, WorkRepository workRepository) {
+    public QuotaService(VolumeRepository volumeRepository, ChapterRepository chapterRepository,
+                        WorkRepository workRepository) {
         this.volumeRepository = volumeRepository;
+        this.chapterRepository = chapterRepository;
         this.workRepository = workRepository;
     }
 
@@ -48,7 +52,11 @@ public class QuotaService {
     }
 
     private Quota quotaFor(UUID actorId, BigDecimal limitGb) {
-        long usedBytes = volumeRepository.sumPrivateFileSizeByOwnerId(actorId);
+        // conta o que está guardado: volumes, páginas de capítulos e arquivos enviados que ainda
+        // não foram extraídos ou falharam com o arquivo mantido para nova tentativa
+        long usedBytes = volumeRepository.sumPrivateFileSizeByOwnerId(actorId)
+                + chapterRepository.sumPrivatePageBytesByOwnerId(actorId)
+                + chapterRepository.sumPrivateSourceBytesByOwnerId(actorId);
         return Quota.of(limitGb, usedBytes);
     }
 }

@@ -64,6 +64,8 @@
 | **Quota** (VO, `work`) | Cota de coleção privada em bytes: `Quota.of(limitGb, usedBytes)`, com `canFit(additionalBytes)`/`remaining()`. Limite chega como primitivo (`BigDecimal`) vindo do `User` de `identity`; consumo é somado das tabelas do próprio contexto `work`. Puro, testável em JUnit. Distinto do VO homônimo em `identity` (§2) — cada contexto modela sua própria cota, sem importar o domínio do outro. |
 | **Signed URL** | URL temporária (GCS) para upload/leitura sem passar pelo backend; expira em 30 min. |
 | **Upload em 2 fases** | `GenerateVolumeUploadUrlUseCase` (URL assinada de PUT) → `FinalizeVolumeUseCase` (confirma e persiste metadados). Existe em par público/privado. |
+| **Ingest** | Extração das páginas de um capítulo enviado (CBZ), fora da requisição, no Cloud Run Job `buruna-ingest` (ADR-48). O capítulo fica `PROCESSING` até virar `PUBLISHED` ou `FAILED` com o motivo. Falha transitória mantém o arquivo e permite retry; arquivo inválido o descarta. |
+| **ChapterObjectName** (VO) | Nomes dos objetos de um capítulo no storage: `pending/chapters/{workId}/{uuid}.cbz` (upload), `chapter-sources/...` (arquivo guardado até a extração) e `chapters/{chapterId}/{posição}.{ext}` (páginas). Mesmo vínculo à obra do `VolumeObjectName` (ADR-40). |
 | **Catálogo público** | Mangás com `isPublic = true`; listagem paginada, busca/filtro por tags (two-step). |
 | **Coleção privada** | Mangás com `isPublic = false`, visíveis só ao `Owner`; sujeita a `Quota` e candidata a `promote`/`submit`. |
 

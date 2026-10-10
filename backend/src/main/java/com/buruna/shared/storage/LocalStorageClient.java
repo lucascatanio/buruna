@@ -134,6 +134,19 @@ public class LocalStorageClient implements StorageClient {
     }
 
     @Override
+    public InputStream openRead(String objectName) {
+        Path target = resolve(objectName);
+        if (!Files.exists(target)) {
+            throw new StorageObjectNotFoundException("Arquivo local não encontrado: " + objectName);
+        }
+        try {
+            return Files.newInputStream(target);
+        } catch (IOException e) {
+            throw new StorageException("Falha ao abrir arquivo local: " + objectName, e);
+        }
+    }
+
+    @Override
     public List<StoredObject> list(String prefix) {
         try (Stream<Path> files = Files.walk(storagePath)) {
             return files.filter(Files::isRegularFile)

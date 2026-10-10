@@ -91,6 +91,7 @@
 | Banco de dados      | GCE e2-micro + Docker (PostgreSQL 16)| us-east1-b         | Free tier permanente                |
 | Arquivos PDF/capas  | GCS `buruna-files-catanio`           | southamerica-east1 | Latência baixa para usuários BR     |
 | Jobs agendados      | Cloud Scheduler                      | us-east1           | Job `buruna-inactivity`: trigger diário de `RunInactivityUseCase` (ADR-03) |
+| Ingest de capítulos | Cloud Run Job `buruna-ingest`        | us-east1           | Mesma imagem do backend, profile `ingest`; extrai as páginas dos capítulos enviados (ADR-48) |
 | Mensageria          | Pub/Sub                              | global             | Tópico `password-reset-requests` + push subscription `password-reset-push` (ADR-42) |
 | Imagens Docker      | Artifact Registry                    | us-east1           | Pipeline de CI/deploy               |
 | Secrets             | Secret Manager                       | us-east1           | Injetados no Cloud Run              |
@@ -318,6 +319,32 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   Trava de segurança: se os órfãos passarem de 5 e de 10% do analisado, o job não apaga nada e
   loga ERROR, porque essa proporção indica descasamento entre o nome no bucket e o `file_url`
   do banco.
+
+- **Cloud Run Job `buruna-ingest`** ([ADR-48](adr/ADR-48-ingest-em-cloud-run-job.md)):
+  precisa existir **antes** do deploy na `main` que traz o upload por capítulo, porque o
+  `deploy.yml` atualiza a imagem dele e o backend o dispara. É a mesma imagem do backend, com
+  as **mesmas variáveis, segredos e rede** do serviço `buruna-backend` (o Job sobe a aplicação
+  inteira e acessa o banco), mais `SPRING_PROFILES_ACTIVE=ingest`:
+
+  ```bash
+  # copie --set-env-vars/--set-secrets/rede do serviço: gcloud run services describe buruna-backend --region us-east1
+  gcloud run jobs create buruna-ingest --region us-east1 \
+    --image <imagem atual do buruna-backend> \
+    --service-account <SA_BACKEND> \
+    --memory 2Gi --cpu 1 --task-timeout 3600 --max-retries 1 \
+    --network default --subnet default --network-tags buruna-backend --vpc-egress private-ranges-only \
+    --set-env-vars SPRING_PROFILES_ACTIVE=ingest,<mesmas variáveis do backend> \
+    --set-secrets <mesmos segredos do backend>
+  # o backend dispara o Job passando argumentos (override): precisa desta role no Job
+  gcloud run jobs add-iam-policy-binding buruna-ingest --region us-east1 \
+    --member="serviceAccount:<SA_BACKEND>" --role="roles/run.jobsExecutorWithOverrides"
+  ```
+
+  No backend (e no Job), `APP_INGEST_JOB_NAME=projects/<projeto>/locations/us-east1/jobs/buruna-ingest`
+  é **obrigatório** fora do profile `local` (`IngestJobConfig` falha no startup sem ele).
+  Limites opcionais do CBZ: `APP_INGEST_MAX_PAGES` (1000), `APP_INGEST_MAX_TOTAL_MB` (1024),
+  `APP_INGEST_MAX_PAGE_MB` (50). A conta de deploy do GitHub Actions precisa poder atualizar
+  o Job (`run.jobs.update`, coberto por `roles/run.developer`).
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).
