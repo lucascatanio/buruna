@@ -3,6 +3,8 @@ package com.buruna.work.web;
 import com.buruna.identity.domain.User;
 import com.buruna.work.application.ChapterActor;
 import com.buruna.work.application.ChapterFinalizeRequest;
+import com.buruna.work.application.ChapterListItem;
+import com.buruna.work.application.ListChaptersUseCase;
 import com.buruna.work.application.ChapterResponse;
 import com.buruna.work.application.ChapterScope;
 import com.buruna.work.application.ChapterUploadUrlRequest;
@@ -17,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /** Capítulos da coleção privada do dono (ADR-44). A quota vale aqui. */
@@ -28,15 +31,18 @@ public class PrivateChapterController {
     private final FinalizeChapterUploadUseCase finalizeUpload;
     private final RetryChapterIngestUseCase retryIngest;
     private final DeleteChapterUseCase deleteChapter;
+    private final ListChaptersUseCase listChapters;
 
     public PrivateChapterController(GenerateChapterUploadUrlUseCase generateUploadUrl,
                                     FinalizeChapterUploadUseCase finalizeUpload,
                                     RetryChapterIngestUseCase retryIngest,
-                                    DeleteChapterUseCase deleteChapter) {
+                                    DeleteChapterUseCase deleteChapter,
+                                    ListChaptersUseCase listChapters) {
         this.generateUploadUrl = generateUploadUrl;
         this.finalizeUpload = finalizeUpload;
         this.retryIngest = retryIngest;
         this.deleteChapter = deleteChapter;
+        this.listChapters = listChapters;
     }
 
     @PostMapping("/upload-url")
@@ -65,6 +71,13 @@ public class PrivateChapterController {
                                        @AuthenticationPrincipal User user) {
         deleteChapter.handle(workId, chapterId, ChapterScope.PRIVATE, actor(user));
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ChapterListItem>> list(@PathVariable UUID workId,
+                                                      @RequestParam(required = false) String language,
+                                                      @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(listChapters.listPrivate(workId, language, user.getId()));
     }
 
     private static ChapterActor actor(User user) {

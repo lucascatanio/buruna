@@ -4,6 +4,9 @@ import com.buruna.identity.domain.Role;
 import com.buruna.identity.domain.User;
 import com.buruna.work.application.ChapterActor;
 import com.buruna.work.application.ChapterFinalizeRequest;
+import com.buruna.work.application.ChapterLanguageResponse;
+import com.buruna.work.application.ChapterListItem;
+import com.buruna.work.application.ListChaptersUseCase;
 import com.buruna.work.application.ChapterResponse;
 import com.buruna.work.application.ChapterScope;
 import com.buruna.work.application.ChapterUploadUrlRequest;
@@ -19,6 +22,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 /** Capítulos de obras do catálogo público: colaborador dono ou ADMIN (ADR-44). Sem quota. */
@@ -30,15 +34,18 @@ public class ChapterController {
     private final FinalizeChapterUploadUseCase finalizeUpload;
     private final RetryChapterIngestUseCase retryIngest;
     private final DeleteChapterUseCase deleteChapter;
+    private final ListChaptersUseCase listChapters;
 
     public ChapterController(GenerateChapterUploadUrlUseCase generateUploadUrl,
                                     FinalizeChapterUploadUseCase finalizeUpload,
                                     RetryChapterIngestUseCase retryIngest,
-                                    DeleteChapterUseCase deleteChapter) {
+                                    DeleteChapterUseCase deleteChapter,
+                                    ListChaptersUseCase listChapters) {
         this.generateUploadUrl = generateUploadUrl;
         this.finalizeUpload = finalizeUpload;
         this.retryIngest = retryIngest;
         this.deleteChapter = deleteChapter;
+        this.listChapters = listChapters;
     }
 
     @PreAuthorize("hasAnyRole('COLLABORATOR', 'ADMIN')")
@@ -71,6 +78,18 @@ public class ChapterController {
                                        @AuthenticationPrincipal User user) {
         deleteChapter.handle(workId, chapterId, ChapterScope.PUBLIC, actor(user));
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ChapterListItem>> list(@PathVariable UUID workId,
+                                                      @RequestParam(required = false) String language,
+                                                      @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(listChapters.listPublic(workId, language, user.getId(), user.getRole() == Role.ADMIN));
+    }
+
+    @GetMapping("/languages")
+    public ResponseEntity<List<ChapterLanguageResponse>> languages(@PathVariable UUID workId) {
+        return ResponseEntity.ok(listChapters.publishedLanguages(workId));
     }
 
     private static ChapterActor actor(User user) {
