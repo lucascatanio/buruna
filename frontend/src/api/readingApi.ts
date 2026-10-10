@@ -38,6 +38,11 @@ export function saveChapterProgress(chapterId: string, currentPage: number): Pro
     return api.post<ProgressResponse>(`/reader/chapters/${chapterId}/progress`, {currentPage}).then((r) => r.data);
 }
 
+/** EPUB: a posição (CFI) e o andamento de 0 a 1, no lugar da página. */
+export function saveChapterPosition(chapterId: string, position: string, percent: number): Promise<ProgressResponse> {
+    return api.post<ProgressResponse>(`/reader/chapters/${chapterId}/progress`, {position, percent}).then((r) => r.data);
+}
+
 export function getChapterProgress(chapterId: string): Promise<ProgressResponse | null> {
     return api.get<ProgressResponse>(`/reader/chapters/${chapterId}/progress`)
         .then((r) => (r.status === 200 ? r.data : null));

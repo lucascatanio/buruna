@@ -2,7 +2,9 @@ import {useCallback, useEffect, useLayoutEffect, useRef, useState} from "react";
 import {useLocation, useNavigate, useParams} from "react-router-dom";
 import {getChapterManifest, getChapterProgress, saveChapterProgress} from "@/api/readingApi";
 import {chapterName, defaultReadMode} from "@/lib/chapterLabel";
-import type {ChapterManifest, ChapterManifestPage} from "@/types/chapter";
+import type {ChapterManifest, ChapterManifestFile, ChapterManifestPage} from "@/types/chapter";
+import type {ProgressResponse} from "@/types/reading";
+import {BookChapterReader} from "@/components/reader/BookChapterReader";
 import {Loading} from "@/components/Loading";
 import {LogoMark} from "@/components/Logo";
 import {
@@ -886,7 +888,7 @@ export function ChapterReaderPage() {
     const location = useLocation();
     const state = (location.state ?? {}) as ChapterReaderState;
 
-    const [loaded, setLoaded] = useState<{ manifest: ChapterManifest; startPage: number } | null>(null);
+    const [loaded, setLoaded] = useState<{ manifest: ChapterManifest; progress: ProgressResponse | null } | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -896,13 +898,11 @@ export function ChapterReaderPage() {
         Promise.all([getChapterManifest(chapterId), getChapterProgress(chapterId).catch(() => null)])
             .then(([manifest, progress]) => {
                 if (cancelled) return;
-                // capítulo já concluído reabre do começo; o "Lido" continua registrado
-                const startPage = progress && !progress.finished ? progress.currentPage ?? 1 : 1;
-                if (manifest.pages.length === 0) {
+                if (manifest.kind === "FILE" ? !manifest.file : manifest.pages.length === 0) {
                     setLoadError("Este capítulo não tem páginas.");
                     return;
                 }
-                setLoaded({manifest, startPage});
+                setLoaded({manifest, progress});
             })
             .catch(() => {
                 if (!cancelled) setLoadError("Não foi possível carregar o capítulo. Verifique sua conexão.");
@@ -913,6 +913,8 @@ export function ChapterReaderPage() {
         };
     }, [chapterId]);
 
+    const detailsUrl = state.backUrl ?? (state.workSlug ? `/biblioteca/${state.workSlug}` : undefined);
+
     if (loadError || !chapterId) {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
@@ -920,7 +922,7 @@ export function ChapterReaderPage() {
                     <p className="text-paper/80">{loadError ?? "Capítulo não encontrado."}</p>
                     <button
                         className="min-h-11 px-3 text-sm text-paper/60 underline underline-offset-4 hover:text-paper"
-                        onClick={() => navigate(state.backUrl ?? (state.workSlug ? `/biblioteca/${state.workSlug}` : -1 as never))}
+                        onClick={() => navigate(detailsUrl ?? -1 as never)}
                     >
                         Voltar
                     </button>
@@ -937,5 +939,21 @@ export function ChapterReaderPage() {
         );
     }
 
-    return <ChapterReader chapterId={chapterId} initialManifest={loaded.manifest} startPage={loaded.startPage} state={state}/>;
+    const {manifest, progress} = loaded;
+    if (manifest.kind === "FILE" && manifest.file) {
+        return (
+            <BookChapterReader
+                chapterId={chapterId}
+                manifest={manifest as ChapterManifest & { file: ChapterManifestFile }}
+                progress={progress}
+                workTitle={state.workTitle}
+                detailsUrl={detailsUrl ?? "/"}
+                onBack={() => navigate(detailsUrl ?? -1 as never)}
+            />
+        );
+    }
+
+    // capítulo já concluído reabre do começo; o "Lido" continua registrado
+    const startPage = progress && !progress.finished ? progress.currentPage ?? 1 : 1;
+    return <ChapterReader chapterId={chapterId} initialManifest={manifest} startPage={startPage} state={state}/>;
 }

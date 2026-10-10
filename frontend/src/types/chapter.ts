@@ -1,5 +1,10 @@
 export type ChapterStatus = "PROCESSING" | "PUBLISHED" | "FAILED" | "UNPUBLISHED";
 
+/** PAGES: imagens por página (quadrinhos). FILE: livro lido como arquivo inteiro. */
+export type ChapterKind = "PAGES" | "FILE";
+
+export type ChapterFileFormat = "PDF" | "EPUB";
+
 /** Item da lista de capítulos de uma obra (sem as páginas). */
 export interface ChapterListItem {
     id: string;
@@ -9,6 +14,9 @@ export interface ChapterListItem {
     label: string | null;
     title: string | null;
     scanlationGroup: string | null;
+    kind: ChapterKind;
+    /** PDF ou EPUB num livro; nulo num capítulo de imagens. */
+    fileFormat: ChapterFileFormat | null;
     status: ChapterStatus;
     /** Motivo da falha, visível só para quem enviou. */
     failureReason: string | null;
@@ -45,7 +53,7 @@ export interface ChapterResponse {
     label: string | null;
     title: string | null;
     scanlationGroup: string | null;
-    kind: "PAGES" | "FILE";
+    kind: ChapterKind;
     status: ChapterStatus;
     pageCount: number;
     publishedAt: string | null;
@@ -59,6 +67,13 @@ export interface ChapterManifestPage {
     height: number;
 }
 
+/** Livro: o arquivo inteiro. {@code pageCount} só no PDF. */
+export interface ChapterManifestFile {
+    url: string;
+    format: ChapterFileFormat;
+    pageCount: number | null;
+}
+
 export interface ChapterManifest {
     chapterId: string;
     workId: string;
@@ -67,7 +82,11 @@ export interface ChapterManifest {
     label: string | null;
     title: string | null;
     scanlationGroup: string | null;
+    kind: ChapterKind;
+    /** Vazio num livro. */
     pages: ChapterManifestPage[];
+    /** Só num livro. */
+    file: ChapterManifestFile | null;
     previousChapterId: string | null;
     nextChapterId: string | null;
     /** Até quando as URLs das páginas valem; depois disso, peça o manifesto de novo. */

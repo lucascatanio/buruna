@@ -61,8 +61,17 @@ function pickLanguage(workId: string, available: string[]): string | null {
     return available[0];
 }
 
+/** Andamento em %: pelo percentual no EPUB, pela página no resto. */
+function progressPercent(p: ProgressResponse | undefined): number | undefined {
+    if (!p) return undefined;
+    if (p.percent != null) return Math.round(p.percent * 100);
+    return p.totalPages ? Math.round((p.currentPage / p.totalPages) * 100) : undefined;
+}
+
 export function ChapterSection({scope, workId, workTitle, workSlug, format, backUrl, canManage, className}: ChapterSectionProps) {
     const navigate = useNavigate();
+    // num livro, cada item é uma edição inteira (PDF ou EPUB), não um capítulo
+    const isBook = format === "LIVRO";
     const [languages, setLanguages] = useState<string[]>([]);
     const [language, setLanguage] = useState<string | null>(null);
     // dono: todos os capítulos (de todos os idiomas, com status); leitor: só o idioma escolhido
@@ -140,17 +149,23 @@ export function ChapterSection({scope, workId, workTitle, workSlug, format, back
     );
     const readable = visibleChapters.filter((c) => c.status === "PUBLISHED");
 
-    // "Continuar": o capítulo lido mais recentemente neste idioma; se já terminou, o seguinte
+    // "Continuar": o capítulo lido mais recentemente neste idioma; se já terminou, o seguinte.
+    // No livro, a edição que a pessoa leu por último, senão a primeira.
     const continueTarget = useMemo(() => {
         if (readable.length === 0) return null;
         const recent = recentProgress.find((p) => readable.some((c) => c.id === p.chapterId));
         if (!recent) return {chapter: readable[0], label: "Começar a ler"};
         const index = readable.findIndex((c) => c.id === recent.chapterId);
+        if (isBook) {
+            const percent = progressPercent(recent);
+            const label = recent.finished ? "Ler de novo" : percent ? `Continuar · ${percent}%` : "Continuar";
+            return {chapter: readable[index], label};
+        }
         if (!recent.finished) return {chapter: readable[index], label: `Continuar · ${chapterName(readable[index])}`};
         const next = readable[index + 1];
         // tudo lido: como nos volumes, o botão volta ao começo em vez de sumir
         return next ? {chapter: next, label: `Ler · ${chapterName(next)}`} : {chapter: readable[0], label: "Começar a ler"};
-    }, [readable, recentProgress]);
+    }, [readable, recentProgress, isBook]);
 
     function openChapter(chapter: ChapterListItem) {
         navigate(`/leitor/capitulo/${chapter.id}`, {
@@ -171,14 +186,15 @@ export function ChapterSection({scope, workId, workTitle, workSlug, format, back
     }
 
     async function handleDelete(chapter: ChapterListItem) {
-        if (!confirm(`Apagar ${chapterName(chapter)}? As páginas serão removidas.`)) return;
+        const removed = isBook ? "O arquivo será removido." : "As páginas serão removidas.";
+        if (!confirm(`Apagar ${chapterName(chapter)}? ${removed}`)) return;
         setBusyId(chapter.id);
         try {
             await deleteChapter(scope, workId, chapter.id);
             await loadManaged();
-            toast.success("Capítulo apagado.");
+            toast.success(isBook ? "Edição apagada." : "Capítulo apagado.");
         } catch (e) {
-            toast.error(apiErrorMessage(e, "Não foi possível apagar o capítulo."));
+            toast.error(apiErrorMessage(e, isBook ? "Não foi possível apagar a edição." : "Não foi possível apagar o capítulo."));
         } finally {
             setBusyId(null);
         }
@@ -203,7 +219,7 @@ export function ChapterSection({scope, workId, workTitle, workSlug, format, back
                 <div className="flex flex-col gap-2">
                     <Macron className="w-6"/>
                     <h2 className="m-0 text-[22px] font-semibold tracking-[-0.02em]">
-                        Capítulos <span className="font-mono text-sm font-medium text-muted-foreground">{readable.length}</span>
+                        {isBook ? "Edições" : "Capítulos"} <span className="font-mono text-sm font-medium text-muted-foreground">{readable.length}</span>
                     </h2>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -231,7 +247,7 @@ export function ChapterSection({scope, workId, workTitle, workSlug, format, back
                     {canManage && (
                         <Button variant="outline" className="h-10" onClick={() => setShowUpload(true)}>
                             <Upload className="size-4"/>
-                            Adicionar capítulo
+                            {isBook ? "Adicionar edição" : "Adicionar capítulo"}
                         </Button>
                     )}
                 </div>
@@ -239,16 +255,18 @@ export function ChapterSection({scope, workId, workTitle, workSlug, format, back
 
             {loading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin"/> Carregando capítulos…
+                    <Loader2 className="size-4 animate-spin"/> {isBook ? "Carregando edições…" : "Carregando capítulos…"}
                 </div>
             ) : visibleChapters.length === 0 ? (
-                <EmptyState title="Nenhum capítulo ainda" description="Os capítulos aparecem aqui assim que forem publicados."/>
+                isBook
+                    ? <EmptyState title="Nenhuma edição ainda" description="As edições aparecem aqui assim que forem publicadas."/>
+                    : <EmptyState title="Nenhum capítulo ainda" description="Os capítulos aparecem aqui assim que forem publicados."/>
             ) : (
                 <ul className="flex flex-col divide-y rounded-lg border bg-card">
                     {shown.map((chapter) => {
                         const p = progress[chapter.id];
                         const finished = p?.finished ?? false;
-                        const percent = p?.totalPages ? Math.round((p.currentPage / p.totalPages) * 100) : undefined;
+                        const percent = progressPercent(p);
                         const published = chapter.status === "PUBLISHED";
                         return (
                             <li key={chapter.id} className="flex items-center gap-3 px-4 py-3">
@@ -259,10 +277,15 @@ export function ChapterSection({scope, workId, workTitle, workSlug, format, back
                                 >
                                     <span className={`flex items-center gap-2 text-[15px] ${finished ? "text-muted-foreground" : ""}`}>
                                         <span className="font-medium">{chapterName(chapter)}</span>
+                                        {chapter.fileFormat && (
+                                            <span className="font-mono text-[11px] text-muted-foreground">{chapter.fileFormat}</span>
+                                        )}
                                         {chapter.title && <span className="truncate text-muted-foreground">· {chapter.title}</span>}
                                     </span>
                                     {chapter.scanlationGroup && (
-                                        <span className="text-xs text-muted-foreground">{chapter.scanlationGroup}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                            {isBook ? `Tradução: ${chapter.scanlationGroup}` : chapter.scanlationGroup}
+                                        </span>
                                     )}
                                     {chapter.status === "FAILED" && (
                                         <span className="mt-1 flex items-center gap-1 text-xs text-destructive">

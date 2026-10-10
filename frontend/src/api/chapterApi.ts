@@ -26,7 +26,7 @@ export function listChapterLanguages(workId: string): Promise<ChapterLanguage[]>
     return api.get<ChapterLanguage[]>(`/works/${workId}/chapters/languages`).then((r) => r.data);
 }
 
-export type ChapterSourceFormat = "cbz" | "cbr" | "pdf";
+export type ChapterSourceFormat = "cbz" | "cbr" | "pdf" | "epub";
 
 export function getChapterUploadUrl(scope: ChapterScope, workId: string, language: string,
                                     number: number | null, format: ChapterSourceFormat): Promise<ChapterUploadUrlResponse> {

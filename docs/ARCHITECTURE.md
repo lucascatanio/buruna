@@ -201,6 +201,14 @@ Capítulo em processamento, que falhou ou tirado do ar responde 404; capítulo d
 de outro usuário, 403. As listas de quem lê só têm capítulos publicados; o dono da obra (e o
 ADMIN, no catálogo) vê também os em processamento e os que falharam, com o motivo.
 
+**Livro (capítulo-arquivo):** numa obra `LIVRO` a lista traz as edições, e o manifesto traz
+`file {url, format, pageCount}` em vez de páginas. O front (`BookChapterReader`) abre PDF no
+pdf.js (`PdfDocumentReader`, o mesmo do volume, por trechos) e EPUB no foliate-js
+(`EpubReader`, arquivo inteiro, carregado só quando alguém abre um EPUB). O progresso vai como
+`{ currentPage }` no PDF e `{ position, percent }` (CFI e 0 a 1) no EPUB; com 99% o livro
+conta como lido. URL vencida é renovada pelo manifesto com `?prefetch=true`, que não grava
+histórico de novo. Isolamento do EPUB: [ADR-51](adr/ADR-51-leitor-epub-foliate.md).
+
 ### 6.4 Upload de volume público (duas fases)
 
 Use cases: `GeneratePublicVolumeUploadUrlUseCase` (fase 1 — gera Signed URL de PUT para
