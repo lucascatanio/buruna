@@ -16,7 +16,7 @@ class ChapterObjectNameTest {
     @Test
     void shouldRoundTripToSourceName_whenPendingBelongsToTheWork() {
         // Arrange
-        String pending = ChapterObjectName.pendingFor(WORK_ID);
+        String pending = ChapterObjectName.pendingFor(WORK_ID, ChapterSourceFormat.CBZ);
 
         // Act
         ChapterObjectName parsed = ChapterObjectName.parsePending(pending, WORK_ID);
@@ -29,7 +29,7 @@ class ChapterObjectNameTest {
 
     @Test
     void shouldThrowInvalidObjectName_whenPendingBelongsToAnotherWork() {
-        String pendingOfOther = ChapterObjectName.pendingFor(UUID.randomUUID());
+        String pendingOfOther = ChapterObjectName.pendingFor(UUID.randomUUID(), ChapterSourceFormat.CBZ);
 
         assertThatThrownBy(() -> ChapterObjectName.parsePending(pendingOfOther, WORK_ID))
                 .isInstanceOf(InvalidChapterObjectNameException.class);

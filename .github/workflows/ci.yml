@@ -23,6 +23,10 @@ jobs:
 
       # O runner ubuntu-latest já vem com Docker em execução,
       # necessário para os testes de integração com Testcontainers.
+      # 7zz para os testes de CBR (RAR); sem ele, esses testes são pulados
+      - name: Install 7zip
+        run: sudo apt-get update -q && sudo apt-get install -y -q 7zip && 7zz i > /dev/null && echo "7zz instalado"
+
       - name: Run tests
         working-directory: backend
         run: ./mvnw -B clean test

@@ -167,6 +167,12 @@ public final class ImageInspector {
         } finally {
             g.dispose();
         }
+        return new InspectedImage(encodeJpeg(rgb), ImageType.JPEG.contentType(),
+                ImageType.JPEG.extension(), rgb.getWidth(), rgb.getHeight());
+    }
+
+    /** Codifica uma imagem RGB (sem alfa) em JPEG qualidade 0,85. */
+    static byte[] encodeJpeg(BufferedImage rgb) throws IOException {
         ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
         try {
             ImageWriteParam param = writer.getDefaultWriteParam();
@@ -177,8 +183,7 @@ public final class ImageInspector {
                 writer.setOutput(ios);
                 writer.write(null, new IIOImage(rgb, null, null), param);
             }
-            return new InspectedImage(out.toByteArray(), ImageType.JPEG.contentType(),
-                    ImageType.JPEG.extension(), rgb.getWidth(), rgb.getHeight());
+            return out.toByteArray();
         } finally {
             writer.dispose();
         }

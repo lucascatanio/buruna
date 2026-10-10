@@ -230,6 +230,53 @@ class ChapterUploadIntegrationTest {
         verify(storageClient).delete(sourceOf(pending));
     }
 
+    /** PDF com um JPEG por página, como um volume escaneado. */
+    static byte[] scannedPdf(byte[] jpeg, int pages) throws IOException {
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            for (int i = 0; i < pages; i++) {
+                var image = org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createFromByteArray(doc, jpeg);
+                var page = new org.apache.pdfbox.pdmodel.PDPage(
+                        new org.apache.pdfbox.pdmodel.common.PDRectangle(image.getWidth(), image.getHeight()));
+                doc.addPage(page);
+                try (var content = new org.apache.pdfbox.pdmodel.PDPageContentStream(doc, page)) {
+                    content.drawImage(image, 0, 0, image.getWidth(), image.getHeight());
+                }
+            }
+            doc.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    @Test
+    void shouldPublishOriginalJpegPages_whenScannedPdfIsUploaded() throws Exception {
+        // Arrange
+        String workId = createPrivateWork(owner);
+        ByteArrayOutputStream jpeg = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(600, 900, BufferedImage.TYPE_INT_RGB), "jpg", jpeg);
+        byte[] pdf = scannedPdf(jpeg.toByteArray(), 2);
+        String body = mockMvc.perform(post("/my/works/{id}/chapters/upload-url", workId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"pt-BR\",\"number\":1,\"format\":\"pdf\"}").with(auth(owner)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String pending = JsonPath.read(body, "$.objectName");
+        when(storageClient.openRead(sourceOf(pending))).thenAnswer(inv -> new ByteArrayInputStream(pdf));
+
+        // Act
+        String finalized = finalizeUpload("/my/works", workId, pending, "1", owner)
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+
+        // Assert: o JPEG embutido sai como está, sem reencodar
+        UUID chapterId = UUID.fromString(JsonPath.read(finalized, "$.id"));
+        Chapter chapter = reload(chapterId);
+        assertThat(chapter.getStatus()).isEqualTo(ChapterStatus.PUBLISHED);
+        assertThat(chapter.getPages()).extracting(ChapterPage::getObjectName)
+                .containsExactly("chapters/" + chapterId + "/1.jpg", "chapters/" + chapterId + "/2.jpg");
+        assertThat(chapter.getPages()).extracting(ChapterPage::getSizeBytes)
+                .containsOnly((long) jpeg.size());
+        assertThat(chapter.getPages().get(0).getWidth()).isEqualTo(600);
+    }
+
     @Test
     void shouldFailAndDropSource_whenCbzIsInvalid() throws Exception {
         // Arrange
@@ -288,7 +335,7 @@ class ChapterUploadIntegrationTest {
         String workId = createPrivateWork(owner);
         upload("/my/works", workId, "1", owner, cbz());
         String secondPending = transactionTemplate.execute(tx ->
-                com.buruna.work.domain.ChapterObjectName.pendingFor(UUID.fromString(workId)));
+                com.buruna.work.domain.ChapterObjectName.pendingFor(UUID.fromString(workId), com.buruna.work.domain.ChapterSourceFormat.CBZ));
 
         // Act
         ResultActions result = finalizeUpload("/my/works", workId, secondPending, "1.0", owner);
@@ -309,6 +356,50 @@ class ChapterUploadIntegrationTest {
 
         // Assert: o front repete o Content-Type assinado, que precisa ser o de CBZ e não o de PDF
         verify(storageClient).generateUploadSignedUrl(eq(pending), eq("application/vnd.comicbook+zip"), any(Duration.class));
+    }
+
+    @Test
+    void shouldSignTheUploadForCbr_whenFormatIsCbr() throws Exception {
+        // Arrange
+        String workId = createPrivateWork(owner);
+
+        // Act
+        String body = mockMvc.perform(post("/my/works/{id}/chapters/upload-url", workId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"pt-BR\",\"number\":1,\"format\":\"cbr\"}").with(auth(owner)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        // Assert
+        String pending = JsonPath.read(body, "$.objectName");
+        assertThat(pending).endsWith(".cbr");
+        verify(storageClient).generateUploadSignedUrl(eq(pending), eq("application/vnd.comicbook-rar"), any(Duration.class));
+    }
+
+    @Test
+    void shouldReturn400_whenFormatIsNotAccepted() throws Exception {
+        String workId = createPrivateWork(owner);
+
+        mockMvc.perform(post("/my/works/{id}/chapters/upload-url", workId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"pt-BR\",\"number\":1,\"format\":\"epub\"}").with(auth(owner)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturn400_whenPdfIsSentAsImageChapterOfABook() throws Exception {
+        // Arrange
+        String body = mockMvc.perform(post("/works").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Livro " + UUID.randomUUID() + "\",\"format\":\"LIVRO\","
+                                + "\"statusOrigin\":\"COMPLETED\",\"statusSite\":\"COMPLETE\"}")
+                        .with(auth(collab)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String bookId = JsonPath.read(body, "$.id");
+
+        // Act / Assert
+        mockMvc.perform(post("/works/{id}/chapters/upload-url", bookId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"pt-BR\",\"number\":1,\"format\":\"pdf\"}").with(auth(collab)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

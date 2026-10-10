@@ -79,6 +79,8 @@ app:
     max-pages: ${APP_INGEST_MAX_PAGES:1000}
     max-total-mb: ${APP_INGEST_MAX_TOTAL_MB:1024}
     max-page-mb: ${APP_INGEST_MAX_PAGE_MB:50}
+    # binário do 7-Zip que abre CBR (RAR4 e RAR5); instalado na imagem pelo Dockerfile
+    sevenzip-path: ${APP_INGEST_SEVENZIP_PATH:7zz}
   security:
     # Quantos saltos de proxy confiável (infra própria) precedem a entrada do
     # cliente no X-Forwarded-For. Ver docs/DEPLOYMENT.md.

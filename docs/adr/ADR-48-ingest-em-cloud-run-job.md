@@ -54,3 +54,33 @@ centena de obras importadas.
 
 **Pendente:** o job de órfãos (`DeleteOrphanVolumeFilesUseCase`) só olha `volumes/`. Páginas
 e arquivos de capítulo que sobrarem de um delete com falha no storage não são limpos ainda.
+
+**Atualização (2026-10-10):** o upload por capítulo passou a aceitar CBR e PDF, além de CBZ
+(`PageExtractor`, em `shared/media`).
+
+- **CBR (RAR4 e RAR5):** extraído pelo binário `7zz` (pacote `7zip` do Alpine, instalado na
+  imagem). O processo roda sem shell e sem stdin, então um RAR com senha não trava esperando.
+  - Antes de extrair, a listagem recusa arquivos com senha, tamanho declarado acima do limite
+    ou páginas demais.
+  - Durante a extração, um vigia mede o diretório a cada 200 ms e mata o processo se passar
+    de `APP_INGEST_MAX_TOTAL_MB` ou de 5 min.
+  - Depois, só arquivos regulares são lidos: symlinks são ignorados e caminho real fora do
+    diretório recusa o arquivo.
+  - Se um RAR malicioso tentar gravar fora do diretório, a defesa é a proteção do próprio
+    7-Zip contra links e caminhos perigosos. Mesmo que algo escape, o estrago fica no container
+    do Job, que existe só para aquele capítulo.
+- **PDF (PDFBox):**
+  - Página escaneada com um único JPEG que cobre a página sai com os **bytes originais**.
+  - O resto (texto, vetor, várias imagens, Flate, JBIG2) é renderizado em JPEG 0,85 com
+    ~1400 px de largura.
+  - Imagem em **JPEG2000 é recusada** com o motivo: o plugin de decodificação tem licença
+    não OSI e quase não recebe manutenção.
+  - PDF que exige senha de usuário é recusado.
+  - PDF escaneado com camada de OCR (texto invisível) cai na renderização e perde o JPEG
+    original. É uma escolha conservadora, a rever se esse caso for comum.
+- **Livro:** em obra `LIVRO`, PDF não vira imagens (`Work.assertAcceptsPagesFrom`): o livro
+  continua PDF, como capítulo-arquivo, no próximo épico.
+- **Memória do Job:** no Cloud Run, o `/tmp` fica em memória. Um CBR no limite soma o arquivo
+  enviado (até `MAX_FILE_SIZE_MB`), o conteúdo extraído (até `APP_INGEST_MAX_TOTAL_MB`) e a JVM,
+  então o Job usa **4 GiB**.
+
