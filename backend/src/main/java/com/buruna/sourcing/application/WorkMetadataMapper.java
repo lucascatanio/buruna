@@ -71,12 +71,25 @@ final class WorkMetadataMapper {
             return null;
         }
         if (descriptions.containsKey(DEFAULT_SYNOPSIS_LANGUAGE)) {
-            return descriptions.get(DEFAULT_SYNOPSIS_LANGUAGE);
+            return plainText(descriptions.get(DEFAULT_SYNOPSIS_LANGUAGE));
         }
         if (descriptions.containsKey(FALLBACK_SYNOPSIS_LANGUAGE)) {
-            return descriptions.get(FALLBACK_SYNOPSIS_LANGUAGE);
+            return plainText(descriptions.get(FALLBACK_SYNOPSIS_LANGUAGE));
         }
-        return descriptions.values().iterator().next();
+        return plainText(descriptions.values().iterator().next());
+    }
+
+    /**
+     * A descrição do MangaDex vem em Markdown, e a sinopse do Burūna é texto puro: tira o bloco
+     * de links do fim (depois de "---"), troca {@code [texto](url)} pelo texto e remove os
+     * marcadores de ênfase.
+     */
+    static String plainText(String markdown) {
+        String text = markdown.split("\\R\\s*-{3,}\\s*\\R", 2)[0];
+        text = text.replaceAll("\\[([^\\]]*)]\\([^)]*\\)", "$1")
+                .replaceAll("(\\*\\*|__|\\*|(?<=\\s|^)_|_(?=\\s|$))", "")
+                .replaceAll("\\R{3,}", "\n\n");
+        return text.strip();
     }
 
     // valores de CONTENT_WARNING_OPTIONS do formulário da obra

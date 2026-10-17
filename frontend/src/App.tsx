@@ -15,6 +15,7 @@ import {PendingUsersPage} from "@/pages/admin/PendingUsersPage";
 import {PendingSubmissionsPage} from "@/pages/admin/PendingSubmissionsPage";
 import {UsersPage} from "@/pages/admin/UsersPage";
 import {TagsPage} from "@/pages/admin/TagsPage";
+import {SourcingPage} from "@/pages/admin/SourcingPage";
 import {MyCollectionPage} from "@/pages/MyCollectionPage.tsx";
 import {PrivateWorkUploadPage} from "@/pages/PrivateWorkUploadPage.tsx";
 import {PrivateWorkDetailPage} from "@/pages/PrivateWorkDetailPage.tsx";
@@ -92,6 +93,7 @@ export default function App() {
                         <Route path="/admin/tags" element={<TagsPage/>}/>
                         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                         <Route path="/admin/submissions" element={<PendingSubmissionsPage/>}/>
+                        <Route path="/admin/import" element={<SourcingPage/>}/>
                     </Route>
                 </Route>
 
