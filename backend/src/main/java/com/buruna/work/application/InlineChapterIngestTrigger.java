@@ -1,5 +1,6 @@
 package com.buruna.work.application;
 
+import com.buruna.shared.transaction.AfterCommit;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 

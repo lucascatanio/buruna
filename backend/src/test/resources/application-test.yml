@@ -23,3 +23,6 @@ app:
     local:
       path: ${java.io.tmpdir}/buruna-test-storage
       base-url: http://localhost
+  sourcing:
+    # lease ocupado não espera nos testes: a rodada desiste na hora
+    lease-wait: PT0S

@@ -1,5 +1,6 @@
 package com.buruna.work.application;
 
+import com.buruna.shared.transaction.AfterCommit;
 import com.buruna.shared.jobs.JobLaunchException;
 import com.buruna.shared.jobs.JobLauncher;
 import org.slf4j.Logger;
