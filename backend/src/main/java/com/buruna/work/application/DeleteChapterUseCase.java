@@ -1,5 +1,6 @@
 package com.buruna.work.application;
 
+import com.buruna.shared.transaction.AfterCommit;
 import com.buruna.work.domain.Chapter;
 import com.buruna.work.persistence.ChapterRepository;
 import org.springframework.stereotype.Service;

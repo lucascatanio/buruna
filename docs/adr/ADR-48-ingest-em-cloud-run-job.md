@@ -87,3 +87,12 @@ e arquivos de capítulo que sobrarem de um delete com falha no storage não são
   enviado (até `MAX_FILE_SIZE_MB`), o conteúdo extraído (até `APP_INGEST_MAX_TOTAL_MB`) e a JVM,
   então o Job usa **4 GiB**.
 
+**Atualização (2026-10-17), importação:** o mesmo Job tem um segundo modo, `--sourcing.run=true`
+(`SourcingJobRunner`). Uma rodada pega o lease do MangaDex, lista os capítulos das obras
+recém-importadas e baixa as versões pendentes até não sobrar nada (`SourcingRunner`). Se o lease
+estiver ocupado, espera até 15 min e desiste; quem o segura repete a busca no fim e pega o que
+chegou. Cada página é baixada nas duas qualidades da fonte (original e `data-saver`), com os
+bytes originais. Se a execução cair, a versão continua PENDING com o capítulo registrado, e a
+próxima rodada (`POST /admin/sourcing/run`, outro import ou o sync) retoma do mesmo capítulo.
+Uma obra longa leva horas (cerca de 1,4 s por imagem, serial), então o Job roda com
+`--task-timeout` de 24 h.

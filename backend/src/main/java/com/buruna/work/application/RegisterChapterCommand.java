@@ -28,4 +28,11 @@ public record RegisterChapterCommand(
                                   String scanlationGroup, ChapterKind kind, UUID uploadedById) {
         this(workId, language, number, label, title, scanlationGroup, kind, uploadedById, null, null);
     }
+
+    /** Capítulo de imagens vindo de fonte externa: sem arquivo enviado, as páginas chegam depois. */
+    public static RegisterChapterCommand importedPages(UUID workId, String language, BigDecimal number, String label,
+                                                       String title, String scanlationGroup, UUID uploadedById) {
+        return new RegisterChapterCommand(workId, language, number, label, title, scanlationGroup,
+                ChapterKind.PAGES, uploadedById);
+    }
 }

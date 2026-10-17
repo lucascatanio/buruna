@@ -27,6 +27,7 @@ O frontend é uma SPA React sem Clean Architecture própria: apenas uma camada l
 | **work** | `com.buruna.work` | Catálogo público, coleção privada, volumes, tags, submissão/promoção |
 | **reading** | `com.buruna.reading` | Leitor (signed URLs), progresso de leitura, histórico |
 | **engagement** | `com.buruna.engagement` | Avaliações (ratings) e lista de leitura |
+| **sourcing** | `com.buruna.sourcing` | Importação do MangaDex: obras acompanhadas, versões de capítulo por grupo, lease de um executor por fonte (ADR-46, ADR-47) |
 | **admin** | `com.buruna.admin` | Casca administrativa — dashboard, jobs, revisão de submissões. Sem `domain` próprio; a `application` (`DashboardService`) só orquestra os use cases públicos dos outros contextos |
 
 Dois pacotes adicionais fora desse modelo, por não serem bounded contexts de domínio:
@@ -249,6 +250,33 @@ Use cases: `GenerateChapterUploadUrlUseCase`, `FinalizeChapterUploadUseCase`,
 A extração (`PageExtractor`, com CBZ via `ZipFile`, CBR via `bsdtar` e PDF via PDFBox, mais o
 `ImageInspector`) mora em `shared/media`. Em obra `LIVRO`, PDF não vira imagens. Apagar obra,
 coleção ou conta também apaga os objetos dos capítulos (`ChapterStorageCleaner`).
+
+### 6.4.2 Importação do MangaDex
+
+ADM, em `/admin/sourcing` (`AdminSourcingController`). A fonte fica atrás de
+`shared.source.ExternalSource` ([ADR-46](adr/ADR-46-mangadex-como-fonte-externa.md)); o estado
+mora no contexto `sourcing` ([ADR-47](adr/ADR-47-contexto-sourcing.md)).
+
+```
+BROWSER (ADM)                     BACKEND (sourcing → work)                    Cloud Run Job
+  │── GET /search?q= ────────────►│ ExternalSource.search (+ já acompanhada?)    │
+  │── GET /works/{id}/groups ────►│ grupos do idioma, por nº de capítulos        │
+  │── POST /imports ─────────────►│ metadados e capa (fora da transação)         │
+  │                               │ lock no lease: já acompanhada? → 409         │
+  │                               │ work.CreateImportedWorkUseCase (ou vínculo)  │
+  │                               │ TrackedWork; após o commit: jobs.run ───────►│ --sourcing.run
+  │◄── 201 ───────────────────────│                                              │ lease do MangaDex
+  │                               │                                              │ lista versões → escolha
+  │                               │                                              │ por versão PENDING:
+  │                               │                                              │  RegisterChapter (PROCESSING)
+  │                               │                                              │  páginas original + data-saver
+  │                               │                                              │  PublishImportedChapter
+```
+
+`POST /admin/sourcing/run` pede uma rodada sem importar (retoma o que ficou pendente) e
+`GET /admin/sourcing/tracked` lista as obras acompanhadas com a contagem por estado. Na página
+da obra, `GET /works/{id}/source` dá o crédito da fonte. No profile local a rodada acontece na
+própria requisição, depois do commit (`InlineSourcingTrigger`).
 
 ### 6.5 Upload privado + submissão/promoção
 

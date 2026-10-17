@@ -1,5 +1,6 @@
 package com.buruna.work.web;
 
+import com.buruna.sourcing.application.SourcingJobArgs;
 import com.buruna.work.application.IngestJobArgs;
 import com.buruna.work.application.ProcessChapterSourceUseCase;
 import org.slf4j.Logger;
@@ -39,6 +40,10 @@ public class IngestJobRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        // execução do modo fonte: quem trata é o SourcingJobRunner
+        if (!args.containsOption(IngestJobArgs.CHAPTER_OPTION) && args.containsOption(SourcingJobArgs.RUN_OPTION)) {
+            return;
+        }
         List<String> values = args.getOptionValues(IngestJobArgs.CHAPTER_OPTION);
         Optional<UUID> chapterId = values == null || values.size() != 1
                 ? Optional.empty()

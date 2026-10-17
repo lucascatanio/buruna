@@ -90,4 +90,9 @@ public final class ChapterObjectName {
     public static String page(UUID chapterId, int position, String extension) {
         return pagesPrefix(chapterId) + position + "." + extension;
     }
+
+    /** Versão de economia de dados de uma página, quando a fonte fornece (MangaDex). */
+    public static String dataSaverPage(UUID chapterId, int position, String extension) {
+        return pagesPrefix(chapterId) + "ds/" + position + "." + extension;
+    }
 }

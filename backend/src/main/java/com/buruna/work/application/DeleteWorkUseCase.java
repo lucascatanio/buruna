@@ -1,5 +1,6 @@
 package com.buruna.work.application;
 
+import com.buruna.shared.transaction.AfterCommit;
 import com.buruna.work.domain.Work;
 import com.buruna.work.persistence.WorkRepository;
 import com.buruna.shared.storage.StorageClient;

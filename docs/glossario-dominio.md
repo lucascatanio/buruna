@@ -98,6 +98,18 @@
 
 ---
 
+## 5.1 Contexto `sourcing` (importação de fonte externa)
+
+| Termo | Definição |
+|---|---|
+| **TrackedWork** (agregado raiz) | Obra do Burūna acompanhada numa fonte (`source` + `externalId`), com os idiomas acompanhados e o grupo preferido de cada um. `ACTIVE` ou `PAUSED`. Um por obra da fonte, checado sob lock (ADR-53). |
+| **SourceChapter** (agregado raiz) | Uma versão de capítulo na fonte: o mesmo número pode ter uma por grupo. `PENDING` (escolhida, a baixar), `READY` (virou capítulo), `FAILED`, `IGNORED` (outra versão do número foi escolhida). |
+| **ChapterSelection** | Regra de escolha da versão: grupo preferido, senão a publicada mais recentemente; sem número, sempre entra; número com versão baixada não troca sozinho. |
+| **SourceLease** | Um executor por fonte: quem segura o lease baixa dela, e o renova a cada capítulo. |
+| **Rodada** | Uma execução do `SourcingRunner`: lista as obras novas e baixa as versões pendentes até não sobrar nada. |
+
+---
+
 ## 6. Conceitos transversais
 
 | Termo | Definição |
