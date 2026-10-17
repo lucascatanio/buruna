@@ -46,6 +46,19 @@ class WorkMetadataMapperTest {
     }
 
     @Test
+    void shouldStripMarkdown_whenDescriptionHasEmphasisLinksAndFooter() {
+        String markdown = "Published in *Weekly Shounen Jump* by **Shueisha**.\nSee [the author](https://x.test/a) site.\n\n---\n**Links:**\n- [Raw](https://raw.test)";
+
+        assertThat(WorkMetadataMapper.plainText(markdown))
+                .isEqualTo("Published in Weekly Shounen Jump by Shueisha.\nSee the author site.");
+    }
+
+    @Test
+    void shouldKeepUnderscoresInsideWords_whenStrippingMarkdown() {
+        assertThat(WorkMetadataMapper.plainText("snake_case e _ênfase_")).isEqualTo("snake_case e ênfase");
+    }
+
+    @Test
     void shouldTranslateTagsAndAddWarnings_whenEroticaWithGore() {
         ImportedWorkCommand command = WorkMetadataMapper.toCommand(details("ja", false, SourceContentRating.EROTICA,
                 List.of(new SourceTag("Action", SourceTagGroup.GENRE), new SourceTag("Gore", SourceTagGroup.CONTENT),

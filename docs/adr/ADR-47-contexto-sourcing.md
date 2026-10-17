@@ -22,7 +22,7 @@ o catálogo com o estado de uma integração.
     do capítulo criado;
   - `SourceLease`: uma linha por fonte; quem segura baixa dela.
 - Escolha de versão (`ChapterSelection`): a do grupo preferido; sem ela, a publicada mais
-  recentemente. Capítulo sem número sempre entra. Número que já tem versão baixada não troca
+  recentemente. Sem número, concorrem as versões do mesmo volume e título (o mesmo oneshot traduzido por dois grupos). Número que já tem versão baixada não troca
   de versão sozinho.
 - Unicidade sem UNIQUE ([ADR-53](ADR-53-regra-de-negocio-na-aplicacao-sem-unique.md)): um
   acompanhamento por obra da fonte, sob lock na linha do lease; uma versão por id externo,

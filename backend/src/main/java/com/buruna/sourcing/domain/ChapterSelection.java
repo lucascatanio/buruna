@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -14,8 +15,8 @@ import java.util.function.Function;
 
 /**
  * Escolhe, entre as versões de um mesmo número num idioma, a que vira capítulo: a do grupo
- * preferido, senão a publicada mais recentemente. Versão sem número (oneshot, extra) não
- * concorre com nenhuma e sempre entra. Número que já tem versão baixada não troca de versão
+ * preferido, senão a publicada mais recentemente. Sem número (oneshot, extra), concorrem as
+ * versões do mesmo volume e título. Número que já tem versão baixada não troca de versão
  * aqui: reimportar é decisão do ADM.
  */
 public final class ChapterSelection {
@@ -32,7 +33,7 @@ public final class ChapterSelection {
     public static void apply(Collection<SourceChapter> versions, Function<String, Optional<String>> preferredGroup) {
         Map<String, List<SourceChapter>> slots = new LinkedHashMap<>();
         for (SourceChapter version : versions) {
-            String slot = version.getLanguage() + "|" + version.getNumber().orElse("#" + version.getExternalId());
+            String slot = version.getLanguage() + "|" + version.getNumber().orElseGet(() -> unnumberedSlot(version));
             slots.computeIfAbsent(slot, key -> new ArrayList<>()).add(version);
         }
         for (List<SourceChapter> candidates : slots.values()) {
@@ -48,6 +49,14 @@ public final class ChapterSelection {
                 }
             });
         }
+    }
+
+    // sem número, o que identifica o capítulo é o volume e o título: o mesmo oneshot traduzido
+    // por dois grupos cai no mesmo lugar, e extras com títulos diferentes ficam separados
+    private static String unnumberedSlot(SourceChapter version) {
+        String title = version.getTitle() == null ? "" : version.getTitle().trim().toLowerCase(Locale.ROOT);
+        String volume = version.getVolume() == null ? "" : version.getVolume();
+        return "#" + volume + "|" + title;
     }
 
     private static SourceChapter choose(List<SourceChapter> candidates, Optional<String> preferredGroup) {

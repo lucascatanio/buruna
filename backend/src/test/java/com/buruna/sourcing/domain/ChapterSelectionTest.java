@@ -42,10 +42,26 @@ class ChapterSelectionTest {
         assertThat(older.getState()).isEqualTo(SourceChapterState.IGNORED);
     }
 
+    static SourceChapter extra(String id, String title, String group, OffsetDateTime publishedAt) {
+        return SourceChapter.discover(TRACKED, id, "pt-BR", null, null, title,
+                List.of(group), List.of("Grupo " + group), 10, publishedAt, publishedAt);
+    }
+
     @Test
-    void shouldPickEveryVersionWithoutNumber_whenOneshots() {
-        SourceChapter first = version("x", null, "B", MARCH);
-        SourceChapter second = version("y", null, "C", MAY);
+    void shouldPickOneVersion_whenTwoGroupsTranslatedTheSameOneshot() {
+        SourceChapter first = extra("x", null, "B", MARCH);
+        SourceChapter second = extra("y", null, "C", MAY);
+
+        ChapterSelection.apply(List.of(first, second), language -> Optional.of("B"));
+
+        assertThat(first.getState()).isEqualTo(SourceChapterState.PENDING);
+        assertThat(second.getState()).isEqualTo(SourceChapterState.IGNORED);
+    }
+
+    @Test
+    void shouldPickEveryExtra_whenTitlesDiffer() {
+        SourceChapter first = extra("x", "Especial de Natal", "B", MARCH);
+        SourceChapter second = extra("y", "Especial de Ano Novo", "B", MAY);
 
         ChapterSelection.apply(List.of(first, second), language -> Optional.empty());
 

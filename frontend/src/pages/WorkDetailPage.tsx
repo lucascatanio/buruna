@@ -24,6 +24,8 @@ import {Label} from "@/components/ui/label";
 import {EmptyState} from "@/components/EmptyState";
 import {WorkCover} from "@/components/WorkCover";
 import {ChapterSection} from "@/components/chapters/ChapterSection";
+import {getWorkSource} from "@/api/sourcingApi";
+import type {WorkSource} from "@/types/sourcing";
 import {Macron} from "@/components/Macron";
 import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
@@ -78,6 +80,7 @@ export function WorkDetailPage() {
     const user = useAuthStore((s) => s.user);
 
     const [work, setWork] = useState<WorkDetail | null>(null);
+    const [workSource, setWorkSource] = useState<WorkSource | null>(null);
     const [volumes, setVolumes] = useState<Volume[]>([]);
     const [volumeProgress, setVolumeProgress] = useState<Record<string, ProgressResponse>>({});
     const [loading, setLoading] = useState(true);
@@ -131,6 +134,11 @@ export function WorkDetailPage() {
                 if (data?.score) setUserRating(data.score);
             })
             .catch((e) => console.warn("[WorkDetailPage] falha ao carregar avaliação do usuário:", e));
+
+        // crédito exigido pelo MangaDex nas obras importadas de lá (ADR-46)
+        getWorkSource(work.id)
+            .then(setWorkSource)
+            .catch((e) => console.warn("[WorkDetailPage] falha ao carregar a fonte da obra:", e));
 
         setRatingCount(work.ratingCount);
         setAvgRating(Number(work.avgRating));
@@ -402,6 +410,15 @@ export function WorkDetailPage() {
 
                         {work.synopsis && (
                             <p className="m-0 max-w-[680px] text-base leading-relaxed text-foreground/85">{work.synopsis}</p>
+                        )}
+
+                        {workSource && (
+                            <p className="m-0 text-sm text-muted-foreground">
+                                Fonte:{" "}
+                                <a href={workSource.url} target="_blank" rel="noopener noreferrer"
+                                   className="underline underline-offset-4 hover:text-foreground">{workSource.source}</a>.
+                                {" "}Cada capítulo leva o nome do grupo que traduziu.
+                            </p>
                         )}
 
                         <div className="flex flex-wrap items-center gap-2.5">
