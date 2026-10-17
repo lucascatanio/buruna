@@ -1,7 +1,6 @@
 import {type FormEvent, useCallback, useEffect, useState} from "react";
-import {Link} from "react-router-dom";
 import {toast} from "sonner";
-import {AlertCircle, ExternalLink, Loader2, RotateCcw, Search} from "lucide-react";
+import {ExternalLink, Loader2, RotateCcw, Search} from "lucide-react";
 import {getCoverThumbnail, listTrackedWorks, requestSourcingRun, searchSource} from "@/api/sourcingApi";
 import type {SourceSearchResult, TrackedWork} from "@/types/sourcing";
 import {Badge} from "@/components/ui/badge";
@@ -11,7 +10,7 @@ import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
 import {Loading} from "@/components/Loading";
 import {ImportDialog} from "@/components/sourcing/ImportDialog";
-import {languageName} from "@/lib/chapterLabel";
+import {TrackedWorkItem} from "@/components/sourcing/TrackedWorkItem";
 import {apiErrorMessage} from "@/lib/apiError";
 
 const POLL_INTERVAL_MS = 10_000;
@@ -47,13 +46,7 @@ function Cover({url, title}: { url: string | null; title: string }) {
         : <div aria-hidden="true" className="aspect-[2/3] w-14 shrink-0 rounded border bg-muted"/>;
 }
 
-function plural(count: number, one: string, many: string): string {
-    return `${count} ${count === 1 ? one : many}`;
-}
 
-function formatDate(value: string | null): string {
-    return value ? new Date(value).toLocaleString("pt-BR", {dateStyle: "short", timeStyle: "short"}) : "nunca";
-}
 
 /** Importação do MangaDex e andamento das obras acompanhadas (ADR-46). */
 export function SourcingPage() {
@@ -179,44 +172,7 @@ export function SourcingPage() {
                 )}
                 {tracked && tracked.length > 0 && (
                     <ul className="divide-y rounded-lg border bg-card">
-                        {tracked.map((t) => {
-                            const counts = t.chapterCounts;
-                            const pending = counts.PENDING ?? 0;
-                            const versions = Object.values(counts).reduce((sum, n) => sum + (n ?? 0), 0);
-                            return (
-                                <li key={t.id} className="space-y-1.5 p-4">
-                                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                                        <Link to={`/biblioteca/${t.workSlug}`} className="font-medium hover:underline">{t.workTitle}</Link>
-                                        <a href={t.sourceUrl} target="_blank" rel="noopener noreferrer"
-                                           className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline">
-                                            MangaDex <ExternalLink className="size-3"/>
-                                        </a>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t.languages.map((l) => languageName(l.language)
-                                            + (l.preferredGroupName ? ` (${l.preferredGroupName})` : "")).join(" · ")}
-                                    </p>
-                                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-muted-foreground">
-                                        {t.lastCheckedAt && versions === 0
-                                            ? <span>nenhum capítulo disponível na fonte</span>
-                                            : <span>{plural(counts.READY ?? 0, "baixado", "baixados")}</span>}
-                                        {pending > 0 && (
-                                            <span className="flex items-center gap-1 text-foreground">
-                                                <Loader2 className="size-3 animate-spin"/> {pending} na fila
-                                            </span>
-                                        )}
-                                        {(counts.FAILED ?? 0) > 0 && <span className="text-destructive">{counts.FAILED} com falha</span>}
-                                        <span>{plural(counts.IGNORED ?? 0, "versão de outro grupo", "versões de outros grupos")}</span>
-                                        <span>verificada {formatDate(t.lastCheckedAt)}</span>
-                                    </p>
-                                    {t.lastError && (
-                                        <p className="flex items-center gap-1 text-xs text-destructive">
-                                            <AlertCircle className="size-3.5"/> {t.lastError}
-                                        </p>
-                                    )}
-                                </li>
-                            );
-                        })}
+                        {tracked.map((t) => <TrackedWorkItem key={t.id} tracked={t} onChanged={loadTracked}/>)}
                     </ul>
                 )}
             </section>

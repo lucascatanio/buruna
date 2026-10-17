@@ -160,6 +160,30 @@ public class Chapter {
     }
 
     /**
+     * Troca as páginas de um capítulo publicado, mantendo o id (e o progresso de quem lê): outra
+     * versão da fonte externa, ou a mesma com páginas corrigidas. O crédito e o título acompanham
+     * a versão nova. Devolve os objetos das páginas antigas, para quem chama apagar.
+     */
+    public List<String> replacePages(List<ChapterPage> newPages, String newScanlationGroup, String newTitle) {
+        if (kind != ChapterKind.PAGES) {
+            throw new InvalidChapterException("Capítulo de arquivo não recebe páginas");
+        }
+        if (status != ChapterStatus.PUBLISHED) {
+            throw new InvalidChapterException("Só capítulo publicado troca de páginas");
+        }
+        List<String> previous = new ArrayList<>();
+        for (ChapterPage page : pages) {
+            previous.add(page.getObjectName());
+            page.getDataSaverObjectName().ifPresent(previous::add);
+        }
+        status = ChapterStatus.PROCESSING;
+        publishPages(newPages, publishedAt);
+        scanlationGroup = blankToNull(newScanlationGroup);
+        title = blankToNull(newTitle);
+        return previous;
+    }
+
+    /**
      * Guarda o arquivo enviado: num capítulo de imagens, de onde as páginas vão ser extraídas; num
      * capítulo-arquivo, o próprio livro, que é validado antes de publicar. Só uma vez.
      */

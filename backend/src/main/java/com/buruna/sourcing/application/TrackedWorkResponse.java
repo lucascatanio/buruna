@@ -26,8 +26,16 @@ public record TrackedWorkResponse(
         OffsetDateTime lastSuccessAt,
         int consecutiveFailures,
         String lastError,
+        OffsetDateTime pausedAt,
+        /** Preenchido só na pausa automática. */
+        String pausedReason,
+        List<Group> ignoredGroups,
+        int alertCount,
         OffsetDateTime createdAt
 ) {
+
+    public record Group(String id, String name) {
+    }
 
     public record Language(String language, String preferredGroupId, String preferredGroupName) {
         static Language from(TrackedLanguage language) {
@@ -37,7 +45,7 @@ public record TrackedWorkResponse(
     }
 
     static TrackedWorkResponse from(TrackedWork tracked, String workTitle, String workSlug,
-                                    Map<SourceChapterState, Long> counts) {
+                                    Map<SourceChapterState, Long> counts, int alertCount) {
         return new TrackedWorkResponse(
                 tracked.getId(), tracked.getWorkId(), workTitle, workSlug,
                 tracked.getSource().name(), tracked.getExternalId(), SourceUrls.work(tracked),
@@ -46,6 +54,8 @@ public record TrackedWorkResponse(
                 counts.entrySet().stream().collect(Collectors.toMap(
                         entry -> entry.getKey().name(), Map.Entry::getValue)),
                 tracked.getLastCheckedAt(), tracked.getLastSuccessAt(), tracked.getConsecutiveFailures(),
-                tracked.getLastError(), tracked.getCreatedAt());
+                tracked.getLastError(), tracked.getPausedAt(), tracked.getPausedReason().orElse(null),
+                tracked.getIgnoredGroups().stream().map(g -> new Group(g.getGroupId(), g.getGroupName())).toList(),
+                alertCount, tracked.getCreatedAt());
     }
 }

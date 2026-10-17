@@ -1,6 +1,8 @@
 import api from "@/lib/axios";
 import type {
     ImportWorkRequest,
+    SourceAlert,
+    TrackedGroup,
     SourceGroupSummary,
     SourceSearchResult,
     TrackedWork,
@@ -41,4 +43,39 @@ export function listTrackedWorks(): Promise<TrackedWork[]> {
 /** Nulo quando a obra não veio de uma fonte externa (204). */
 export function getWorkSource(workId: string): Promise<WorkSource | null> {
     return api.get<WorkSource>(`/works/${workId}/source`).then((r) => (r.status === 200 ? r.data : null));
+}
+
+export function checkTrackedWork(id: string): Promise<void> {
+    return api.post(`/admin/sourcing/tracked/${id}/check`).then(() => undefined);
+}
+
+export function pauseTrackedWork(id: string): Promise<void> {
+    return api.post(`/admin/sourcing/tracked/${id}/pause`).then(() => undefined);
+}
+
+export function resumeTrackedWork(id: string): Promise<void> {
+    return api.post(`/admin/sourcing/tracked/${id}/resume`).then(() => undefined);
+}
+
+export function listSourceAlerts(id: string): Promise<SourceAlert[]> {
+    return api.get<SourceAlert[]>(`/admin/sourcing/tracked/${id}/alerts`).then((r) => r.data);
+}
+
+export function listTrackedGroups(id: string): Promise<TrackedGroup[]> {
+    return api.get<TrackedGroup[]>(`/admin/sourcing/tracked/${id}/groups`).then((r) => r.data);
+}
+
+/** Apaga os capítulos do grupo e traz a versão de outro grupo, quando houver. */
+export function ignoreGroup(id: string, groupId: string, groupName: string): Promise<void> {
+    return api.post(`/admin/sourcing/tracked/${id}/ignored-groups`, {groupId, groupName}).then(() => undefined);
+}
+
+export function stopIgnoringGroup(id: string, groupId: string): Promise<void> {
+    return api.delete(`/admin/sourcing/tracked/${id}/ignored-groups/${encodeURIComponent(groupId)}`).then(() => undefined);
+}
+
+export type SourceChapterAction = "retry" | "redownload" | "use";
+
+export function runSourceChapterAction(sourceChapterId: string, action: SourceChapterAction): Promise<void> {
+    return api.post(`/admin/sourcing/source-chapters/${sourceChapterId}/${action}`).then(() => undefined);
 }

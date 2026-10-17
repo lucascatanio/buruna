@@ -14,5 +14,5 @@ public interface SourceChapterRepository extends JpaRepository<SourceChapter, UU
 
     List<SourceChapter> findByTrackedWorkIdInAndState(Collection<UUID> trackedWorkIds, SourceChapterState state);
 
-    long countByTrackedWorkIdAndState(UUID trackedWorkId, SourceChapterState state);
+    List<SourceChapter> findByChapterId(UUID chapterId);
 }

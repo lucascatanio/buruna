@@ -207,6 +207,30 @@ class ChapterTest {
                 .isInstanceOf(InvalidChapterException.class);
     }
 
+    @Test
+    void shouldSwapPagesAndCredit_whenPublishedChapterGetsAnotherVersion() {
+        Chapter chapter = pagesChapter();
+        chapter.publishPages(List.of(page(1), page(2)), NOW);
+
+        List<String> previous = chapter.replacePages(
+                List.of(ChapterPage.of(1, "chapters/c/r9/1.jpg", "chapters/c/r9/ds/1.jpg", 800, 1200, 2048)),
+                "Outro Grupo", "Título novo");
+
+        assertThat(previous).containsExactly("chapters/c/1.jpg", "chapters/c/2.jpg");
+        assertThat(chapter.getPages()).extracting(ChapterPage::getObjectName).containsExactly("chapters/c/r9/1.jpg");
+        assertThat(chapter.getScanlationGroup()).contains("Outro Grupo");
+        assertThat(chapter.getStatus()).isEqualTo(ChapterStatus.PUBLISHED);
+        assertThat(chapter.getPublishedAt()).contains(NOW);
+    }
+
+    @Test
+    void shouldRefuseReplacement_whenChapterIsStillProcessing() {
+        Chapter chapter = pagesChapter();
+
+        assertThatThrownBy(() -> chapter.replacePages(List.of(page(1)), null, null))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
     static Chapter bookEdition() {
         return Chapter.register(WORK_ID, Language.of("pt-BR"), null, "Penguin, 2015",
                 null, "Tradução de Fulana", ChapterKind.FILE, UPLOADER_ID);

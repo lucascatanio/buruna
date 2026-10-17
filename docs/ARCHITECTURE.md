@@ -273,6 +273,14 @@ BROWSER (ADM)                     BACKEND (sourcing → work)                   
   │                               │                                              │  PublishImportedChapter
 ```
 
+O sync ([ADR-49](adr/ADR-49-sync-das-obras-acompanhadas.md)) é o mesmo Job com `--sourcing.sync=true`,
+disparado pelo Cloud Scheduler a cada 3 h: lista todas as obras ativas, compara com o que já
+conhece (versão nova, removida na fonte, páginas trocadas, falha a tentar de novo) e, no
+primeiro sync depois das 8 h, manda o e-mail diário aos ADMs se houver novidade. As ações do ADM
+ficam em `/admin/sourcing/tracked/{id}/...` (verificar agora, pausar, retomar, avisos, grupos,
+ignorar grupo) e `/admin/sourcing/source-chapters/{id}/...` (tentar de novo, baixar de novo,
+usar esta versão).
+
 `POST /admin/sourcing/run` pede uma rodada sem importar (retoma o que ficou pendente) e
 `GET /admin/sourcing/tracked` lista as obras acompanhadas com a contagem por estado. Na página
 da obra, `GET /works/{id}/source` dá o crédito da fonte. No profile local a rodada acontece na

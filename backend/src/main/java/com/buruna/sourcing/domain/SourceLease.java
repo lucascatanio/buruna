@@ -38,6 +38,9 @@ public class SourceLease {
     @Column(name = "locked_until")
     private OffsetDateTime lockedUntil;
 
+    @Column(name = "last_digest_at")
+    private OffsetDateTime lastDigestAt;
+
     /** Pega ou renova o lease. Falso se outro executor o segura e ele ainda não venceu. */
     public boolean tryAcquire(String candidate, OffsetDateTime now, Duration ttl) {
         boolean free = holder == null || lockedUntil == null || !lockedUntil.isAfter(now);
@@ -47,6 +50,15 @@ public class SourceLease {
         holder = candidate;
         lockedUntil = now.plus(ttl);
         return true;
+    }
+
+    /** O e-mail diário de hoje já saiu (ou não havia o que mandar) a partir de {@code dueAt}. */
+    public boolean digestSentSince(OffsetDateTime dueAt) {
+        return lastDigestAt != null && !lastDigestAt.isBefore(dueAt);
+    }
+
+    public void markDigest(OffsetDateTime now) {
+        lastDigestAt = now;
     }
 
     public void release(String candidate) {

@@ -59,7 +59,7 @@ Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-in
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
 e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-## 3. Migrations Flyway (V1–V32)
+## 3. Migrations Flyway (V1–V33)
 
 > Verificado em `backend/src/main/resources/db/migration/` — atualize esta tabela ao
 > adicionar uma migration nova.
@@ -98,6 +98,7 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V30    | reading_progress e reading_history ganham chapter_id (volume_id passa a ser opcional; CHECK de exatamente um dos dois) e UNIQUE(user_id, chapter_id) no progresso ([ADR-21](adr/ADR-21-progresso-leitura-por-volume.md), atualização) |
 | V31    | Capítulo-arquivo (livro): chapters.file_object_name, file_format (enum chapter_file_format: PDF, EPUB), file_size_bytes, file_page_count; reading_progress.position (CFI) e percent (0 a 1) para EPUB ([ADR-44](adr/ADR-44-capitulo-como-unidade-de-leitura.md), [ADR-21](adr/ADR-21-progresso-leitura-por-volume.md)) |
 | V32    | Contexto sourcing: tracked_works (enum external_source, tracked_work_status), tracked_work_languages, source_chapters (enum source_chapter_state), source_leases com a linha do MANGADEX ([ADR-47](adr/ADR-47-contexto-sourcing.md)). Sem UNIQUE em (fonte, id externo) (ADR-53) |
+| V33    | Sync (ADR-49): tracked_works.listing_requested, paused_at, paused_reason; tracked_work_ignored_groups; source_chapters.attempts, failed_at, removed_at_source, source_update_detected_at, replaces_chapter_id; source_leases.last_digest_at |
 
 > Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
 > transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill

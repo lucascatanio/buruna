@@ -91,6 +91,18 @@ public final class ChapterObjectName {
         return pagesPrefix(chapterId) + position + "." + extension;
     }
 
+    /**
+     * Página de uma troca de páginas ({@code revision}): fica num subprefixo próprio, para quem
+     * está lendo continuar vendo as páginas antigas até a troca terminar.
+     */
+    public static String revisionPage(UUID chapterId, String revision, int position, String extension) {
+        return pagesPrefix(chapterId) + "r" + revision + "/" + position + "." + extension;
+    }
+
+    public static String revisionDataSaverPage(UUID chapterId, String revision, int position, String extension) {
+        return pagesPrefix(chapterId) + "r" + revision + "/ds/" + position + "." + extension;
+    }
+
     /** Versão de economia de dados de uma página, quando a fonte fornece (MangaDex). */
     public static String dataSaverPage(UUID chapterId, int position, String extension) {
         return pagesPrefix(chapterId) + "ds/" + position + "." + extension;

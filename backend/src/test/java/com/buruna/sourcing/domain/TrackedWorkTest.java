@@ -63,4 +63,45 @@ class TrackedWorkTest {
         assertThat(tracked.getLastError()).isNull();
         assertThat(tracked.needsListing()).isFalse();
     }
+
+    @Test
+    void shouldPauseItself_whenListingFailsEightTimesInARow() {
+        TrackedWork tracked = tracked(List.of(TrackedLanguage.of("en", null, null)));
+        OffsetDateTime now = OffsetDateTime.parse("2026-10-17T12:00:00Z");
+
+        for (int i = 0; i < TrackedWork.FAILURES_BEFORE_PAUSE - 1; i++) {
+            tracked.recordFailure("timeout", now);
+        }
+        assertThat(tracked.isActive()).isTrue();
+        tracked.recordFailure("timeout", now);
+
+        assertThat(tracked.isActive()).isFalse();
+        assertThat(tracked.getPausedReason()).hasValueSatisfying(reason -> assertThat(reason).contains("8 falhas"));
+    }
+
+    @Test
+    void shouldClearFailuresAndAskForCheck_whenResumed() {
+        TrackedWork tracked = tracked(List.of(TrackedLanguage.of("en", null, null)));
+        OffsetDateTime now = OffsetDateTime.parse("2026-10-17T12:00:00Z");
+        tracked.recordSuccess(now);
+        tracked.pause(now);
+
+        tracked.resume();
+
+        assertThat(tracked.isActive()).isTrue();
+        assertThat(tracked.getConsecutiveFailures()).isZero();
+        assertThat(tracked.needsListing()).isTrue();
+        assertThat(tracked.getPausedReason()).isEmpty();
+    }
+
+    @Test
+    void shouldReportIgnoredGroup_whenAdminIgnoresIt() {
+        TrackedWork tracked = tracked(List.of(TrackedLanguage.of("en", null, null)));
+
+        tracked.ignoreGroup("g1", "Grupo");
+
+        assertThat(tracked.isIgnored("g1")).isTrue();
+        tracked.stopIgnoringGroup("g1");
+        assertThat(tracked.isIgnored("g1")).isFalse();
+    }
 }

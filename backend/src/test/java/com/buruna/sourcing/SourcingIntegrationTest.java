@@ -176,11 +176,15 @@ class SourcingIntegrationTest {
     }
 
     static SourceWorkDetails details() {
-        return new SourceWorkDetails(EXTERNAL_ID, "Obra da Fonte", List.of("Source Work"),
+        return details(EXTERNAL_ID);
+    }
+
+    static SourceWorkDetails details(String externalId) {
+        return new SourceWorkDetails(externalId, "Obra da Fonte", List.of("Source Work"),
                 Map.of("en", "Synopsis", "pt-BR", "Sinopse"), "ko", SourceWorkStatus.ONGOING, 2021,
                 SourceContentRating.EROTICA,
                 List.of(new SourceTag("Action", SourceTagGroup.GENRE), new SourceTag("Long Strip", SourceTagGroup.FORMAT)),
-                true, null, "https://mangadex.org/title/" + EXTERNAL_ID, "seinen");
+                true, null, "https://mangadex.org/title/" + externalId, "seinen");
     }
 
     static SourceChapterInfo version(String id, String number, String groupId, String groupName, OffsetDateTime at) {

@@ -48,7 +48,35 @@ export interface TrackedWork {
     lastSuccessAt: string | null;
     consecutiveFailures: number;
     lastError: string | null;
+    pausedAt: string | null;
+    /** Só na pausa automática (falhas seguidas ao verificar). */
+    pausedReason: string | null;
+    ignoredGroups: { id: string; name: string | null }[];
+    alertCount: number;
     createdAt: string;
+}
+
+export type SourceAlertType = "FAILED" | "REMOVED_AT_SOURCE" | "PAGES_CHANGED" | "PREFERRED_AVAILABLE";
+
+/** Algo numa versão que pede decisão do ADM; as ações agem sobre {@code sourceChapterId}. */
+export interface SourceAlert {
+    sourceChapterId: string;
+    trackedWorkId: string;
+    type: SourceAlertType;
+    language: string;
+    number: string | null;
+    title: string | null;
+    groupNames: string | null;
+    /** FAILED: o erro; PREFERRED_AVAILABLE: o grupo da versão que está no capítulo. */
+    detail: string | null;
+    detectedAt: string | null;
+}
+
+export interface TrackedGroup {
+    id: string;
+    name: string;
+    versionCount: number;
+    ignored: boolean;
 }
 
 /** Crédito da fonte na página da obra. */

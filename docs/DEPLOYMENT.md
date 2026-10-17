@@ -90,7 +90,7 @@
 | Frontend SPA        | Cloud Run                            | us-east1           | nginx + build estático React        |
 | Banco de dados      | GCE e2-micro + Docker (PostgreSQL 16)| us-east1-b         | Free tier permanente                |
 | Arquivos PDF/capas  | GCS `buruna-files-catanio`           | southamerica-east1 | Latência baixa para usuários BR     |
-| Jobs agendados      | Cloud Scheduler                      | us-east1           | Job `buruna-inactivity`: trigger diário de `RunInactivityUseCase` (ADR-03) |
+| Jobs agendados      | Cloud Scheduler                      | us-east1           | `buruna-inactivity` (diário, ADR-03), `buruna-storage-orphans` (semanal) e `buruna-sourcing-sync` (a cada 3 h, ADR-49) |
 | Ingest de capítulos | Cloud Run Job `buruna-ingest`        | us-east1           | Mesma imagem do backend, profile `ingest`; extrai as páginas dos capítulos enviados (ADR-48) |
 | Mensageria          | Pub/Sub                              | global             | Tópico `password-reset-requests` + push subscription `password-reset-push` (ADR-42) |
 | Imagens Docker      | Artifact Registry                    | us-east1           | Pipeline de CI/deploy               |
@@ -319,6 +319,27 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   Trava de segurança: se os órfãos passarem de 5 e de 10% do analisado, o job não apaga nada e
   loga ERROR, porque essa proporção indica descasamento entre o nome no bucket e o `file_url`
   do banco.
+
+- Job do Cloud Scheduler `buruna-sourcing-sync` ([ADR-49](adr/ADR-49-sync-das-obras-acompanhadas.md)):
+  cron `0 */3 * * *` (a cada 3 h), chama a API do Cloud Run para rodar o Job `buruna-ingest`
+  no modo sync. A conta de serviço do Scheduler precisa de `roles/run.jobsExecutorWithOverrides`
+  no Job (a mesma role do backend):
+
+  ```bash
+  gcloud scheduler jobs create http buruna-sourcing-sync --location us-east1 \
+    --schedule "0 */3 * * *" --time-zone "Etc/UTC" \
+    --uri "https://run.googleapis.com/v2/projects/<projeto>/locations/us-east1/jobs/buruna-ingest:run" \
+    --http-method POST \
+    --headers "Content-Type=application/json" \
+    --message-body '{"overrides":{"containerOverrides":[{"args":["--sourcing.sync=true"]}]}}' \
+    --oauth-service-account-email <SA_SCHEDULER> \
+    --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform"
+  gcloud run jobs add-iam-policy-binding buruna-ingest --region us-east1 \
+    --member="serviceAccount:<SA_SCHEDULER>" --role="roles/run.jobsExecutorWithOverrides"
+  ```
+
+  O e-mail diário do sync sai pela mesma rodada (primeiro sync depois das 8 h de Brasília), sem
+  job próprio.
 
 - **Cloud Run Job `buruna-ingest`** ([ADR-48](adr/ADR-48-ingest-em-cloud-run-job.md)):
   precisa existir **antes** do deploy na `main` que traz o upload por capítulo, porque o

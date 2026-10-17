@@ -20,7 +20,9 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -69,18 +71,43 @@ class ListSourceChaptersStep {
                 .ifPresent(locked -> store(locked, versions)));
     }
 
+    /**
+     * Compara a listagem com o que já se conhece (ADR-49): versão nova entra na escolha, versão
+     * que sumiu ganha o aviso "removida na fonte" (o capítulo baixado continua no ar), versão
+     * baixada com páginas mais novas ganha o aviso "páginas trocadas", e falha volta para a
+     * fila até {@link SourceChapter#MAX_ATTEMPTS} tentativas.
+     */
     private void store(TrackedWork tracked, List<SourceChapterInfo> versions) {
+        OffsetDateTime now = OffsetDateTime.now(clock);
         Map<String, SourceChapter> known = sourceChapterRepository.findByTrackedWorkId(tracked.getId()).stream()
                 .collect(Collectors.toMap(SourceChapter::getExternalId, Function.identity()));
+        // listagem vazia de uma obra que tinha capítulos é mais provável ser erro da fonte do que
+        // tudo ter sido removido de uma vez: não marca nada como removido
+        if (versions.isEmpty() && !known.isEmpty()) {
+            tracked.recordFailure("A fonte não devolveu nenhum capítulo.", now);
+            return;
+        }
         List<SourceChapter> all = new ArrayList<>(known.values());
+        Set<String> listed = new HashSet<>();
         for (SourceChapterInfo version : versions) {
-            if (!known.containsKey(version.externalId())) {
+            listed.add(version.externalId());
+            SourceChapter existing = known.get(version.externalId());
+            if (existing == null) {
                 all.add(discover(tracked.getId(), version));
+            } else {
+                existing.seenAtSource(version.updatedAt(), now);
             }
         }
-        ChapterSelection.apply(all, tracked::preferredGroupFor);
+        for (SourceChapter version : known.values()) {
+            if (!listed.contains(version.getExternalId())) {
+                version.missingAtSource(now);
+            } else if (version.canRetryAutomatically()) {
+                version.retry(false);
+            }
+        }
+        ChapterSelection.apply(all, tracked::preferredGroupFor, tracked.ignoredGroupIds());
         sourceChapterRepository.saveAll(all);
-        tracked.recordSuccess(OffsetDateTime.now(clock));
+        tracked.recordSuccess(now);
         log.info("Obra acompanhada {}: {} versões na fonte, {} novas", tracked.getId(), versions.size(),
                 all.size() - known.size());
     }
