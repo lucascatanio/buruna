@@ -107,6 +107,10 @@
 | **ChapterSelection** | Regra de escolha da versão: grupo preferido, senão a publicada mais recentemente; sem número, concorrem as versões do mesmo volume e título; número com versão baixada não troca sozinho. |
 | **SourceLease** | Um executor por fonte: quem segura o lease baixa dela, e o renova a cada capítulo. |
 | **Rodada** | Uma execução do `SourcingRunner`: lista as obras novas e baixa as versões pendentes até não sobrar nada. |
+| **Sync** | Rodada disparada pelo Scheduler a cada 3 h que verifica todas as obras ativas (ADR-49). |
+| **Aviso** (`SourceAlert`) | O que pede decisão do ADM: versão que falhou de vez, removida na fonte, páginas trocadas, versão do grupo preferido disponível. |
+| **Grupo ignorado** | Grupo cujas versões não entram numa obra; ignorar apaga os capítulos que vieram dele. |
+| **Troca de páginas** | Outra versão (ou a mesma, corrigida) substitui as páginas de um capítulo sem mudar o id, mantendo o progresso de quem lê. |
 
 ---
 

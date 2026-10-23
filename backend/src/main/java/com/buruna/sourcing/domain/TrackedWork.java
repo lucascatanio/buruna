@@ -39,6 +39,8 @@ import java.util.UUID;
 public class TrackedWork {
 
     private static final int MAX_ERROR_LENGTH = 2000;
+    /** Falhas seguidas de listagem até a obra pausar sozinha (~1 dia com sync a cada 3 h). */
+    public static final int FAILURES_BEFORE_PAUSE = 8;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -64,8 +66,22 @@ public class TrackedWork {
     @CollectionTable(name = "tracked_work_languages", joinColumns = @JoinColumn(name = "tracked_work_id"))
     private List<TrackedLanguage> languages = new ArrayList<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "tracked_work_ignored_groups", joinColumns = @JoinColumn(name = "tracked_work_id"))
+    private Set<IgnoredGroup> ignoredGroups = new HashSet<>();
+
     @Column(name = "last_checked_at")
     private OffsetDateTime lastCheckedAt;
+
+    // verificação pedida (ADM ou sync) e ainda não feita
+    @Column(name = "listing_requested", nullable = false)
+    private boolean listingRequested;
+
+    @Column(name = "paused_at")
+    private OffsetDateTime pausedAt;
+
+    @Column(name = "paused_reason", columnDefinition = "TEXT")
+    private String pausedReason;
 
     @Column(name = "last_success_at")
     private OffsetDateTime lastSuccessAt;
@@ -123,9 +139,36 @@ public class TrackedWork {
                 .flatMap(TrackedLanguage::getPreferredGroupId);
     }
 
-    /** Nunca listou os capítulos da fonte (acabou de ser importada). */
+    /** Nunca listou os capítulos da fonte, ou alguém pediu uma verificação. */
     public boolean needsListing() {
-        return lastCheckedAt == null;
+        return lastCheckedAt == null || listingRequested;
+    }
+
+    public void requestListing() {
+        listingRequested = true;
+    }
+
+    public boolean isIgnored(String groupId) {
+        return ignoredGroups.stream().anyMatch(group -> group.getGroupId().equals(groupId));
+    }
+
+    public void ignoreGroup(String groupId, String groupName) {
+        ignoredGroups.add(new IgnoredGroup(groupId, groupName));
+    }
+
+    public void stopIgnoringGroup(String groupId) {
+        ignoredGroups.removeIf(group -> group.getGroupId().equals(groupId));
+    }
+
+    public Set<String> ignoredGroupIds() {
+        Set<String> ids = new HashSet<>();
+        ignoredGroups.forEach(group -> ids.add(group.getGroupId()));
+        return ids;
+    }
+
+    /** Pausada sozinha depois de falhar seguidamente; nulo se ativa ou pausada pelo ADM. */
+    public Optional<String> getPausedReason() {
+        return Optional.ofNullable(pausedReason);
     }
 
     public boolean isActive() {
@@ -135,22 +178,37 @@ public class TrackedWork {
     public void recordSuccess(OffsetDateTime now) {
         lastCheckedAt = now;
         lastSuccessAt = now;
+        listingRequested = false;
         consecutiveFailures = 0;
         lastError = null;
     }
 
+    /** Depois de {@link #FAILURES_BEFORE_PAUSE} falhas seguidas, a obra pausa sozinha. */
     public void recordFailure(String error, OffsetDateTime now) {
         lastCheckedAt = now;
+        listingRequested = false;
         consecutiveFailures++;
         lastError = error == null ? null : error.substring(0, Math.min(error.length(), MAX_ERROR_LENGTH));
+        if (consecutiveFailures >= FAILURES_BEFORE_PAUSE && status == TrackedWorkStatus.ACTIVE) {
+            status = TrackedWorkStatus.PAUSED;
+            pausedAt = now;
+            pausedReason = "Pausada depois de " + consecutiveFailures + " falhas seguidas ao verificar a fonte.";
+        }
     }
 
-    public void pause() {
+    public void pause(OffsetDateTime now) {
         status = TrackedWorkStatus.PAUSED;
+        pausedAt = now;
+        pausedReason = null;
     }
 
+    /** Retoma e já pede uma verificação; o contador de falhas recomeça. */
     public void resume() {
         status = TrackedWorkStatus.ACTIVE;
+        pausedAt = null;
+        pausedReason = null;
+        consecutiveFailures = 0;
+        listingRequested = true;
     }
 
     @PrePersist

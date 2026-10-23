@@ -1,5 +1,6 @@
 package com.buruna.sourcing.application;
 
+import com.buruna.sourcing.domain.SourceChapter;
 import com.buruna.sourcing.domain.SourceChapterState;
 import com.buruna.sourcing.domain.TrackedWork;
 import com.buruna.sourcing.persistence.SourceChapterRepository;
@@ -44,11 +45,14 @@ public class ListTrackedWorksUseCase {
     }
 
     private TrackedWorkResponse toResponse(TrackedWork tracked) {
+        List<SourceChapter> versions = sourceChapterRepository.findByTrackedWorkId(tracked.getId());
         Map<SourceChapterState, Long> counts = new EnumMap<>(SourceChapterState.class);
         for (SourceChapterState state : SourceChapterState.values()) {
-            counts.put(state, sourceChapterRepository.countByTrackedWorkIdAndState(tracked.getId(), state));
+            counts.put(state, 0L);
         }
+        versions.forEach(version -> counts.merge(version.getState(), 1L, Long::sum));
         WorkInfo work = findPublicWork.getPublicWorkInfo(tracked.getWorkId());
-        return TrackedWorkResponse.from(tracked, work.title(), work.slug(), counts);
+        return TrackedWorkResponse.from(tracked, work.title(), work.slug(), counts,
+                SourceAlerts.of(tracked, versions).size());
     }
 }

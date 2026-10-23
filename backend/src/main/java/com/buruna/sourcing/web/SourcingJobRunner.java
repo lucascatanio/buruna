@@ -16,7 +16,8 @@ import java.util.UUID;
 
 /**
  * Entrada do Cloud Run Job no modo fonte: o mesmo Job de ingest (ADR-48) recebe
- * {@code --sourcing.run=true}, faz uma rodada do executor e encerra. Sem esse argumento, quem
+ * {@code --sourcing.run=true} (rodada) ou {@code --sourcing.sync=true} (sync do Scheduler) e
+ * encerra. Sem esses argumentos, quem
  * trata a execução é o {@code IngestJobRunner} (capítulo enviado).
  */
 @Component
@@ -39,12 +40,17 @@ public class SourcingJobRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (!args.containsOption(SourcingJobArgs.RUN_OPTION)) {
+        boolean sync = args.containsOption(SourcingJobArgs.SYNC_OPTION);
+        if (!sync && !args.containsOption(SourcingJobArgs.RUN_OPTION)) {
             return;
         }
         String holder = executionId.isBlank() ? "job-" + UUID.randomUUID() : executionId;
-        log.info("Rodada do executor de fonte {}", holder);
-        runner.run(holder);
+        log.info("{} do executor de fonte {}", sync ? "Sync" : "Rodada", holder);
+        if (sync) {
+            runner.sync(holder);
+        } else {
+            runner.run(holder);
+        }
         System.exit(SpringApplication.exit(context, () -> 0));
     }
 }

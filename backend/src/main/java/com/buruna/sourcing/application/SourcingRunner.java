@@ -56,6 +56,7 @@ public class SourcingRunner {
     private final SourceLeaseRepository leaseRepository;
     private final ListSourceChaptersStep listChapters;
     private final SourceChapterImporter importer;
+    private final SourcingDigest digest;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
     private final Sleeper sleeper;
@@ -67,6 +68,7 @@ public class SourcingRunner {
                           SourceLeaseRepository leaseRepository,
                           ListSourceChaptersStep listChapters,
                           SourceChapterImporter importer,
+                          SourcingDigest digest,
                           PlatformTransactionManager transactionManager,
                           Clock clock,
                           Sleeper sleeper,
@@ -77,12 +79,25 @@ public class SourcingRunner {
         this.leaseRepository = leaseRepository;
         this.listChapters = listChapters;
         this.importer = importer;
+        this.digest = digest;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
         this.sleeper = sleeper;
         this.leaseWait = leaseWait;
         this.leasePoll = leasePoll;
+    }
+
+    /**
+     * Sync (Scheduler, ADR-49): pede a verificação de todas as obras ativas, faz a rodada e, no
+     * fim, manda o e-mail diário se for a hora e houver novidade.
+     */
+    public void sync(String holder) {
+        transactionTemplate.executeWithoutResult(tx -> trackedWorkRepository
+                .findBySourceAndStatus(SourceName.MANGADEX, TrackedWorkStatus.ACTIVE)
+                .forEach(TrackedWork::requestListing));
+        run(holder);
+        digest.sendIfDue();
     }
 
     /** {@code holder}: identifica esta execução no lease (id da execução do Job). */

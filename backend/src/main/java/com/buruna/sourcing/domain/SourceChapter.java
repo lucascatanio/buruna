@@ -19,6 +19,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -35,6 +36,8 @@ public class SourceChapter {
     private static final int MAX_TEXT = 255;
     private static final int MAX_GROUPS = 500;
     private static final int MAX_ERROR_LENGTH = 2000;
+    /** Tentativas automáticas de download; depois disso, só pelo botão do ADM. */
+    public static final int MAX_ATTEMPTS = 3;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -84,6 +87,22 @@ public class SourceChapter {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
+    @Column(nullable = false)
+    private int attempts;
+
+    @Column(name = "failed_at")
+    private OffsetDateTime failedAt;
+
+    @Column(name = "removed_at_source")
+    private OffsetDateTime removedAtSource;
+
+    @Column(name = "source_update_detected_at")
+    private OffsetDateTime sourceUpdateDetectedAt;
+
+    // capítulo do Burūna cujas páginas esta versão vai substituir, mantendo o id
+    @Column(name = "replaces_chapter_id")
+    private UUID replacesChapterId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
 
@@ -130,6 +149,90 @@ public class SourceChapter {
         return Optional.ofNullable(chapterId);
     }
 
+    public Optional<UUID> getReplacesChapterId() {
+        return Optional.ofNullable(replacesChapterId);
+    }
+
+    public boolean isRemovedAtSource() {
+        return removedAtSource != null;
+    }
+
+    public boolean hasAnyGroup(Set<String> groupIds) {
+        return groupIds.stream().anyMatch(this::hasGroup);
+    }
+
+    // ── sync ─────────────────────────────────────────────────────────────────
+
+    /**
+     * A versão apareceu de novo na listagem. Se já estava baixada e a fonte mudou as páginas
+     * depois do download, fica o aviso "páginas trocadas" até o ADM baixar de novo.
+     */
+    public void seenAtSource(OffsetDateTime sourceUpdatedAt, OffsetDateTime now) {
+        removedAtSource = null;
+        boolean newer = sourceUpdatedAt != null && externalUpdatedAt != null && sourceUpdatedAt.isAfter(externalUpdatedAt);
+        if (newer && state == SourceChapterState.READY && sourceUpdateDetectedAt == null) {
+            sourceUpdateDetectedAt = now;
+        }
+    }
+
+    /** Sumiu da listagem da fonte. O que já foi baixado continua no ar; o resto não entra. */
+    public void missingAtSource(OffsetDateTime now) {
+        if (removedAtSource == null) {
+            removedAtSource = now;
+        }
+        if (state == SourceChapterState.PENDING && chapterId == null && replacesChapterId == null) {
+            state = SourceChapterState.IGNORED;
+        }
+    }
+
+    public boolean canRetryAutomatically() {
+        return state == SourceChapterState.FAILED && attempts < MAX_ATTEMPTS && removedAtSource == null;
+    }
+
+    /** Volta para a fila. {@code resetAttempts}: pedido do ADM, que recomeça a contagem. */
+    public void retry(boolean resetAttempts) {
+        if (state != SourceChapterState.FAILED) {
+            return;
+        }
+        if (resetAttempts) {
+            attempts = 0;
+        }
+        state = SourceChapterState.PENDING;
+    }
+
+    /**
+     * Esta versão vai substituir as páginas do capítulo {@code target}: trocar de versão (outro
+     * grupo) ou baixar de novo (páginas trocadas na fonte). O capítulo mantém o id e o progresso.
+     */
+    public void requestReplacement(UUID target) {
+        if (target == null) {
+            throw new InvalidTrackedWorkException("Capítulo a substituir obrigatório");
+        }
+        replacesChapterId = target;
+        state = SourceChapterState.PENDING;
+        attempts = 0;
+        lastError = null;
+    }
+
+    /** As páginas desta versão estão no capítulo {@code chapterId}. */
+    public void replacedInto(UUID chapterId, OffsetDateTime sourceUpdatedAt) {
+        this.chapterId = chapterId;
+        replacesChapterId = null;
+        sourceUpdateDetectedAt = null;
+        if (sourceUpdatedAt != null) {
+            externalUpdatedAt = sourceUpdatedAt;
+        }
+        markReady();
+    }
+
+    /** Sai do capítulo (outra versão passou a ocupá-lo, ou o grupo foi ignorado) e não entra mais. */
+    public void detachFromChapter() {
+        chapterId = null;
+        replacesChapterId = null;
+        sourceUpdateDetectedAt = null;
+        state = SourceChapterState.IGNORED;
+    }
+
     /** Escolhida para entrar. Só sai de IGNORED: o que já foi baixado ou falhou não muda aqui. */
     public void select() {
         if (state == SourceChapterState.IGNORED) {
@@ -154,11 +257,24 @@ public class SourceChapter {
         lastError = null;
     }
 
-    /** O capítulo registrado para ela é descartado por quem chama; a versão fica sem capítulo. */
-    public void fail(String reason) {
+    /**
+     * O download falhou. Ao baixar de novo as próprias páginas, a versão continua no capítulo,
+     * com as páginas antigas, e só registra o erro. Nos outros casos, o capítulo registrado para
+     * ela é descartado por quem chama e a versão fica sem capítulo; numa troca de versão, o
+     * capítulo continua com a versão anterior.
+     */
+    public void fail(String reason, OffsetDateTime now) {
+        attempts++;
+        failedAt = now;
+        lastError = truncate(reason, MAX_ERROR_LENGTH);
+        boolean redownload = replacesChapterId != null && replacesChapterId.equals(chapterId);
+        replacesChapterId = null;
+        if (redownload) {
+            state = SourceChapterState.READY;
+            return;
+        }
         state = SourceChapterState.FAILED;
         chapterId = null;
-        lastError = truncate(reason, MAX_ERROR_LENGTH);
     }
 
     private static String join(List<String> values, String separator) {

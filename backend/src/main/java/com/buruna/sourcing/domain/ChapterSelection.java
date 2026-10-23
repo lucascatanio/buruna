@@ -29,19 +29,27 @@ public final class ChapterSelection {
     private ChapterSelection() {
     }
 
-    /** Marca cada versão como escolhida ou ignorada, idioma por idioma. */
-    public static void apply(Collection<SourceChapter> versions, Function<String, Optional<String>> preferredGroup) {
+    /**
+     * Marca cada versão como escolhida ou ignorada, idioma por idioma. Versão removida na fonte
+     * ou de grupo ignorado nunca é escolhida.
+     */
+    public static void apply(Collection<SourceChapter> versions, Function<String, Optional<String>> preferredGroup,
+                             Set<String> ignoredGroups) {
         Map<String, List<SourceChapter>> slots = new LinkedHashMap<>();
         for (SourceChapter version : versions) {
-            String slot = version.getLanguage() + "|" + version.getNumber().orElseGet(() -> unnumberedSlot(version));
-            slots.computeIfAbsent(slot, key -> new ArrayList<>()).add(version);
+            slots.computeIfAbsent(slotOf(version), key -> new ArrayList<>()).add(version);
         }
-        for (List<SourceChapter> candidates : slots.values()) {
-            if (candidates.stream().anyMatch(SourceChapter::isTaken)) {
+        for (List<SourceChapter> slot : slots.values()) {
+            if (slot.stream().anyMatch(SourceChapter::isTaken)) {
                 continue;
             }
-            SourceChapter chosen = choose(candidates, preferredGroup.apply(candidates.get(0).getLanguage()));
-            candidates.forEach(candidate -> {
+            List<SourceChapter> eligible = slot.stream()
+                    .filter(version -> !version.isRemovedAtSource() && !version.hasAnyGroup(ignoredGroups))
+                    .toList();
+            SourceChapter chosen = eligible.isEmpty()
+                    ? null
+                    : choose(eligible, preferredGroup.apply(slot.get(0).getLanguage()));
+            slot.forEach(candidate -> {
                 if (candidate == chosen) {
                     candidate.select();
                 } else {
@@ -49,6 +57,11 @@ public final class ChapterSelection {
                 }
             });
         }
+    }
+
+    /** Onde a versão concorre: idioma e número, ou, sem número, volume e título. */
+    public static String slotOf(SourceChapter version) {
+        return version.getLanguage() + "|" + version.getNumber().orElseGet(() -> unnumberedSlot(version));
     }
 
     // sem número, o que identifica o capítulo é o volume e o título: o mesmo oneshot traduzido

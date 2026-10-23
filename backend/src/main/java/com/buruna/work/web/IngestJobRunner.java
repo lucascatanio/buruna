@@ -41,7 +41,8 @@ public class IngestJobRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         // execução do modo fonte: quem trata é o SourcingJobRunner
-        if (!args.containsOption(IngestJobArgs.CHAPTER_OPTION) && args.containsOption(SourcingJobArgs.RUN_OPTION)) {
+        if (!args.containsOption(IngestJobArgs.CHAPTER_OPTION)
+                && (args.containsOption(SourcingJobArgs.RUN_OPTION) || args.containsOption(SourcingJobArgs.SYNC_OPTION))) {
             return;
         }
         List<String> values = args.getOptionValues(IngestJobArgs.CHAPTER_OPTION);

@@ -79,6 +79,11 @@ public class EmailService {
                 """.formatted(username, resetLink));
     }
 
+    /** Resumo diário do sync do MangaDex (ADR-49); só sai quando há novidade. */
+    public void sendSourcingDigest(List<String> adminEmails, String subject, String body) {
+        emailSender.sendToEach(adminEmails, subject, body);
+    }
+
     public void sendWorkSubmissionNotification(List<String> adminEmails, String submitterUsername, String workTitle) {
         emailSender.sendToEach(adminEmails,
                 "[Burūna] New manga submission pending approval",

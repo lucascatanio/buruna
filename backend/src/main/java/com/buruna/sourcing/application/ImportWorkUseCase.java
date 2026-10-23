@@ -88,7 +88,7 @@ public class ImportWorkUseCase {
             TrackedWork tracked = trackedWorkRepository.save(TrackedWork.track(
                     work.id(), SourceName.MANGADEX, details.externalId(), languages, actorId));
             trigger.requestRun();
-            return TrackedWorkResponse.from(tracked, work.title(), work.slug(), new EnumMap<>(SourceChapterState.class));
+            return TrackedWorkResponse.from(tracked, work.title(), work.slug(), new EnumMap<>(SourceChapterState.class), 0);
         });
     }
 

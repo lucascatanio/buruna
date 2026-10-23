@@ -15,6 +15,7 @@ import com.buruna.work.application.ImportedPage;
 import com.buruna.work.application.PublishImportedChapterUseCase;
 import com.buruna.work.application.RegisterChapterCommand;
 import com.buruna.work.application.RegisterChapterUseCase;
+import com.buruna.work.application.ReplaceImportedChapterPagesUseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,9 +26,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 /**
@@ -55,7 +60,9 @@ class SourceChapterImporter {
     private final SourceChapterRepository sourceChapterRepository;
     private final RegisterChapterUseCase registerChapter;
     private final PublishImportedChapterUseCase publishChapter;
+    private final ReplaceImportedChapterPagesUseCase replacePages;
     private final TransactionTemplate transactionTemplate;
+    private final Clock clock;
     private final long maxPageBytes;
 
     SourceChapterImporter(ExternalSource source,
@@ -63,42 +70,52 @@ class SourceChapterImporter {
                           SourceChapterRepository sourceChapterRepository,
                           RegisterChapterUseCase registerChapter,
                           PublishImportedChapterUseCase publishChapter,
+                          ReplaceImportedChapterPagesUseCase replacePages,
                           PlatformTransactionManager transactionManager,
+                          Clock clock,
                           @Value("${app.ingest.max-page-mb}") long maxPageMb) {
         this.source = source;
         this.storageClient = storageClient;
         this.sourceChapterRepository = sourceChapterRepository;
         this.registerChapter = registerChapter;
         this.publishChapter = publishChapter;
+        this.replacePages = replacePages;
+        this.clock = clock;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.maxPageBytes = maxPageMb * MB;
     }
 
     void run(TrackedWork tracked, SourceChapter version) {
+        if (version.getReplacesChapterId().isPresent()) {
+            replace(version, version.getReplacesChapterId().get());
+            return;
+        }
         UUID chapterId;
         try {
             chapterId = version.getChapterId().orElseGet(() -> register(tracked, version));
         } catch (DomainException e) {
             // número já ocupado por um capítulo enviado à mão, ou número/rótulo inválido
             log.info("Versão {} não registrada: {}", version.getExternalId(), e.getMessage());
-            save(version, v -> v.fail(e.getMessage()));
+            save(version, v -> v.fail(e.getMessage(), now()));
             return;
         } catch (RuntimeException e) {
             // sem isto a versão ficaria PENDING e travaria todas as rodadas no mesmo ponto
             log.error("Falha inesperada ao registrar a versão {}", version.getExternalId(), e);
-            save(version, v -> v.fail("Falha ao registrar o capítulo: " + e.getMessage()));
+            save(version, v -> v.fail("Falha ao registrar o capítulo: " + e.getMessage(), now()));
             return;
         }
 
         List<ImportedPage> pages = new ArrayList<>();
         try {
-            download(version, chapterId, pages);
+            download(version, pages,
+                    (position, ext) -> PublishImportedChapterUseCase.pageObjectName(chapterId, position, ext),
+                    (position, ext) -> PublishImportedChapterUseCase.dataSaverObjectName(chapterId, position, ext));
         } catch (RuntimeException e) {
             log.warn("Falha ao baixar a versão {} (capítulo {})", version.getExternalId(), chapterId, e);
             deleteQuietly(pages);
             publishChapter.discard(chapterId);
-            save(version, v -> v.fail("Falha ao baixar as páginas: " + e.getMessage()));
+            save(version, v -> v.fail("Falha ao baixar as páginas: " + e.getMessage(), now()));
             return;
         }
 
@@ -108,18 +125,51 @@ class SourceChapterImporter {
         } else {
             // o ADM apagou o capítulo durante o download
             deleteQuietly(pages);
-            save(version, v -> v.fail("O capítulo foi apagado durante o download."));
+            save(version, v -> v.fail("O capítulo foi apagado durante o download.", now()));
         }
+    }
+
+    /**
+     * Troca as páginas do capítulo {@code target} pelas desta versão, sem mudar o id do capítulo
+     * (ADR-49). As novas vão para um subprefixo da revisão, para quem está lendo não ver uma
+     * mistura das duas; as antigas são apagadas depois. A versão que ocupava o capítulo sai dele.
+     */
+    private void replace(SourceChapter version, UUID target) {
+        String revision = String.valueOf(clock.millis());
+        List<ImportedPage> pages = new ArrayList<>();
+        try {
+            download(version, pages,
+                    (position, ext) -> ReplaceImportedChapterPagesUseCase.pageObjectName(target, revision, position, ext),
+                    (position, ext) -> ReplaceImportedChapterPagesUseCase.dataSaverObjectName(target, revision, position, ext));
+        } catch (RuntimeException e) {
+            log.warn("Falha ao baixar a versão {} para o capítulo {}", version.getExternalId(), target, e);
+            deleteQuietly(pages);
+            save(version, v -> v.fail("Falha ao baixar as páginas: " + e.getMessage(), now()));
+            return;
+        }
+        Optional<List<String>> previous = replacePages.handle(target, pages, truncatedGroups(version), titleFor(version));
+        if (previous.isEmpty()) {
+            deleteQuietly(pages);
+            save(version, v -> v.fail("O capítulo não está mais publicado.", now()));
+            return;
+        }
+        transactionTemplate.executeWithoutResult(tx -> {
+            for (SourceChapter holder : sourceChapterRepository.findByChapterId(target)) {
+                if (!holder.getId().equals(version.getId())) {
+                    holder.detachFromChapter();
+                }
+            }
+            sourceChapterRepository.findById(version.getId()).ifPresent(fresh -> fresh.replacedInto(target, now()));
+        });
+        previous.get().forEach(this::deleteQuietly);
+        log.info("Versão {} substituiu as páginas do capítulo {} ({} páginas)", version.getExternalId(), target, pages.size());
     }
 
     private UUID register(TrackedWork tracked, SourceChapter version) {
         BigDecimal number = version.getNumber().map(SourceChapterImporter::parseNumber).orElse(null);
         String label = number != null ? null : labelOf(version);
-        // oneshot usa o título como rótulo; repetir como título mostraria "Especial · Especial"
-        String title = label != null && label.equals(version.getTitle()) ? null : version.getTitle();
-        String groups = version.getGroupNames() == null || version.getGroupNames().length() <= MAX_GROUP_LENGTH
-                ? version.getGroupNames()
-                : version.getGroupNames().substring(0, MAX_GROUP_LENGTH);
+        String title = titleFor(version);
+        String groups = truncatedGroups(version);
         // transação própria: no profile local isto roda dentro do afterCommit de quem importou,
         // e o REQUIRED do use case entraria na transação que acabou de terminar
         UUID chapterId = transactionTemplate.execute(tx -> registerChapter.handle(RegisterChapterCommand.importedPages(
@@ -129,16 +179,34 @@ class SourceChapterImporter {
         return chapterId;
     }
 
-    private void download(SourceChapter version, UUID chapterId, List<ImportedPage> pages) {
+    // oneshot usa o título como rótulo; repetir como título mostraria "Especial · Especial"
+    private static String titleFor(SourceChapter version) {
+        boolean numbered = version.getNumber().map(SourceChapterImporter::parseNumber).isPresent();
+        return !numbered && labelOf(version).equals(version.getTitle()) ? null : version.getTitle();
+    }
+
+    private static String truncatedGroups(SourceChapter version) {
+        String groups = version.getGroupNames();
+        return groups == null || groups.length() <= MAX_GROUP_LENGTH ? groups : groups.substring(0, MAX_GROUP_LENGTH);
+    }
+
+    private OffsetDateTime now() {
+        return OffsetDateTime.now(clock);
+    }
+
+    private void download(SourceChapter version, List<ImportedPage> pages,
+                          BiFunction<Integer, String, String> pageName,
+                          BiFunction<Integer, String, String> dataSaverName) {
         List<SourcePage> sourcePages = source.fetchPages(version.getExternalId());
         for (int i = 0; i < sourcePages.size(); i++) {
             int position = i + 1;
             SourcePage page = sourcePages.get(i);
             InspectedImage original = ImageInspector.inspect(source.download(page.url(), maxPageBytes), page.url());
-            String objectName = PublishImportedChapterUseCase.pageObjectName(chapterId, position, original.extension());
+            String objectName = pageName.apply(position, original.extension());
             upload(objectName, original);
-            String dataSaverName = page.dataSaverUrl() == null ? null : dataSaver(chapterId, position, page.dataSaverUrl());
-            pages.add(new ImportedPage(position, objectName, dataSaverName,
+            String dataSaverObject = page.dataSaverUrl() == null ? null
+                    : dataSaver(position, page.dataSaverUrl(), dataSaverName);
+            pages.add(new ImportedPage(position, objectName, dataSaverObject,
                     original.width(), original.height(), original.content().length));
         }
         if (pages.isEmpty()) {
@@ -147,14 +215,14 @@ class SourceChapterImporter {
     }
 
     // a versão leve é um extra: se falhar, a página fica só com a original
-    private String dataSaver(UUID chapterId, int position, String url) {
+    private String dataSaver(int position, String url, BiFunction<Integer, String, String> dataSaverName) {
         try {
             InspectedImage image = ImageInspector.inspect(source.download(url, maxPageBytes), url);
-            String objectName = PublishImportedChapterUseCase.dataSaverObjectName(chapterId, position, image.extension());
+            String objectName = dataSaverName.apply(position, image.extension());
             upload(objectName, image);
             return objectName;
         } catch (ExternalSourceException | InvalidArchiveException e) {
-            log.info("Página {} do capítulo {} sem versão leve: {}", position, chapterId, e.getMessage());
+            log.info("Página {} sem versão leve: {}", position, e.getMessage());
             return null;
         }
     }
