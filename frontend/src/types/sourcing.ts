@@ -19,6 +19,14 @@ export interface SourceGroupSummary {
     chapterCount: number;
 }
 
+/** O que o MangaDex tem num idioma: disponíveis, já publicados (inclui retirados) e grupos. */
+export interface LanguageAvailability {
+    language: string;
+    availableChapters: number;
+    publishedChapters: number;
+    groups: SourceGroupSummary[];
+}
+
 export interface LanguageChoice {
     language: string;
     preferredGroupId: string | null;

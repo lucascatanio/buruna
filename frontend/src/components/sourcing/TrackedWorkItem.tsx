@@ -16,6 +16,7 @@ import {
 import type {SourceAlert, SourceAlertType, TrackedGroup, TrackedWork} from "@/types/sourcing";
 import {Button} from "@/components/ui/button";
 import {languageName} from "@/lib/chapterLabel";
+import {AddLanguagePanel} from "./AddLanguagePanel";
 import {apiErrorMessage} from "@/lib/apiError";
 
 const ALERT_LABELS: Record<SourceAlertType, string> = {
@@ -52,7 +53,7 @@ interface TrackedWorkItemProps {
 
 /** Uma obra acompanhada: andamento, ações (verificar, pausar, retomar), avisos e grupos. */
 export function TrackedWorkItem({tracked: t, onChanged}: TrackedWorkItemProps) {
-    const [panel, setPanel] = useState<"alerts" | "groups" | null>(null);
+    const [panel, setPanel] = useState<"alerts" | "groups" | "languages" | null>(null);
     const [alerts, setAlerts] = useState<SourceAlert[] | null>(null);
     const [groups, setGroups] = useState<TrackedGroup[] | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
@@ -84,12 +85,15 @@ export function TrackedWorkItem({tracked: t, onChanged}: TrackedWorkItemProps) {
         setGroups(await listTrackedGroups(t.id));
     }
 
-    async function togglePanel(next: "alerts" | "groups") {
+    async function togglePanel(next: "alerts" | "groups" | "languages") {
         if (panel === next) {
             setPanel(null);
             return;
         }
         setPanel(next);
+        if (next === "languages") {
+            return;
+        }
         try {
             await (next === "alerts" ? loadAlerts() : loadGroups());
         } catch (e) {
@@ -165,6 +169,10 @@ export function TrackedWorkItem({tracked: t, onChanged}: TrackedWorkItemProps) {
                         onClick={() => togglePanel("groups")}>
                     Grupos
                 </Button>
+                <Button size="sm" variant={panel === "languages" ? "secondary" : "ghost"} aria-expanded={panel === "languages"}
+                        onClick={() => togglePanel("languages")}>
+                    Idiomas
+                </Button>
             </div>
 
             {panel === "alerts" && (
@@ -235,6 +243,12 @@ export function TrackedWorkItem({tracked: t, onChanged}: TrackedWorkItemProps) {
                     <p className="border-t p-3 text-xs text-muted-foreground">
                         Use "Ignorar" quando um grupo pedir para tirar as traduções dele.
                     </p>
+                </div>
+            )}
+
+            {panel === "languages" && (
+                <div className="rounded-md border">
+                    <AddLanguagePanel trackedId={t.id} externalId={t.externalId} onAdded={onChanged}/>
                 </div>
             )}
         </li>

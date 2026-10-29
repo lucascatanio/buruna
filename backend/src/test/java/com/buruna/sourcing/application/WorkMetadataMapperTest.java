@@ -20,7 +20,7 @@ class WorkMetadataMapperTest {
                                      List<SourceTag> tags, Map<String, String> descriptions) {
         return new SourceWorkDetails("md-1", "Título", List.of("Alt"), descriptions, originalLanguage,
                 SourceWorkStatus.COMPLETED, 2020, rating, tags, longStrip, null,
-                "https://mangadex.org/title/md-1", "seinen");
+                "https://mangadex.org/title/md-1", "seinen", List.of("pt-BR"));
     }
 
     @Test

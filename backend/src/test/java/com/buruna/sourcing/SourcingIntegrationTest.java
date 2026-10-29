@@ -184,7 +184,7 @@ class SourcingIntegrationTest {
                 Map.of("en", "Synopsis", "pt-BR", "Sinopse"), "ko", SourceWorkStatus.ONGOING, 2021,
                 SourceContentRating.EROTICA,
                 List.of(new SourceTag("Action", SourceTagGroup.GENRE), new SourceTag("Long Strip", SourceTagGroup.FORMAT)),
-                true, null, "https://mangadex.org/title/" + externalId, "seinen");
+                true, null, "https://mangadex.org/title/" + externalId, "seinen", List.of("pt-BR", "en"));
     }
 
     static SourceChapterInfo version(String id, String number, String groupId, String groupName, OffsetDateTime at) {
@@ -342,11 +342,16 @@ class SourcingIntegrationTest {
     }
 
     @Test
-    void shouldListGroupsByChapterCount_whenAdminPicksALanguage() throws Exception {
-        mockMvc.perform(get("/admin/sourcing/works/" + EXTERNAL_ID + "/groups").param("language", "pt-BR")
+    void shouldShowAvailabilityAndGroups_whenAdminPicksALanguage() throws Exception {
+        when(source.countPublishedChapters(EXTERNAL_ID, "pt-BR")).thenReturn(119);
+
+        mockMvc.perform(get("/admin/sourcing/works/" + EXTERNAL_ID + "/availability").param("language", "pt-br")
                         .with(auth(admin)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value("gB"))
-                .andExpect(jsonPath("$[0].chapterCount").value(3));
+                .andExpect(jsonPath("$.language").value("pt-BR"))
+                .andExpect(jsonPath("$.availableChapters").value(6))
+                .andExpect(jsonPath("$.publishedChapters").value(119))
+                .andExpect(jsonPath("$.groups[0].id").value("gB"))
+                .andExpect(jsonPath("$.groups[0].chapterCount").value(3));
     }
 }
