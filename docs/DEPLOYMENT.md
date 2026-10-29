@@ -355,11 +355,16 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
     --memory 4Gi --cpu 1 --task-timeout 86400 --max-retries 1 \
     --network default --subnet default --network-tags buruna-backend --vpc-egress private-ranges-only \
     --set-env-vars SPRING_PROFILES_ACTIVE=ingest,<mesmas variáveis do backend> \
-    --set-secrets <mesmos segredos do backend>
+    --set-secrets <mesmos segredos do backend>,/secrets/gcs-sa-key.json=buruna-gcs-sa-key:latest
   # o backend dispara o Job passando argumentos (override): precisa desta role no Job
   gcloud run jobs add-iam-policy-binding buruna-ingest --region us-east1 \
     --member="serviceAccount:<SA_BACKEND>" --role="roles/run.jobsExecutorWithOverrides"
   ```
+
+  O Job também precisa do **arquivo** da chave do GCS, montado do segredo `buruna-gcs-sa-key` em
+  `/secrets/gcs-sa-key.json` (o `GCS_CREDENTIALS_PATH`), como no backend: sem ele o
+  `GcsStorageClient` não sobe ("GCS credentials must be ServiceAccountCredentials") e toda
+  execução falha. Copiar só as variáveis e os segredos em variável não traz esse volume.
 
   No backend (e no Job), `APP_INGEST_JOB_NAME=projects/<projeto>/locations/us-east1/jobs/buruna-ingest`
   é **obrigatório** fora do profile `local` (`IngestJobConfig` falha no startup sem ele).
