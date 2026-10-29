@@ -32,7 +32,7 @@ Pré-requisitos, comandos de setup local e variáveis de ambiente:
 Resumo — detalhes completos e exemplos em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md):
 
 - **Clean Architecture por bounded context**: cada contexto (`identity`, `work`,
-  `reading`, `engagement`, `admin`) segue `domain/ → application/ → persistence/ → web/`.
+  `reading`, `engagement`, `sourcing`, `admin`) segue `domain/ → application/ → persistence/ → web/`.
   Não crie `service/` nem `repository/` como nome de pacote.
 - **Cross-contexto só via `application` pública do outro contexto.** Nunca importe
   `domain`/`persistence` de outro contexto. Referências cross-contexto são por **UUID**
@@ -47,6 +47,11 @@ Resumo — detalhes completos e exemplos em [docs/ARCHITECTURE.md](docs/ARCHITEC
   `application` via `actorId`, nunca no domínio de outro contexto.
 - **Proibido** `@Query(nativeQuery = true)` cross-contexto e `JOIN` entre tabelas de
   contextos diferentes — passe por um use case público ([ADR-39](docs/adr/ADR-39-cross-context-read-via-use-case.md)).
+- **Unicidade em código novo fica na aplicação**, com lock pessimista e consulta, sem
+  `UNIQUE` no banco ([ADR-53](docs/adr/ADR-53-regra-de-negocio-na-aplicacao-sem-unique.md)).
+  Os `UNIQUE` antigos (slug, e-mail, progresso) ficam como estão.
+- **Trabalho longo não roda na requisição:** vai para o Cloud Run Job de ingest
+  ([ADR-48](docs/adr/ADR-48-ingest-em-cloud-run-job.md)), disparado depois do commit.
 
 **Isso é garantido por teste, não por revisão manual:** `ArchitectureTest`
 (`backend/src/test/java/com/buruna/architecture/ArchitectureTest.java`), com ArchUnit,

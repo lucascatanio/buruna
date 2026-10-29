@@ -14,13 +14,21 @@ User ──────────────────< Work (owner_id)
                          │         file_hash (MD5 via metadados GCS)
                          │
                          ├──< Chapter (work_id, sem FK de agregado: ADR-44)
-                         │     ├── language, number?, label?, kind, status
-                         │     └──< ChapterPage (chapter_pages: posição, objectName, largura, altura)
+                         │     ├── language, number?, label?, kind (PAGES | FILE), status
+                         │     ├── file_* (só no livro: PDF ou EPUB inteiro)
+                         │     └──< ChapterPage (chapter_pages: posição, objectName, versão leve?, largura, altura)
+                         │
+                         ├──< TrackedWork (sourcing: obra acompanhada no MangaDex)
+                         │     ├──< TrackedLanguage (idioma + grupo preferido)
+                         │     ├──< IgnoredGroup
+                         │     └──< SourceChapter (uma versão por grupo; chapter_id → Chapter)
                          │
                          └──>──< Tag (via WorkTag)
                                   └──> TagCategory
 
 Tag >──────────────────── TagCategory
+
+SourceLease (uma linha por fonte: executor único, último e-mail diário)
 
 User ──< ReadingProgress >────── Volume | Chapter
 User ──< ReadingHistory  >────── Volume | Chapter
@@ -54,6 +62,12 @@ User ──< PasswordResetToken
 | chapter_pages         | PK(chapter_id, page_index)                     | V28 — páginas de um capítulo de imagens |
 | reading_progress      | UNIQUE(user_id, chapter_id), CHECK(volume_id XOR chapter_id) | V30 — progresso por capítulo, convivendo com o de volume |
 | reading_history       | INDEX(chapter_id), CHECK(volume_id XOR chapter_id) | V30 |
+| reading_progress      | position, percent CHECK(0..1)                  | V31 — posição (CFI) e andamento do EPUB |
+| tracked_works         | INDEX(source, external_id), INDEX(work_id)     | V32 — sem UNIQUE: uma obra por id externo, checado sob lock no lease (ADR-53) |
+| source_chapters       | INDEX(tracked_work_id, external_id), INDEX(state, tracked_work_id) | V32 — sem UNIQUE: uma versão por id externo, checada sob lock na obra acompanhada |
+| tracked_work_languages | PK(tracked_work_id, language)                 | V32 |
+| tracked_work_ignored_groups | PK(tracked_work_id, group_id)            | V33 |
+| source_leases         | PK(source)                                     | V32 — linha do MANGADEX semeada na migration |
 
 Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-indices-seletivos-banco.md).
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)

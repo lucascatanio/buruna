@@ -17,18 +17,21 @@ comunidade.
 ## Stacks
 
 Backend: Java 21, Spring Boot 3.5.16, PostgreSQL 16, Flyway, JWT + Refresh Token,
-BCrypt, 2FA TOTP, Google Cloud Storage, Testcontainers e ArchUnit.
+BCrypt, 2FA TOTP, Google Cloud Storage, PDFBox (PDF → imagens), bsdtar/libarchive (CBR),
+Testcontainers e ArchUnit.
 
-Frontend: React 19, TypeScript 5.9, Vite, shadcn/ui, Tailwind CSS, Axios e Zustand.
+Frontend: React 19, TypeScript 5.9, Vite, shadcn/ui, Tailwind CSS, Axios, Zustand,
+pdf.js (PDF) e foliate-js (EPUB).
 
-Infra/Deploy: Docker, GitHub Actions, Google Cloud Run, Google Cloud Storage,
-Secret Manager e Cloud Scheduler.
+Infra/Deploy: Docker, GitHub Actions, Google Cloud Run (serviço + Cloud Run Job
+`buruna-ingest`), Google Cloud Storage, Secret Manager e Cloud Scheduler.
 
 ## Arquitetura
 
 Clean Architecture por bounded context: `identity` (auth+user fundidos), `work`
-(catálogo+coleção+volumes+tags), `reading` (leitor+progresso+histórico), `engagement`
-(ratings+reading-list), `admin` (casca). Cada contexto segue
+(catálogo+coleção+capítulos+volumes legados+tags), `reading` (leitor+progresso+histórico),
+`engagement` (ratings+reading-list), `sourcing` (import e sync do MangaDex), `admin`
+(casca). Cada contexto segue
 `domain/ → application/ → persistence/ → web/`. NÃO existe mais o padrão antigo
 `controller/service/repository`. Não crie `service/`, não use `repository/` como nome
 de pacote (é `persistence/`), não faça entidade anêmica.
@@ -81,6 +84,13 @@ IDs UUID; created_at/updated_at; soft delete deleted_at onde aplicável. Pagina�
 Pageable (offset/page). Enums em inglês. Migrations V{n}__{desc}.sql. Erro
 padronizado {status,error,message,path,timestamp} (ErrorResponse). Arquivos no GCS com
 nome ofuscado (UUID). Modelo de dados completo: [docs/DATABASE.md](docs/DATABASE.md).
+
+Unicidade em código novo (capítulo, `sourcing`) fica na aplicação, com lock pessimista e
+consulta, sem `UNIQUE` no banco (ADR-53); os `UNIQUE` antigos ficam. Trabalho longo
+(extrair páginas, baixar do MangaDex) vai para o Cloud Run Job de ingest, disparado depois
+do commit (ADR-48); no profile `local` roda na própria requisição. Use case chamado dentro
+do `afterCommit` precisa de transação própria (`REQUIRES_NEW`): um `REQUIRED` ali entra na
+transação que acabou de terminar.
 
 ## Comandos de verificação
 

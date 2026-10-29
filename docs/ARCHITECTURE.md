@@ -16,6 +16,12 @@ suas próprias camadas `domain/ → application/ → persistence/ → web/`, com
 dependência guardada por teste automatizado (`ArchitectureTest`, ArchUnit) — não apenas
 por convenção de code review.
 
+Trabalho longo fica fora das requisições, num **Cloud Run Job** (`buruna-ingest`, ADR-48): o
+mesmo jar do backend, no profile `ingest`, extrai as páginas dos capítulos enviados e baixa os
+capítulos importados do MangaDex. O backend dispara o Job depois do commit; o Cloud Scheduler o
+dispara a cada 3 h para o sync das obras acompanhadas (ADR-49). No profile `local`, o mesmo
+trabalho roda na própria requisição.
+
 O frontend é uma SPA React sem Clean Architecture própria: apenas uma camada leve
 `api/` (chamadas HTTP tipadas) + `types/` (contratos TypeScript), ver §5.
 
@@ -24,8 +30,8 @@ O frontend é uma SPA React sem Clean Architecture própria: apenas uma camada l
 | Contexto | Pacote | Responsabilidade |
 |---|---|---|
 | **identity** | `com.buruna.identity` | Autenticação (JWT + refresh + 2FA), cadastro/aprovação, gestão de usuários (fusão de auth+user) |
-| **work** | `com.buruna.work` | Catálogo público, coleção privada, volumes, tags, submissão/promoção |
-| **reading** | `com.buruna.reading` | Leitor (signed URLs), progresso de leitura, histórico |
+| **work** | `com.buruna.work` | Catálogo público (com idiomas), coleção privada, capítulos (páginas, ou arquivo PDF/EPUB no livro), volumes legados, tags, submissão/promoção, processamento do upload |
+| **reading** | `com.buruna.reading` | Leitor (manifesto do capítulo com URLs assinadas, PDF de volume e livro), progresso por capítulo (página, ou CFI no EPUB), histórico |
 | **engagement** | `com.buruna.engagement` | Avaliações (ratings) e lista de leitura |
 | **sourcing** | `com.buruna.sourcing` | Importação do MangaDex: obras acompanhadas, versões de capítulo por grupo, lease de um executor por fonte (ADR-46, ADR-47) |
 | **admin** | `com.buruna.admin` | Casca administrativa — dashboard, jobs, revisão de submissões. Sem `domain` próprio; a `application` (`DashboardService`) só orquestra os use cases públicos dos outros contextos |
@@ -33,14 +39,16 @@ O frontend é uma SPA React sem Clean Architecture própria: apenas uma camada l
 Dois pacotes adicionais fora desse modelo, por não serem bounded contexts de domínio:
 
 - `shared/` — infraestrutura cross-context: `StorageClient` (GCS/local), `EmailSender`,
-  `Clock` injetável, `GlobalExceptionHandler`, config de segurança.
+  `Clock` injetável, `GlobalExceptionHandler`, config de segurança, e ainda:
+  `shared/media` (extração de páginas de CBZ/CBR/PDF, `ImageInspector`, validação de livro),
+  `shared/source` (porta `ExternalSource` e o adaptador do MangaDex), `shared/jobs` (disparo do
+  Cloud Run Job) e `shared/transaction` (`AfterCommit`).
 - `feedback/` — módulo utilitário isolado (`POST /feedback`), sem lógica de domínio
   suficiente para justificar camadas próprias.
 
 > DTO que um use case recebe ou devolve mora na `application/` do contexto; na `web/` só
-> fica o que apenas o controller usa (ADR-31). `identity`, `engagement` e `reading` ainda
-> importam DTOs da `web/` na `application/` — alinhamento pendente, ver
-> [`docs/BACKLOG.md`](BACKLOG.md).
+> fica o que apenas o controller usa (ADR-31). O `ArchitectureTest` cobra isso em todos os
+> contextos migrados.
 
 ## 3. Camadas e regra de dependência
 
@@ -105,8 +113,8 @@ falha o build (`./mvnw clean test`) se a fronteira for violada. Três regras:
    `admin` está entre os contextos migrados: sua `application` só consome `application`
    de outros contextos.
 2. **`domainAndApplication_shouldNotDependOnWebLayer`** — `domain/`/`application/` não
-   dependem da `web/` do próprio contexto (seta do ADR-31). Por ora vale para `work` e
-   `admin`; os demais entram quando forem alinhados.
+   dependem da `web/` do próprio contexto (seta do ADR-31). Vale para todos os contextos
+   migrados.
 3. **`persistenceLayer_shouldNotUseNativeQueries`** — detecta `@Query(nativeQuery=true)`
    nas camadas `persistence` de contextos migrados.
 
@@ -127,7 +135,7 @@ convenções:
 
 - `frontend/src/api/` — uma chamada Axios tipada por contexto (`identityApi.ts`,
   `workApi.ts`, `privateWorkApi.ts`, `chapterApi.ts`, `readingApi.ts`, `engagementApi.ts`, `adminApi.ts`,
-  `feedbackApi.ts`).
+  `sourcingApi.ts`, `feedbackApi.ts`).
 - `frontend/src/types/` — contratos TypeScript espelhando os DTOs do backend, um arquivo
   por contexto.
 
@@ -177,8 +185,9 @@ BROWSER                              BACKEND (reading)                    GCS
   │── POST /reader/{volumeId}/progress { currentPage } ──►│ upsert ReadingProgress
 ```
 
-As rotas antigas `/mangas...` continuam aceitas como alias por uma versão (para abas abertas com
-o front antigo) e serão removidas na seguinte — ver [ADR-45](adr/ADR-45-renomear-manga-para-work.md).
+A listagem traz os idiomas de cada obra e aceita `?language=` (`GET /works/languages` dá a lista
+para o filtro); volume legado conta como pt-BR ([ADR-50](adr/ADR-50-idioma-como-atributo-do-capitulo.md)).
+As rotas antigas `/mangas...` saíram depois da v2.0.0 ([ADR-45](adr/ADR-45-renomear-manga-para-work.md)).
 
 Controller `reading.web.ReaderController`, serviço `reading.application.ReadingService`.
 Se a signed URL expirar (403 do GCS), o frontend pede uma nova via o mesmo endpoint.
