@@ -356,6 +356,26 @@ class SourcingSyncIntegrationTest {
     }
 
     @Test
+    void shouldDownloadTheNewLanguage_whenAdminAddsItToATrackedWork() throws Exception {
+        listing.add(version("c1", "1", "A", MARCH, MARCH));
+        String trackedId = importWork(null);
+        listing.add(new SourceChapterInfo("c1-en", "en", "1", null, null,
+                List.of(new SourceGroup("E", "Grupo E")), 1, MARCH, MARCH));
+        when(source.fetchWork(EXTERNAL_ID)).thenReturn(SourcingIntegrationTest.details(EXTERNAL_ID));
+
+        mockMvc.perform(get("/admin/sourcing/tracked/" + trackedId + "/source-languages").with(auth(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("en"));
+        mockMvc.perform(post("/admin/sourcing/tracked/" + trackedId + "/languages").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"en\",\"preferredGroupId\":\"E\",\"preferredGroupName\":\"Grupo E\"}")
+                        .with(auth(admin)))
+                .andExpect(status().isAccepted());
+
+        assertThat(versionOf("c1-en").getState()).isEqualTo(SourceChapterState.READY);
+        assertThat(tracked().languageTags()).containsExactlyInAnyOrder("pt-BR", "en");
+    }
+
+    @Test
     void shouldListAgain_whenAdminAsksToCheckNow() throws Exception {
         listing.add(version("c1", "1", "A", MARCH, MARCH));
         String trackedId = importWork(null);

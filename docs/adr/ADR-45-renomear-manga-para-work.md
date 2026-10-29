@@ -46,5 +46,7 @@ legibilidade. A alternativa de duas versões sem erro nenhum (colunas duplicadas
 trigger, JSON com os dois nomes) dobraria o trabalho e o risco para evitar segundos de
 falha num projeto com dezenas de usuários.
 
-**Pendente:** remover os aliases `/mangas` dos controllers (`WorkController`,
-`PrivateWorkController`, `VolumeController`, `RatingController`) na versão seguinte.
+**Atualização (2026-10-29):** os aliases `/mangas` saíram dos controllers (`WorkController`,
+`PrivateWorkController`, `VolumeController`, `RatingController`) na versão seguinte à v2.0.0,
+que levou o rename para produção. No site, `/mangas/novo` e `/mangas/:id/editar` continuam
+redirecionando, para links salvos.

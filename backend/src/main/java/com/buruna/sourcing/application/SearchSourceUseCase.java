@@ -69,14 +69,19 @@ public class SearchSourceUseCase {
     public record CoverThumbnail(byte[] content, String contentType) {
     }
 
-    /** Grupos que traduziram a obra no idioma, do que tem mais capítulos para o que tem menos. */
-    public List<SourceGroupSummary> groups(String externalId, String language) {
+    /**
+     * Disponibilidade da obra no idioma: quanto dá para baixar, quanto já foi publicado e os
+     * grupos. Obra licenciada costuma ter quase tudo retirado (ex.: 3 de 119).
+     */
+    public LanguageAvailability availability(String externalId, String language) {
         String tag = TrackedLanguage.of(language, null, null).getLanguage();
         List<SourceChapterInfo> versions;
+        int published;
         try {
             versions = source.listChapters(externalId, Set.of(tag));
+            published = source.countPublishedChapters(externalId, tag);
         } catch (ExternalSourceException e) {
-            log.warn("Listagem de grupos na fonte falhou: {} {}", externalId, tag, e);
+            log.warn("Disponibilidade na fonte falhou: {} {}", externalId, tag, e);
             throw new SourceUnavailableException();
         }
         Map<String, SourceGroupSummary> groups = new LinkedHashMap<>();
@@ -86,8 +91,9 @@ public class SearchSourceUseCase {
                         (a, b) -> new SourceGroupSummary(a.id(), a.name(), a.chapterCount() + 1));
             }
         }
-        return groups.values().stream()
+        List<SourceGroupSummary> sorted = groups.values().stream()
                 .sorted(Comparator.comparingInt(SourceGroupSummary::chapterCount).reversed())
                 .toList();
+        return new LanguageAvailability(tag, versions.size(), Math.max(published, versions.size()), sorted);
     }
 }

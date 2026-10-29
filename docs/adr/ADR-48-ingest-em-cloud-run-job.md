@@ -90,7 +90,7 @@ e arquivos de capítulo que sobrarem de um delete com falha no storage não são
 **Atualização (2026-10-17), importação:** o mesmo Job tem um segundo modo, `--sourcing.run=true`
 (`SourcingJobRunner`). Uma rodada pega o lease do MangaDex, lista os capítulos das obras
 recém-importadas e baixa as versões pendentes até não sobrar nada (`SourcingRunner`). Se o lease
-estiver ocupado, espera até 15 min e desiste; quem o segura repete a busca no fim e pega o que
+estiver ocupado, espera até 2 min e desiste; quem o segura repete a busca no fim e pega o que
 chegou. Cada página é baixada nas duas qualidades da fonte (original e `data-saver`), com os
 bytes originais. Se a execução cair, a versão continua PENDING com o capítulo registrado, e a
 próxima rodada (`POST /admin/sourcing/run`, outro import ou o sync) retoma do mesmo capítulo.

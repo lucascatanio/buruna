@@ -104,4 +104,17 @@ class TrackedWorkTest {
         tracked.stopIgnoringGroup("g1");
         assertThat(tracked.isIgnored("g1")).isFalse();
     }
+
+    @Test
+    void shouldAddLanguageOrReplaceItsGroup_whenTrackingALanguage() {
+        TrackedWork tracked = tracked(List.of(TrackedLanguage.of("pt-BR", "g1", "Grupo 1")));
+        tracked.recordSuccess(OffsetDateTime.parse("2026-10-29T12:00:00Z"));
+
+        tracked.trackLanguage(TrackedLanguage.of("en", null, null));
+        tracked.trackLanguage(TrackedLanguage.of("pt-br", "g2", "Grupo 2"));
+
+        assertThat(tracked.languageTags()).containsExactlyInAnyOrder("pt-BR", "en");
+        assertThat(tracked.preferredGroupFor("pt-BR")).contains("g2");
+        assertThat(tracked.needsListing()).isTrue();
+    }
 }

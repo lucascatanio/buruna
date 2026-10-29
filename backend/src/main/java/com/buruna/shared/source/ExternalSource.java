@@ -25,6 +25,12 @@ public interface ExternalSource {
      */
     List<SourceChapterInfo> listChapters(String externalId, Set<String> languages);
 
+    /**
+     * Quantas versões de capítulo a fonte já publicou no idioma, incluindo as retiradas e as que
+     * só apontam para fora. Comparado com {@link #listChapters}, mostra quanto ainda está disponível.
+     */
+    int countPublishedChapters(String externalId, String language);
+
     /** Endereços das páginas de um capítulo, na ordem. Valem por poucos minutos. */
     List<SourcePage> fetchPages(String externalChapterId);
 

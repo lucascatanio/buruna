@@ -16,24 +16,30 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![License](https://img.shields.io/github/license/lucascatanio/buruna)
 
-Biblioteca pessoal de mangás com autenticação, upload e leitor web inline.
+Biblioteca digital de mangás, manhwas e livros: capítulos por idioma, leitor de imagens
+pensado para o celular em 4G, livros em PDF e EPUB, e obras importadas e acompanhadas do
+MangaDex.
 
 **[buruna.com.br](https://buruna.com.br)**
 
 ## Stack
 
 Backend em Java 21 + Spring Boot 3.5.16, Clean Architecture por bounded context
-(`identity`, `work`, `reading`, `engagement`, `admin`), PostgreSQL + Flyway,
+(`identity`, `work`, `reading`, `engagement`, `sourcing`, `admin`), PostgreSQL + Flyway,
 JWT + Refresh Token + 2FA (TOTP), arquivos no Google Cloud Storage via URLs
-assinadas. Frontend em React 19 + TypeScript, Vite, shadcn/ui, Tailwind CSS.
-Deploy em Cloud Run (GCP). Detalhes completos: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+assinadas, extração de páginas (PDFBox, bsdtar) num Cloud Run Job. Frontend em React 19 +
+TypeScript, Vite, shadcn/ui, Tailwind CSS, pdf.js e foliate-js. Deploy em Cloud Run (GCP). Detalhes completos: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Destaques técnicos
 
 * Monolito modular com Clean Architecture por bounded context.
 * Domínio rico com DDD pragmático.
 * Autenticação com JWT, refresh token e 2FA TOTP.
-* Upload e leitura de arquivos via Google Cloud Storage com URLs assinadas.
+* Capítulo como unidade de leitura: upload em CBZ, CBR ou PDF, convertido em páginas num
+  Cloud Run Job; leitor com página a página ou rolagem, versão leve e pré-carregamento.
+* Livros em PDF (lido por trechos) e EPUB (foliate-js, com o conteúdo isolado por CSP).
+* Import e sync do MangaDex: grupo preferido por idioma, avisos ao ADM e e-mail diário.
+* Arquivos no Google Cloud Storage, privados, acessados só por URLs assinadas.
 * Migrations versionadas com Flyway.
 * Testes automatizados com JUnit, Testcontainers e ArchUnit.
 * CI com GitHub Actions.

@@ -157,6 +157,7 @@ class MangaDexSourceTest {
                             "description":{"en":"Piratas.","pt-br":"Piratas em PT.","es-la":"","ja-ro":"Wan Pisu"},
                             "originalLanguage":"ja","status":"completed","year":1997,
                             "contentRating":"safe","publicationDemographic":"shounen",
+                            "availableTranslatedLanguages":["pt-br","en"],
                             "tags":[
                               {"attributes":{"name":{"en":"Action"},"group":"genre"}},
                               {"attributes":{"name":{"en":"Long Strip"},"group":"format"}},
@@ -175,6 +176,7 @@ class MangaDexSourceTest {
 
         // Assert
         assertThat(details.title()).isEqualTo("One Piece");
+        assertThat(details.availableLanguages()).containsExactly("pt-BR", "en");
         assertThat(details.alternativeTitles())
                 .containsExactly("ワンピース", "One Piece: O Pirata");
         assertThat(details.descriptions())
@@ -557,6 +559,22 @@ class MangaDexSourceTest {
                 {"data":{"id":"%s","attributes":{"title":{"en":"Obra"},"originalLanguage":"ja",
                 "status":"ongoing","contentRating":"safe"},"relationships":[]}}
                 """.formatted(id);
+    }
+
+    @Test
+    void shouldCountRemovedAndExternalChapters_whenCountingPublished() {
+        // Arrange
+        server.expect(queryContains("/manga/m-1/feed", "includeUnavailable=1"))
+                .andExpect(queryContains("/manga/m-1/feed", "includeExternalUrl=1"))
+                .andExpect(queryContains("/manga/m-1/feed", "translatedLanguage[]=pt-br"))
+                .andRespond(withSuccess(feed(119, ""), MediaType.APPLICATION_JSON));
+
+        // Act
+        int published = source.countPublishedChapters("m-1", "pt-BR");
+
+        // Assert
+        assertThat(published).isEqualTo(119);
+        server.verify();
     }
 
     private static String feed(int total, String chaptersJson) {

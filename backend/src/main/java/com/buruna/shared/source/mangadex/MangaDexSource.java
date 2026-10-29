@@ -216,6 +216,20 @@ public class MangaDexSource implements ExternalSource {
     }
 
     @Override
+    public synchronized int countPublishedChapters(String externalId, String language) {
+        List<String> params = new ArrayList<>(List.of(
+                "translatedLanguage[]", MangaDexLanguages.toMangaDex(language),
+                "limit", "1",
+                "includeUnavailable", "1",
+                "includeExternalUrl", "1",
+                "includeEmptyPages", "1"));
+        addContentRatings(params);
+        ChapterFeed feed = apiGet(uri(apiBaseUrl + "/manga/" + pathSegment(externalId) + "/feed", params),
+                ChapterFeed.class, false);
+        return feed.total() == null ? 0 : feed.total();
+    }
+
+    @Override
     public synchronized List<SourcePage> fetchPages(String externalChapterId) {
         URI uri = uri(apiBaseUrl + "/at-home/server/" + pathSegment(externalChapterId), List.of());
         AtHomeResponse response = apiGet(uri, AtHomeResponse.class, true);
@@ -460,7 +474,8 @@ public class MangaDexSource implements ExternalSource {
                 tags.stream().anyMatch(tag -> LONG_STRIP_TAG.equals(tag.name())),
                 coverFile == null ? null : uploadsBaseUrl + "/covers/" + manga.id() + "/" + coverFile,
                 TITLE_URL + manga.id(),
-                attributes.publicationDemographic());
+                attributes.publicationDemographic(),
+                languages(attributes.availableTranslatedLanguages()));
     }
 
     private Optional<SourceChapterInfo> toChapterInfo(Chapter chapter) {

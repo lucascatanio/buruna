@@ -7,6 +7,8 @@
 ## Pré-requisitos
 
 - Java 21, Docker (Docker Compose), Node 22+.
+- `bsdtar` (pacote `libarchive-tools` no Debian/Ubuntu, `libarchive` no Arch) só para enviar
+  capítulo em **CBR** localmente; CBZ e PDF não precisam. Na imagem Docker ele já vem.
 
 O backend exige **Java 21** (`<java.version>21</java.version>` no `pom.xml`), e não há
 toolchain configurado: o Maven usa o `java` que estiver no `PATH`. Se o seu for outro,
@@ -96,6 +98,10 @@ npm install && npm run dev
 (dentro de `frontend/`). O `vite.config.ts` já tem proxy `/api` → `http://localhost:8080`
 — nenhuma variável de ambiente extra é necessária para falar com o backend local.
 
+O `postinstall` copia o worker e os cmaps do pdf.js para `public/`. Num worktree em que o
+`npm install` não rodou, o leitor de PDF fica em branco com "Setting up fake worker": rode
+`npm install` (ou copie `node_modules/pdfjs-dist/build/pdf.worker.min.mjs` para `public/`).
+
 ## Rodar os testes
 
 - Backend: `./mvnw clean test` (dentro de `backend/`; sobe Testcontainers/Postgres —
@@ -112,3 +118,15 @@ Convenções de teste (pirâmide, AAA, nomenclatura): [TESTING.md](TESTING.md).
   em `local` (arquivos servidos via `/local-storage/**`, `permitAll` só em dev). O fluxo
   de upload em 2 fases (URL de upload → PUT → finalize) e a leitura do volume no leitor
   foram verificados localmente fora do Docker com o `base-url` acima.
+- **Sem Cloud Run Job no local.** O que em produção roda no Job `buruna-ingest` (ADR-48) roda
+  na própria requisição, depois do commit (`InlineChapterIngestTrigger`,
+  `InlineSourcingTrigger`): enviar um capítulo devolve a resposta já com as páginas extraídas,
+  e importar do MangaDex só responde depois de baixar os capítulos. Obra longa segura a
+  requisição por minutos; para testar, prefira um oneshot.
+- **O import fala com o MangaDex de verdade** no local (não há fonte simulada fora dos testes).
+  Respeite o limite deles: importe pouco, e não rode imports em laço. O report de imagens ao
+  MangaDex@Home pode falhar (o endpoint às vezes fica fora); isso só gera um aviso no log.
+- **Rodar o Job como em produção**, para depurar o modo `ingest`: suba o jar com
+  `-Dspring-boot.run.profiles=local,ingest` e o argumento do modo, por exemplo
+  `--sourcing.run=true` (rodada), `--sourcing.sync=true` (sync) ou
+  `--ingest.chapter-id=<id>` (capítulo enviado). O processo faz o trabalho e encerra.

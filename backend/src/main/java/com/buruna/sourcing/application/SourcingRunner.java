@@ -72,8 +72,10 @@ public class SourcingRunner {
                           PlatformTransactionManager transactionManager,
                           Clock clock,
                           Sleeper sleeper,
-                          @Value("${app.sourcing.lease-wait:PT15M}") Duration leaseWait,
-                          @Value("${app.sourcing.lease-poll:PT30S}") Duration leasePoll) {
+                          // curto: quem segura o lease repete a busca no fim e pega o que chegar;
+                          // esperar mais só deixa uma execução de 4 GiB parada
+                          @Value("${app.sourcing.lease-wait:PT2M}") Duration leaseWait,
+                          @Value("${app.sourcing.lease-poll:PT15S}") Duration leasePoll) {
         this.trackedWorkRepository = trackedWorkRepository;
         this.sourceChapterRepository = sourceChapterRepository;
         this.leaseRepository = leaseRepository;

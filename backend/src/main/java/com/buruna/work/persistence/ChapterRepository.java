@@ -15,6 +15,22 @@ import java.util.UUID;
 
 public interface ChapterRepository extends JpaRepository<Chapter, UUID> {
 
+    /** Par obra e idioma de cada capítulo publicado, para o selo de idiomas do catálogo. */
+    interface WorkLanguage {
+        UUID getWorkId();
+
+        String getLanguage();
+    }
+
+    @Query("SELECT DISTINCT c.workId AS workId, c.language AS language FROM Chapter c "
+            + "WHERE c.workId IN :workIds AND c.status = :status")
+    List<WorkLanguage> findLanguagesByWorkIds(@Param("workIds") Collection<UUID> workIds,
+                                              @Param("status") ChapterStatus status);
+
+    @Query("SELECT DISTINCT c.language FROM Chapter c, Work w WHERE w.id = c.workId AND w.isPublic = true "
+            + "AND c.status = :status")
+    List<String> findPublicLanguages(@Param("status") ChapterStatus status);
+
     boolean existsByWorkIdAndLanguageAndNumberAndStatusIn(UUID workId, String language, BigDecimal number,
                                                           Collection<ChapterStatus> statuses);
 

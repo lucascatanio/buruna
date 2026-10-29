@@ -152,6 +152,16 @@ public class TrackedWork {
         return ignoredGroups.stream().anyMatch(group -> group.getGroupId().equals(groupId));
     }
 
+    /**
+     * Passa a acompanhar mais um idioma, ou troca o grupo preferido de um que já acompanha, e
+     * pede uma verificação. O que já foi baixado não troca de versão sozinho (ADR-49).
+     */
+    public void trackLanguage(TrackedLanguage language) {
+        languages.removeIf(existing -> existing.getLanguage().equals(language.getLanguage()));
+        languages.add(language);
+        listingRequested = true;
+    }
+
     public void ignoreGroup(String groupId, String groupName) {
         ignoredGroups.add(new IgnoredGroup(groupId, groupName));
     }

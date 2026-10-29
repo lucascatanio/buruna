@@ -545,16 +545,15 @@ class WorkIntegrationTest {
         }
 
         @Test
-        void shouldServeLegacyRoute_whenOldFrontendStillCallsMangas() throws Exception {
+        void shouldReturnNotFound_whenCallingRemovedMangasRoute() throws Exception {
             // Arrange
             String id = createPublicWork("ITest Rota Antiga", collab);
 
             // Act
             ResultActions result = mockMvc.perform(get("/mangas/{id}", id).with(auth(reader)));
 
-            // Assert
-            result.andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(id));
+            // Assert: o alias de transição saiu na versão seguinte ao rename (ADR-45)
+            result.andExpect(status().isNotFound());
         }
 
         @Test

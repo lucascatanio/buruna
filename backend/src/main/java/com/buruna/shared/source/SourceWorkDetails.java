@@ -21,6 +21,7 @@ public record SourceWorkDetails(
         boolean longStrip,
         String coverUrl,
         String sourceUrl,
-        String demographic
+        String demographic,
+        List<String> availableLanguages
 ) {
 }
