@@ -1,11 +1,11 @@
 import {useEffect, useState, useCallback} from "react";
 import {Link, useNavigate} from "react-router-dom";
-import {deleteMyManga, getMyQuota, listMyMangas} from "@/api/privateMangaApi";
-import type {PrivateManga, QuotaInfo} from "@/types/manga";
+import {deleteMyWork, getMyQuota, listMyWorks} from "@/api/privateWorkApi";
+import type {PrivateWork, QuotaInfo} from "@/types/work";
 import {Button} from "@/components/ui/button";
 import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
-import {MangaCover} from "@/components/MangaCover";
+import {WorkCover} from "@/components/WorkCover";
 import {toast} from "sonner";
 import {Plus, HardDrive, ChevronRight, Trash2, Upload} from "lucide-react";
 
@@ -19,7 +19,7 @@ function formatBytes(bytes: number): string {
 
 export function MyCollectionPage() {
     const navigate = useNavigate();
-    const [mangas, setMangas] = useState<PrivateManga[]>([]);
+    const [works, setWorks] = useState<PrivateWork[]>([]);
     const [quota, setQuota] = useState<QuotaInfo | null>(null);
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -27,11 +27,11 @@ export function MyCollectionPage() {
     const load = useCallback(async () => {
         setLoading(true);
         try {
-            const [mangasRes, quotaRes] = await Promise.all([
-                listMyMangas(50),
+            const [worksRes, quotaRes] = await Promise.all([
+                listMyWorks(50),
                 getMyQuota(),
             ]);
-            setMangas(mangasRes.content);
+            setWorks(worksRes.content);
             setQuota(quotaRes);
         } catch {
             toast.error("Erro ao carregar coleção");
@@ -44,13 +44,13 @@ export function MyCollectionPage() {
         load();
     }, [load]);
 
-    async function handleDelete(manga: PrivateManga) {
-        if (!confirm(`Deletar "${manga.title}"? Esta ação não pode ser desfeita.`)) return;
-        setDeletingId(manga.id);
+    async function handleDelete(work: PrivateWork) {
+        if (!confirm(`Deletar "${work.title}"? Esta ação não pode ser desfeita.`)) return;
+        setDeletingId(work.id);
         try {
-            await deleteMyManga(manga.id);
+            await deleteMyWork(work.id);
             toast.success("Mangá removido");
-            setMangas((prev) => prev.filter((m) => m.id !== manga.id));
+            setWorks((prev) => prev.filter((m) => m.id !== work.id));
             // atualiza quota
             const data = await getMyQuota();
             setQuota(data);
@@ -110,7 +110,7 @@ export function MyCollectionPage() {
                         <div key={i} className="h-20 rounded-lg bg-card screentone animate-pulse"/>
                     ))}
                 </div>
-            ) : mangas.length === 0 ? (
+            ) : works.length === 0 ? (
                 <EmptyState
                     title="Nenhum mangá na coleção ainda"
                     description="Envie seus próprios volumes; eles ficam só com você."
@@ -123,18 +123,18 @@ export function MyCollectionPage() {
                 />
             ) : (
                 <ul className="m-0 list-none divide-y border-y p-0">
-                    {mangas.map((manga) => {
-                        const size = manga.volumes.reduce((acc, v) => acc + v.fileSizeBytes, 0);
+                    {works.map((work) => {
+                        const size = work.volumes.reduce((acc, v) => acc + v.fileSizeBytes, 0);
                         return (
-                            <li key={manga.id} className="flex items-center gap-2">
-                                <Link to={`/colecao/${manga.id}`} className="group flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors hover:bg-muted/40">
-                                    <MangaCover title={manga.title} coverUrl={manga.coverUrl} compact className="w-12 shrink-0 shadow-none"/>
+                            <li key={work.id} className="flex items-center gap-2">
+                                <Link to={`/colecao/${work.id}`} className="group flex min-w-0 flex-1 items-center gap-4 py-3 transition-colors hover:bg-muted/40">
+                                    <WorkCover title={work.title} coverUrl={work.coverUrl} compact className="w-12 shrink-0 shadow-none"/>
                                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                                        <span className="truncate text-[15px] font-medium">{manga.title}</span>
+                                        <span className="truncate text-[15px] font-medium">{work.title}</span>
                                         <span className="font-mono text-xs text-muted-foreground">
-                                            {manga.volumes.length === 0
+                                            {work.volumes.length === 0
                                                 ? "Sem volumes"
-                                                : `${manga.volumes.length} ${manga.volumes.length === 1 ? "volume" : "volumes"} · ${formatBytes(size)}`}
+                                                : `${work.volumes.length} ${work.volumes.length === 1 ? "volume" : "volumes"} · ${formatBytes(size)}`}
                                         </span>
                                     </div>
                                     <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"/>
@@ -142,10 +142,10 @@ export function MyCollectionPage() {
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    aria-label={`Excluir ${manga.title}`}
+                                    aria-label={`Excluir ${work.title}`}
                                     className="shrink-0 text-muted-foreground hover:text-destructive"
-                                    disabled={deletingId === manga.id}
-                                    onClick={() => handleDelete(manga)}
+                                    disabled={deletingId === work.id}
+                                    onClick={() => handleDelete(work)}
                                 >
                                     <Trash2 className="size-4"/>
                                 </Button>

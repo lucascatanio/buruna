@@ -7,8 +7,8 @@ import java.util.UUID;
 
 public final class RatingAlreadyExistsException extends DomainException {
 
-    public RatingAlreadyExistsException(UUID mangaId) {
+    public RatingAlreadyExistsException(UUID workId) {
         super(DomainErrorType.CONFLICT,
-                "Você já avaliou este mangá (mangaId=" + mangaId + "). Use PUT para atualizar.");
+                "Você já avaliou este mangá (workId=" + workId + "). Use PUT para atualizar.");
     }
 }

@@ -1,6 +1,7 @@
 package com.buruna.reading.web;
 
 import com.buruna.identity.domain.User;
+import com.buruna.reading.application.ChapterManifestResponse;
 import com.buruna.reading.application.HistoryResponse;
 import com.buruna.reading.application.ProgressResponse;
 import com.buruna.reading.application.ReadingService;
@@ -42,11 +43,11 @@ public class ReaderController {
         return ResponseEntity.ok(readingService.saveProgress(volumeId, request.currentPage(), request.totalPages(), user.getId()));
     }
 
-    @GetMapping("/progress/{mangaId}")
+    @GetMapping("/progress/{workId}")
     public ResponseEntity<ProgressResponse> getProgress(
-            @PathVariable UUID mangaId,
+            @PathVariable UUID workId,
             @AuthenticationPrincipal User user) {
-        return readingService.getProgress(mangaId, user.getId())
+        return readingService.getProgress(workId, user.getId())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
     }
@@ -72,5 +73,41 @@ public class ReaderController {
         return readingService.findProgressByVolume(volumeId, user.getId())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    // ── Capítulos (ADR-44) ───────────────────────────────────────────────────
+
+    /** {@code prefetch=true}: o leitor pré-carregando o próximo capítulo, sem histórico nem visualização. */
+    @GetMapping("/chapters/{chapterId}")
+    public ResponseEntity<ChapterManifestResponse> openChapter(
+            @PathVariable UUID chapterId,
+            @RequestParam(defaultValue = "false") boolean prefetch,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(readingService.openChapter(chapterId, user.getId(), prefetch));
+    }
+
+    @PostMapping("/chapters/{chapterId}/progress")
+    public ResponseEntity<ProgressResponse> saveChapterProgress(
+            @PathVariable UUID chapterId,
+            @Valid @RequestBody ChapterProgressRequest request,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(readingService.saveChapterProgress(chapterId, request.currentPage(),
+                request.position(), request.percent(), user.getId()));
+    }
+
+    @GetMapping("/chapters/{chapterId}/progress")
+    public ResponseEntity<ProgressResponse> getChapterProgress(
+            @PathVariable UUID chapterId,
+            @AuthenticationPrincipal User user) {
+        return readingService.findChapterProgress(chapterId, user.getId())
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @GetMapping("/works/{workId}/chapter-progress")
+    public ResponseEntity<List<ProgressResponse>> getWorkChapterProgress(
+            @PathVariable UUID workId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(readingService.getWorkChapterProgress(workId, user.getId()));
     }
 }

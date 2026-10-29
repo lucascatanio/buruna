@@ -1,20 +1,18 @@
 /**
- * PUT do arquivo de volume direto na URL assinada (upload em 2 fases, ADR-24/ADR-40).
- * Único ponto que faz esse PUT — usado pelas páginas de upload de volume público e
- * privado — para não duplicar o envio dos headers exigidos pela assinatura (o GCS
- * assina `x-goog-content-length-range`, limitando o tamanho aceito pelo PUT).
+ * PUT do arquivo direto na URL assinada (upload em 2 fases, ADR-24/ADR-40). Único ponto que
+ * faz esse PUT, para não duplicar o envio dos headers exigidos pela assinatura: o GCS assina
+ * `x-goog-content-length-range` (limite de tamanho) e o Content-Type, que o backend devolve em
+ * `requiredHeaders`.
  */
-export async function uploadVolumeFile(
+export async function uploadSignedFile(
     uploadUrl: string,
     requiredHeaders: Record<string, string>,
     file: File,
 ): Promise<void> {
     const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
-        headers: {
-            "Content-Type": "application/pdf",
-            ...requiredHeaders,
-        },
+        // fallback para backends anteriores, que não devolviam o Content-Type
+        headers: {"Content-Type": "application/pdf", ...requiredHeaders},
         body: file,
     });
 
@@ -22,3 +20,5 @@ export async function uploadVolumeFile(
         throw new Error(`Upload GCS falhou: ${uploadRes.status}`);
     }
 }
+
+export const uploadVolumeFile = uploadSignedFile;

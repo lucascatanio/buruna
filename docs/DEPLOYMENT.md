@@ -25,7 +25,7 @@
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │            Cloud Run: buruna-backend (us-east1)                              │
 │            Spring Boot :8080 — Monolito Modular                              │
-│   contextos: identity · manga · reading · engagement · admin                 │
+│   contextos: identity · work · reading · engagement · admin                 │
 │   RateLimitFilter → JwtFilter → Controllers → Use cases                     │
 └──────────────────┬──────────────────────────────┬───────────────────────────┘
                    │ Direct VPC egress             │ HTTPS
@@ -33,7 +33,7 @@
     ┌──────────────────────────┐   ┌────────────────────────────────────────────┐
     │  GCE e2-micro (us-east1-b│   │  GCS: buruna-files-catanio                │
     │  PostgreSQL 16 em Docker │   │  (southamerica-east1)                     │
-    │  Tabelas via Flyway      │   │  volumes/{mangaId}/{uuid}.pdf (ADR-40)    │
+    │  Tabelas via Flyway      │   │  volumes/{workId}/{uuid}.pdf (ADR-40)    │
     └──────────────────────────┘   │  /uuid-da-capa.jpg     (capa ofuscada)    │
                                    │  URLs assinadas V4 (geradas pelo backend): │
                                    │    leitura de PDF:    30 min              │
@@ -90,7 +90,8 @@
 | Frontend SPA        | Cloud Run                            | us-east1           | nginx + build estático React        |
 | Banco de dados      | GCE e2-micro + Docker (PostgreSQL 16)| us-east1-b         | Free tier permanente                |
 | Arquivos PDF/capas  | GCS `buruna-files-catanio`           | southamerica-east1 | Latência baixa para usuários BR     |
-| Jobs agendados      | Cloud Scheduler                      | us-east1           | Job `buruna-inactivity`: trigger diário de `RunInactivityUseCase` (ADR-03) |
+| Jobs agendados      | Cloud Scheduler                      | us-east1           | `buruna-inactivity` (diário, ADR-03), `buruna-storage-orphans` (semanal) e `buruna-sourcing-sync` (a cada 3 h, ADR-49) |
+| Ingest de capítulos | Cloud Run Job `buruna-ingest`        | us-east1           | Mesma imagem do backend, profile `ingest`; extrai as páginas dos capítulos enviados (ADR-48) |
 | Mensageria          | Pub/Sub                              | global             | Tópico `password-reset-requests` + push subscription `password-reset-push` (ADR-42) |
 | Imagens Docker      | Artifact Registry                    | us-east1           | Pipeline de CI/deploy               |
 | Secrets             | Secret Manager                       | us-east1           | Injetados no Cloud Run              |
@@ -310,14 +311,66 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   `@Scheduled` interno de `RunInactivityUseCase` — ver atualização de 2026-09-24 em
   [ADR-03](adr/ADR-03-async-e-scheduled-internos.md).
 
-- Job do Cloud Scheduler `buruna-storage-orphans` (a criar, semanal, ex.: cron `0 3 * * 0`):
-  `POST /api/admin/jobs/storage-orphans`, header `X-Job-Secret: <APP_JOBS_SECRET>`. Apaga de
-  `volumes/` no GCS os arquivos sem linha em `volumes` e com mais de 7 dias
-  (`DeleteOrphanVolumeFilesUseCase`). Enquanto o job não existir no Scheduler, os órfãos
-  continuam se acumulando. Antes de criar o job, rode uma vez à mão com `?dryRun=true`
-  (só conta, não apaga) e confira se `orphans` é plausível. Trava de segurança: se os órfãos
-  passarem de 5 e de 10% do analisado, o job não apaga nada e loga ERROR, porque essa
-  proporção indica descasamento entre o nome no bucket e o `file_url` do banco.
+- Job do Cloud Scheduler `buruna-storage-orphans`: cron `0 3 * * 0` (domingo, 03:00 UTC),
+  `POST /api/admin/jobs/storage-orphans`, header `X-Job-Secret: <APP_JOBS_SECRET>`, mesmo
+  retry do `buruna-inactivity`. Criado em 2026-10-09, depois de um `?dryRun=true` em produção
+  (674 analisados, 4 órfãos). Apaga de `volumes/` no GCS os arquivos sem linha em `volumes` e
+  com mais de 7 dias (`DeleteOrphanVolumeFilesUseCase`). `?dryRun=true` só conta, sem apagar.
+  Trava de segurança: se os órfãos passarem de 5 e de 10% do analisado, o job não apaga nada e
+  loga ERROR, porque essa proporção indica descasamento entre o nome no bucket e o `file_url`
+  do banco.
+
+- Job do Cloud Scheduler `buruna-sourcing-sync` ([ADR-49](adr/ADR-49-sync-das-obras-acompanhadas.md)):
+  cron `0 */3 * * *` (a cada 3 h), chama a API do Cloud Run para rodar o Job `buruna-ingest`
+  no modo sync. A conta de serviço do Scheduler precisa de `roles/run.jobsExecutorWithOverrides`
+  no Job (a mesma role do backend):
+
+  ```bash
+  gcloud scheduler jobs create http buruna-sourcing-sync --location us-east1 \
+    --schedule "0 */3 * * *" --time-zone "Etc/UTC" \
+    --uri "https://run.googleapis.com/v2/projects/<projeto>/locations/us-east1/jobs/buruna-ingest:run" \
+    --http-method POST \
+    --headers "Content-Type=application/json" \
+    --message-body '{"overrides":{"containerOverrides":[{"args":["--sourcing.sync=true"]}]}}' \
+    --oauth-service-account-email <SA_SCHEDULER> \
+    --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform"
+  gcloud run jobs add-iam-policy-binding buruna-ingest --region us-east1 \
+    --member="serviceAccount:<SA_SCHEDULER>" --role="roles/run.jobsExecutorWithOverrides"
+  ```
+
+  O e-mail diário do sync sai pela mesma rodada (primeiro sync depois das 8 h de Brasília), sem
+  job próprio.
+
+- **Cloud Run Job `buruna-ingest`** ([ADR-48](adr/ADR-48-ingest-em-cloud-run-job.md)):
+  precisa existir **antes** do deploy na `main` que traz o upload por capítulo, porque o
+  `deploy.yml` atualiza a imagem dele e o backend o dispara. É a mesma imagem do backend, com
+  as **mesmas variáveis, segredos e rede** do serviço `buruna-backend` (o Job sobe a aplicação
+  inteira e acessa o banco), mais `SPRING_PROFILES_ACTIVE=ingest`:
+
+  ```bash
+  # copie --set-env-vars/--set-secrets/rede do serviço: gcloud run services describe buruna-backend --region us-east1
+  gcloud run jobs create buruna-ingest --region us-east1 \
+    --image <imagem atual do buruna-backend> \
+    --service-account <SA_BACKEND> \
+    --memory 4Gi --cpu 1 --task-timeout 86400 --max-retries 1 \
+    --network default --subnet default --network-tags buruna-backend --vpc-egress private-ranges-only \
+    --set-env-vars SPRING_PROFILES_ACTIVE=ingest,<mesmas variáveis do backend> \
+    --set-secrets <mesmos segredos do backend>
+  # o backend dispara o Job passando argumentos (override): precisa desta role no Job
+  gcloud run jobs add-iam-policy-binding buruna-ingest --region us-east1 \
+    --member="serviceAccount:<SA_BACKEND>" --role="roles/run.jobsExecutorWithOverrides"
+  ```
+
+  No backend (e no Job), `APP_INGEST_JOB_NAME=projects/<projeto>/locations/us-east1/jobs/buruna-ingest`
+  é **obrigatório** fora do profile `local` (`IngestJobConfig` falha no startup sem ele).
+  Limites opcionais do arquivo enviado (CBZ, CBR ou PDF): `APP_INGEST_MAX_PAGES` (1000),
+  `APP_INGEST_MAX_TOTAL_MB` (1024), `APP_INGEST_MAX_PAGE_MB` (50). O Job usa 4 GiB porque, no
+  Cloud Run, o `/tmp` fica em memória e um CBR é extraído para lá (ADR-48). O CBR é aberto pelo
+  `bsdtar` (libarchive), instalado na imagem pelo Dockerfile; `APP_INGEST_BSDTAR_PATH` só é
+  preciso se o binário estiver fora do `PATH`. O mesmo Job importa do MangaDex
+  (`--sourcing.run=true`, ADR-48): uma obra longa leva horas, daí o `--task-timeout` de 24 h.
+  `APP_SOURCING_USER_AGENT` é opcional (padrão `Buruna/1.0 (+https://github.com/lucascatanio/buruna)`). A conta de deploy do GitHub Actions precisa poder atualizar
+  o Job (`run.jobs.update`, coberto por `roles/run.developer`).
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).

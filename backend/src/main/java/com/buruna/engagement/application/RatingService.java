@@ -7,8 +7,8 @@ import com.buruna.engagement.domain.Score;
 import com.buruna.engagement.persistence.RatingRepository;
 
 
-import com.buruna.manga.application.FindPublicMangaUseCase;
-import com.buruna.manga.application.UpdateMangaRatingStatsUseCase;
+import com.buruna.work.application.FindPublicWorkUseCase;
+import com.buruna.work.application.UpdateWorkRatingStatsUseCase;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,74 +20,74 @@ import java.util.UUID;
 public class RatingService {
 
     private final RatingRepository ratingRepository;
-    private final FindPublicMangaUseCase findPublicMangaUseCase;
-    private final UpdateMangaRatingStatsUseCase updateMangaRatingStatsUseCase;
+    private final FindPublicWorkUseCase findPublicWorkUseCase;
+    private final UpdateWorkRatingStatsUseCase updateWorkRatingStatsUseCase;
 
     public RatingService(RatingRepository ratingRepository,
-                         FindPublicMangaUseCase findPublicMangaUseCase,
-                         UpdateMangaRatingStatsUseCase updateMangaRatingStatsUseCase) {
+                         FindPublicWorkUseCase findPublicWorkUseCase,
+                         UpdateWorkRatingStatsUseCase updateWorkRatingStatsUseCase) {
         this.ratingRepository = ratingRepository;
-        this.findPublicMangaUseCase = findPublicMangaUseCase;
-        this.updateMangaRatingStatsUseCase = updateMangaRatingStatsUseCase;
+        this.findPublicWorkUseCase = findPublicWorkUseCase;
+        this.updateWorkRatingStatsUseCase = updateWorkRatingStatsUseCase;
     }
 
     @Transactional
-    public RatingResponse rate(UUID mangaId, RatingRequest request, UUID actorId) {
-        findPublicMangaUseCase.requirePublicManga(mangaId);
+    public RatingResponse rate(UUID workId, RatingRequest request, UUID actorId) {
+        findPublicWorkUseCase.requirePublicWork(workId);
 
-        if (ratingRepository.findByUserIdAndMangaId(actorId, mangaId).isPresent()) {
-            throw new RatingAlreadyExistsException(mangaId);
+        if (ratingRepository.findByUserIdAndWorkId(actorId, workId).isPresent()) {
+            throw new RatingAlreadyExistsException(workId);
         }
 
         Score score = Score.of(request.score());
-        ratingRepository.save(Rating.create(actorId, mangaId, score));
+        ratingRepository.save(Rating.create(actorId, workId, score));
 
-        RecalcResult recalc = recalcAndPush(mangaId);
-        return new RatingResponse(mangaId, score.value(), recalc.avg(), recalc.count());
+        RecalcResult recalc = recalcAndPush(workId);
+        return new RatingResponse(workId, score.value(), recalc.avg(), recalc.count());
     }
 
     @Transactional
-    public RatingResponse update(UUID mangaId, RatingRequest request, UUID actorId) {
-        Rating rating = ratingRepository.findByUserIdAndMangaId(actorId, mangaId)
-                .orElseThrow(() -> new RatingNotFoundException(mangaId));
+    public RatingResponse update(UUID workId, RatingRequest request, UUID actorId) {
+        Rating rating = ratingRepository.findByUserIdAndWorkId(actorId, workId)
+                .orElseThrow(() -> new RatingNotFoundException(workId));
 
-        findPublicMangaUseCase.requirePublicManga(mangaId);
+        findPublicWorkUseCase.requirePublicWork(workId);
 
         Score score = Score.of(request.score());
         rating.updateScore(score);
         ratingRepository.save(rating);
 
-        RecalcResult recalc = recalcAndPush(mangaId);
-        return new RatingResponse(mangaId, score.value(), recalc.avg(), recalc.count());
+        RecalcResult recalc = recalcAndPush(workId);
+        return new RatingResponse(workId, score.value(), recalc.avg(), recalc.count());
     }
 
     @Transactional
-    public void remove(UUID mangaId, UUID actorId) {
-        if (ratingRepository.findByUserIdAndMangaId(actorId, mangaId).isEmpty()) {
-            throw new RatingNotFoundException(mangaId);
+    public void remove(UUID workId, UUID actorId) {
+        if (ratingRepository.findByUserIdAndWorkId(actorId, workId).isEmpty()) {
+            throw new RatingNotFoundException(workId);
         }
-        ratingRepository.deleteByUserIdAndMangaId(actorId, mangaId);
-        recalcAndPush(mangaId);
+        ratingRepository.deleteByUserIdAndWorkId(actorId, workId);
+        recalcAndPush(workId);
     }
 
     @Transactional(readOnly = true)
-    public Optional<RatingResponse> findByUser(UUID mangaId, UUID actorId) {
-        return ratingRepository.findByUserIdAndMangaId(actorId, mangaId)
+    public Optional<RatingResponse> findByUser(UUID workId, UUID actorId) {
+        return ratingRepository.findByUserIdAndWorkId(actorId, workId)
                 .map(r -> {
-                    findPublicMangaUseCase.requirePublicManga(mangaId);
-                    double avg = ratingRepository.avgScoreByMangaId(mangaId);
-                    int count = ratingRepository.countByMangaId(mangaId);
-                    return new RatingResponse(mangaId, r.getScore(),
+                    findPublicWorkUseCase.requirePublicWork(workId);
+                    double avg = ratingRepository.avgScoreByWorkId(workId);
+                    int count = ratingRepository.countByWorkId(workId);
+                    return new RatingResponse(workId, r.getScore(),
                             BigDecimal.valueOf(Math.round(avg * 10.0) / 10.0), count);
                 });
     }
 
-    // engagement é dono da tabela ratings: calcula avg/count aqui e empurra para manga
-    private RecalcResult recalcAndPush(UUID mangaId) {
-        double avg = ratingRepository.avgScoreByMangaId(mangaId);
-        int count = ratingRepository.countByMangaId(mangaId);
+    // engagement é dono da tabela ratings: calcula avg/count aqui e empurra para work
+    private RecalcResult recalcAndPush(UUID workId) {
+        double avg = ratingRepository.avgScoreByWorkId(workId);
+        int count = ratingRepository.countByWorkId(workId);
         BigDecimal avgRounded = BigDecimal.valueOf(Math.round(avg * 10.0) / 10.0);
-        updateMangaRatingStatsUseCase.handle(mangaId, avgRounded, count);
+        updateWorkRatingStatsUseCase.handle(workId, avgRounded, count);
         return new RecalcResult(avgRounded, count);
     }
 

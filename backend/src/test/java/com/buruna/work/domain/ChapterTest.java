@@ -1,0 +1,280 @@
+package com.buruna.work.domain;
+
+import org.junit.jupiter.api.Test;
+
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class ChapterTest {
+
+    static final UUID WORK_ID = UUID.randomUUID();
+    static final UUID UPLOADER_ID = UUID.randomUUID();
+    static final OffsetDateTime NOW = OffsetDateTime.parse("2026-10-09T12:00:00Z");
+
+    static Chapter pagesChapter() {
+        return Chapter.register(WORK_ID, Language.of("pt-BR"), ChapterNumber.of(BigDecimal.ONE),
+                null, "O começo", "Grupo X", ChapterKind.PAGES, UPLOADER_ID);
+    }
+
+    static ChapterPage page(int position) {
+        return ChapterPage.of(position, "chapters/c/" + position + ".jpg", null, 800, 1200, 1024);
+    }
+
+    @Test
+    void shouldStartProcessingWithoutPages_whenRegistered() {
+        // Act
+        Chapter chapter = pagesChapter();
+
+        // Assert
+        assertThat(chapter.getStatus()).isEqualTo(ChapterStatus.PROCESSING);
+        assertThat(chapter.getPages()).isEmpty();
+        assertThat(chapter.getPublishedAt()).isEmpty();
+        assertThat(chapter.getLanguage()).isEqualTo(Language.of("pt-BR"));
+        assertThat(chapter.getScanlationGroup()).contains("Grupo X");
+    }
+
+    @Test
+    void shouldAcceptLabelWithoutNumber_whenChapterIsAnExtra() {
+        // Act
+        Chapter chapter = Chapter.register(WORK_ID, Language.of("pt-BR"), null, "  Extra  ",
+                null, null, ChapterKind.PAGES, UPLOADER_ID);
+
+        // Assert
+        assertThat(chapter.getNumber()).isEmpty();
+        assertThat(chapter.getLabel()).contains("Extra");
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenNeitherNumberNorLabel() {
+        assertThatThrownBy(() -> Chapter.register(WORK_ID, Language.of("pt-BR"), null, " ",
+                null, null, ChapterKind.PAGES, UPLOADER_ID))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldPublishWithPagesInOrder_whenPagesArriveOutOfOrder() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+
+        // Act
+        chapter.publishPages(List.of(page(2), page(1), page(3)), NOW);
+
+        // Assert
+        assertThat(chapter.getStatus()).isEqualTo(ChapterStatus.PUBLISHED);
+        assertThat(chapter.getPublishedAt()).contains(NOW);
+        assertThat(chapter.getPages()).extracting(ChapterPage::getPosition).containsExactly(1, 2, 3);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenPagesHaveAGap() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+
+        // Act / Assert
+        assertThatThrownBy(() -> chapter.publishPages(List.of(page(1), page(3)), NOW))
+                .isInstanceOf(InvalidChapterException.class);
+        assertThat(chapter.getStatus()).isEqualTo(ChapterStatus.PROCESSING);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenPagesRepeatAPosition() {
+        Chapter chapter = pagesChapter();
+
+        assertThatThrownBy(() -> chapter.publishPages(List.of(page(1), page(1)), NOW))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenPublishingWithoutPages() {
+        Chapter chapter = pagesChapter();
+
+        assertThatThrownBy(() -> chapter.publishPages(List.of(), NOW))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenFileChapterReceivesPages() {
+        // Arrange
+        Chapter chapter = Chapter.register(WORK_ID, Language.of("pt-BR"), null, "Livro",
+                null, null, ChapterKind.FILE, UPLOADER_ID);
+
+        // Act / Assert
+        assertThatThrownBy(() -> chapter.publishPages(List.of(page(1)), NOW))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenPublishingTwice() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.publishPages(List.of(page(1)), NOW);
+
+        // Act / Assert
+        assertThatThrownBy(() -> chapter.publishPages(List.of(page(1)), NOW))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldRecordReason_whenProcessingFails() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+
+        // Act
+        chapter.fail("CBZ corrompido");
+
+        // Assert
+        assertThat(chapter.getStatus()).isEqualTo(ChapterStatus.FAILED);
+        assertThat(chapter.getFailureReason()).contains("CBZ corrompido");
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenFailingAPublishedChapter() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.publishPages(List.of(page(1)), NOW);
+
+        // Act / Assert
+        assertThatThrownBy(() -> chapter.fail("tarde demais")).isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenPageHasNoDimensions() {
+        assertThatThrownBy(() -> ChapterPage.of(1, "chapters/c/1.jpg", null, 0, 1200, 1024))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldReturnToProcessingWithSource_whenFailedChapterIsRetried() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.attachSource("chapter-sources/w/f.cbz", 4096);
+        chapter.fail("GCS fora do ar");
+
+        // Act
+        chapter.retry();
+
+        // Assert
+        assertThat(chapter.getStatus()).isEqualTo(ChapterStatus.PROCESSING);
+        assertThat(chapter.getFailureReason()).isEmpty();
+        assertThat(chapter.getSourceObjectName()).contains("chapter-sources/w/f.cbz");
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenRetryingWithoutSource() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.fail("arquivo inválido");
+
+        // Act / Assert
+        assertThatThrownBy(chapter::retry).isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenRetryingAChapterThatDidNotFail() {
+        Chapter chapter = pagesChapter();
+
+        assertThatThrownBy(chapter::retry).isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldReturnSourceAndForgetIt_whenSourceIsDiscarded() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.attachSource("chapter-sources/w/f.cbz", 4096);
+
+        // Act
+        var discarded = chapter.discardSource();
+
+        // Assert
+        assertThat(discarded).contains("chapter-sources/w/f.cbz");
+        assertThat(chapter.getSourceObjectName()).isEmpty();
+        assertThat(chapter.getSourceSizeBytes()).isZero();
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenAttachingSourceTwice() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.attachSource("chapter-sources/w/f.cbz", 4096);
+
+        // Act / Assert
+        assertThatThrownBy(() -> chapter.attachSource("chapter-sources/w/g.cbz", 4096))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldSwapPagesAndCredit_whenPublishedChapterGetsAnotherVersion() {
+        Chapter chapter = pagesChapter();
+        chapter.publishPages(List.of(page(1), page(2)), NOW);
+
+        List<String> previous = chapter.replacePages(
+                List.of(ChapterPage.of(1, "chapters/c/r9/1.jpg", "chapters/c/r9/ds/1.jpg", 800, 1200, 2048)),
+                "Outro Grupo", "Título novo");
+
+        assertThat(previous).containsExactly("chapters/c/1.jpg", "chapters/c/2.jpg");
+        assertThat(chapter.getPages()).extracting(ChapterPage::getObjectName).containsExactly("chapters/c/r9/1.jpg");
+        assertThat(chapter.getScanlationGroup()).contains("Outro Grupo");
+        assertThat(chapter.getStatus()).isEqualTo(ChapterStatus.PUBLISHED);
+        assertThat(chapter.getPublishedAt()).contains(NOW);
+    }
+
+    @Test
+    void shouldRefuseReplacement_whenChapterIsStillProcessing() {
+        Chapter chapter = pagesChapter();
+
+        assertThatThrownBy(() -> chapter.replacePages(List.of(page(1)), null, null))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    static Chapter bookEdition() {
+        return Chapter.register(WORK_ID, Language.of("pt-BR"), null, "Penguin, 2015",
+                null, "Tradução de Fulana", ChapterKind.FILE, UPLOADER_ID);
+    }
+
+    @Test
+    void shouldPublishTheSentFileAsContent_whenBookIsValidated() {
+        // Arrange
+        Chapter book = bookEdition();
+        book.attachSource("chapter-sources/w/f.pdf", 4096);
+
+        // Act
+        book.publishFile(ChapterFileFormat.PDF, 320, NOW);
+
+        // Assert
+        assertThat(book.getStatus()).isEqualTo(ChapterStatus.PUBLISHED);
+        assertThat(book.getFileObjectName()).contains("chapter-sources/w/f.pdf");
+        assertThat(book.getFileFormat()).contains(ChapterFileFormat.PDF);
+        assertThat(book.getFilePageCount()).contains(320);
+        assertThat(book.getFileSizeBytes()).isEqualTo(4096);
+        assertThat(book.getSourceObjectName()).isEmpty();
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenBookEditionHasANumber() {
+        assertThatThrownBy(() -> Chapter.register(WORK_ID, Language.of("pt-BR"), ChapterNumber.of(BigDecimal.ONE),
+                "Edição", null, null, ChapterKind.FILE, UPLOADER_ID))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenImageChapterIsPublishedAsFile() {
+        // Arrange
+        Chapter chapter = pagesChapter();
+        chapter.attachSource("chapter-sources/w/f.cbz", 4096);
+
+        // Act / Assert
+        assertThatThrownBy(() -> chapter.publishFile(ChapterFileFormat.PDF, 1, NOW))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+
+    @Test
+    void shouldThrowInvalidChapter_whenBookIsPublishedWithoutSource() {
+        assertThatThrownBy(() -> bookEdition().publishFile(ChapterFileFormat.EPUB, null, NOW))
+                .isInstanceOf(InvalidChapterException.class);
+    }
+}

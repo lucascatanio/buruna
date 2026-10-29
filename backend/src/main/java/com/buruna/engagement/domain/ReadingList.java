@@ -11,7 +11,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "reading_list",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "manga_id"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "work_id"}))
 @Getter
 public class ReadingList {
 
@@ -22,8 +22,8 @@ public class ReadingList {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "manga_id", nullable = false)
-    private UUID mangaId;
+    @Column(name = "work_id", nullable = false)
+    private UUID workId;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -36,10 +36,10 @@ public class ReadingList {
 
     protected ReadingList() {}
 
-    public static ReadingList create(UUID userId, UUID mangaId, ReadingStatus status) {
+    public static ReadingList create(UUID userId, UUID workId, ReadingStatus status) {
         ReadingList rl = new ReadingList();
         rl.userId = userId;
-        rl.mangaId = mangaId;
+        rl.workId = workId;
         rl.status = status;
         return rl;
     }

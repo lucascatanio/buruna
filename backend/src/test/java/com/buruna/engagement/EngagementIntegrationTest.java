@@ -2,12 +2,12 @@ package com.buruna.engagement;
 
 import com.buruna.engagement.persistence.RatingRepository;
 import com.buruna.engagement.persistence.ReadingListRepository;
-import com.buruna.manga.domain.Manga;
-import com.buruna.manga.domain.MangaFormat;
-import com.buruna.manga.domain.MangaStatusOrigin;
-import com.buruna.manga.domain.MangaStatusSite;
-import com.buruna.manga.domain.Slug;
-import com.buruna.manga.persistence.MangaRepository;
+import com.buruna.work.domain.Work;
+import com.buruna.work.domain.WorkFormat;
+import com.buruna.work.domain.WorkStatusOrigin;
+import com.buruna.work.domain.WorkStatusSite;
+import com.buruna.work.domain.Slug;
+import com.buruna.work.persistence.WorkRepository;
 import com.buruna.identity.domain.Email;
 import com.buruna.identity.domain.Quota;
 import com.buruna.identity.domain.Role;
@@ -57,26 +57,26 @@ class EngagementIntegrationTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired UserRepository userRepository;
-    @Autowired MangaRepository mangaRepository;
+    @Autowired WorkRepository workRepository;
     @Autowired RatingRepository ratingRepository;
     @Autowired ReadingListRepository readingListRepository;
 
     User readerA;
     User readerB;
-    Manga manga1;
-    Manga manga2;
+    Work work1;
+    Work work2;
 
     @BeforeEach
     void setUp() {
         ratingRepository.deleteAllInBatch();
         readingListRepository.deleteAllInBatch();
-        mangaRepository.deleteAllInBatch();
+        workRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
 
         readerA = userRepository.save(buildUser("readerA@eng.test", "engReaderA", Role.READER));
         readerB = userRepository.save(buildUser("readerB@eng.test", "engReaderB", Role.READER));
-        manga1 = mangaRepository.save(buildPublicManga("eng-test-manga-alpha", "Eng Test Manga Alpha", readerA));
-        manga2 = mangaRepository.save(buildPublicManga("eng-test-manga-beta", "Eng Test Manga Beta", readerA));
+        work1 = workRepository.save(buildPublicWork("eng-test-work-alpha", "Eng Test Work Alpha", readerA));
+        work2 = workRepository.save(buildPublicWork("eng-test-work-beta", "Eng Test Work Beta", readerA));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -97,20 +97,20 @@ class EngagementIntegrationTest {
         return u;
     }
 
-    static Manga buildPublicManga(String slug, String title, User owner) {
-        Manga m = Manga.createPublic(Slug.of(slug), owner.getId());
-        m.updateCatalogDetails(title, null, null, MangaFormat.MANGA, null,
-                MangaStatusOrigin.ONGOING, MangaStatusSite.INCOMPLETE, null, null, null);
+    static Work buildPublicWork(String slug, String title, User owner) {
+        Work m = Work.createPublic(Slug.of(slug), owner.getId());
+        m.updateCatalogDetails(title, null, null, WorkFormat.MANGA, null,
+                WorkStatusOrigin.ONGOING, WorkStatusSite.INCOMPLETE, null, null, null);
         return m;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  Rating — POST /mangas/{id}/rating
+    //  Rating — POST /works/{id}/rating
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     void rating_POST_withoutToken_returns401() throws Exception {
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":4}"))
                 .andExpect(status().isUnauthorized());
@@ -118,7 +118,7 @@ class EngagementIntegrationTest {
 
     @Test
     void rating_POST_validScore_returns201_withScoreAndRatingCountOne() throws Exception {
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":4}")
                         .with(auth(readerA)))
@@ -129,7 +129,7 @@ class EngagementIntegrationTest {
 
     @Test
     void rating_POST_scoreZero_returns400() throws Exception {
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":0}")
                         .with(auth(readerA)))
@@ -138,7 +138,7 @@ class EngagementIntegrationTest {
 
     @Test
     void rating_POST_scoreSix_returns400() throws Exception {
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":6}")
                         .with(auth(readerA)))
@@ -148,14 +148,14 @@ class EngagementIntegrationTest {
     @Test
     void rating_POST_twoUsers_ratingCountTwoAndAvgRatingRecalculated() throws Exception {
         // readerA vota 4
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":4}")
                         .with(auth(readerA)))
                 .andExpect(status().isCreated());
 
         // readerB vota 2 → avg (4+2)/2 = 3.0, count=2
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":2}")
                         .with(auth(readerB)))
@@ -166,13 +166,13 @@ class EngagementIntegrationTest {
 
     @Test
     void rating_POST_duplicate_returns409() throws Exception {
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":4}")
                         .with(auth(readerA)))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":5}")
                         .with(auth(readerA)))
@@ -180,8 +180,8 @@ class EngagementIntegrationTest {
     }
 
     @Test
-    void rating_POST_nonexistentManga_returns404() throws Exception {
-        mockMvc.perform(post("/mangas/{id}/rating", UUID.randomUUID())
+    void rating_POST_nonexistentWork_returns404() throws Exception {
+        mockMvc.perform(post("/works/{id}/rating", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":3}")
                         .with(auth(readerA)))
@@ -189,12 +189,12 @@ class EngagementIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  Rating — PUT /mangas/{id}/rating
+    //  Rating — PUT /works/{id}/rating
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     void rating_PUT_withoutToken_returns401() throws Exception {
-        mockMvc.perform(put("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(put("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":5}"))
                 .andExpect(status().isUnauthorized());
@@ -203,13 +203,13 @@ class EngagementIntegrationTest {
     @Test
     void rating_PUT_updatesScore_andRecalculatesAvg() throws Exception {
         // setup: A=4, B=2
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"score\":4}").with(auth(readerA)));
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"score\":2}").with(auth(readerB)));
 
         // A atualiza para 5 → (5+2)/2 = 3.5
-        mockMvc.perform(put("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(put("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":5}")
                         .with(auth(readerA)))
@@ -220,7 +220,7 @@ class EngagementIntegrationTest {
 
     @Test
     void rating_PUT_noExistingRating_returns404() throws Exception {
-        mockMvc.perform(put("/mangas/{id}/rating", manga2.getId())
+        mockMvc.perform(put("/works/{id}/rating", work2.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":3}")
                         .with(auth(readerA)))
@@ -229,10 +229,10 @@ class EngagementIntegrationTest {
 
     @Test
     void rating_PUT_invalidScore_returns400() throws Exception {
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"score\":4}").with(auth(readerA)));
 
-        mockMvc.perform(put("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(put("/works/{id}/rating", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"score\":0}")
                         .with(auth(readerA)))
@@ -240,29 +240,29 @@ class EngagementIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  Rating — DELETE /mangas/{id}/rating
+    //  Rating — DELETE /works/{id}/rating
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     void rating_DELETE_withoutToken_returns401() throws Exception {
-        mockMvc.perform(delete("/mangas/{id}/rating", manga1.getId()))
+        mockMvc.perform(delete("/works/{id}/rating", work1.getId()))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void rating_DELETE_removesRatingAndRecalculatesAvg() throws Exception {
         // setup: A=4, B=2
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"score\":4}").with(auth(readerA)));
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"score\":2}").with(auth(readerB)));
 
         // A deleta → só B permanece com score=2
-        mockMvc.perform(delete("/mangas/{id}/rating", manga1.getId()).with(auth(readerA)))
+        mockMvc.perform(delete("/works/{id}/rating", work1.getId()).with(auth(readerA)))
                 .andExpect(status().isNoContent());
 
         // GET de B deve refletir: ratingCount=1, avgRating=2.0
-        mockMvc.perform(get("/mangas/{id}/rating", manga1.getId()).with(auth(readerB)))
+        mockMvc.perform(get("/works/{id}/rating", work1.getId()).with(auth(readerB)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ratingCount").value(1))
                 .andExpect(jsonPath("$.avgRating").value(2.0));
@@ -270,20 +270,20 @@ class EngagementIntegrationTest {
 
     @Test
     void rating_DELETE_nonexistentRating_returns404() throws Exception {
-        mockMvc.perform(delete("/mangas/{id}/rating", manga1.getId()).with(auth(readerA)))
+        mockMvc.perform(delete("/works/{id}/rating", work1.getId()).with(auth(readerA)))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void rating_DELETE_lastRating_setsAvgAndRatingCountToZero() throws Exception {
-        mockMvc.perform(post("/mangas/{id}/rating", manga1.getId())
+        mockMvc.perform(post("/works/{id}/rating", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"score\":2}").with(auth(readerB)));
 
-        mockMvc.perform(delete("/mangas/{id}/rating", manga1.getId()).with(auth(readerB)))
+        mockMvc.perform(delete("/works/{id}/rating", work1.getId()).with(auth(readerB)))
                 .andExpect(status().isNoContent());
 
-        // O recálculo zerando deve persistir no manga
-        Manga refreshed = mangaRepository.findById(manga1.getId()).orElseThrow();
+        // O recálculo zerando deve persistir no work
+        Work refreshed = workRepository.findById(work1.getId()).orElseThrow();
         assertThat(refreshed.getRatingCount()).isZero();
         assertThat(refreshed.getAvgRating()).isEqualByComparingTo(BigDecimal.ZERO);
     }
@@ -309,18 +309,18 @@ class EngagementIntegrationTest {
     @Test
     void readingList_GET_withItems_returnsCorrectCountAndFields() throws Exception {
         // A adiciona 2 itens, B adiciona 1 (deve ser isolado)
-        mockMvc.perform(put("/reading-list/{mangaId}", manga1.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"READING\"}").with(auth(readerA)));
-        mockMvc.perform(put("/reading-list/{mangaId}", manga2.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work2.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"COMPLETED\"}").with(auth(readerA)));
-        mockMvc.perform(put("/reading-list/{mangaId}", manga1.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"DROPPED\"}").with(auth(readerB)));
 
         mockMvc.perform(get("/reading-list").with(auth(readerA)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].mangaId").exists())
-                .andExpect(jsonPath("$[0].mangaTitle").exists())
+                .andExpect(jsonPath("$[0].workId").exists())
+                .andExpect(jsonPath("$[0].workTitle").exists())
                 .andExpect(jsonPath("$[0].status").exists())
                 .andExpect(jsonPath("$[0].updatedAt").exists());
 
@@ -331,34 +331,34 @@ class EngagementIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  ReadingList — PUT /reading-list/{mangaId}
+    //  ReadingList — PUT /reading-list/{workId}
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     void readingList_PUT_withoutToken_returns401() throws Exception {
-        mockMvc.perform(put("/reading-list/{mangaId}", manga1.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"WANT_TO_READ\"}"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void readingList_PUT_insert_returnsCorrectStatusAndMangaId() throws Exception {
-        mockMvc.perform(put("/reading-list/{mangaId}", manga1.getId())
+    void readingList_PUT_insert_returnsCorrectStatusAndWorkId() throws Exception {
+        mockMvc.perform(put("/reading-list/{workId}", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"WANT_TO_READ\"}")
                         .with(auth(readerA)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("WANT_TO_READ"))
-                .andExpect(jsonPath("$.mangaId").value(manga1.getId().toString()));
+                .andExpect(jsonPath("$.workId").value(work1.getId().toString()));
     }
 
     @Test
     void readingList_PUT_upsert_updatesStatus() throws Exception {
-        mockMvc.perform(put("/reading-list/{mangaId}", manga1.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"WANT_TO_READ\"}").with(auth(readerA)));
 
-        mockMvc.perform(put("/reading-list/{mangaId}", manga1.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"READING\"}")
                         .with(auth(readerA)))
@@ -368,7 +368,7 @@ class EngagementIntegrationTest {
 
     @Test
     void readingList_PUT_invalidStatus_returns400() throws Exception {
-        mockMvc.perform(put("/reading-list/{mangaId}", manga1.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"INVALID_STATUS\"}")
                         .with(auth(readerA)))
@@ -377,7 +377,7 @@ class EngagementIntegrationTest {
 
     @Test
     void readingList_PUT_nullStatus_returns400() throws Exception {
-        mockMvc.perform(put("/reading-list/{mangaId}", manga1.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work1.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}")
                         .with(auth(readerA)))
@@ -385,8 +385,8 @@ class EngagementIntegrationTest {
     }
 
     @Test
-    void readingList_PUT_nonexistentManga_returns404() throws Exception {
-        mockMvc.perform(put("/reading-list/{mangaId}", UUID.randomUUID())
+    void readingList_PUT_nonexistentWork_returns404() throws Exception {
+        mockMvc.perform(put("/reading-list/{workId}", UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"READING\"}")
                         .with(auth(readerA)))
@@ -394,23 +394,23 @@ class EngagementIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  ReadingList — DELETE /reading-list/{mangaId}
+    //  ReadingList — DELETE /reading-list/{workId}
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     void readingList_DELETE_withoutToken_returns401() throws Exception {
-        mockMvc.perform(delete("/reading-list/{mangaId}", manga1.getId()))
+        mockMvc.perform(delete("/reading-list/{workId}", work1.getId()))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void readingList_DELETE_existingItem_returns204_andListShrinks() throws Exception {
-        mockMvc.perform(put("/reading-list/{mangaId}", manga1.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"READING\"}").with(auth(readerA)));
-        mockMvc.perform(put("/reading-list/{mangaId}", manga2.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work2.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"COMPLETED\"}").with(auth(readerA)));
 
-        mockMvc.perform(delete("/reading-list/{mangaId}", manga2.getId()).with(auth(readerA)))
+        mockMvc.perform(delete("/reading-list/{workId}", work2.getId()).with(auth(readerA)))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/reading-list").with(auth(readerA)))
@@ -420,17 +420,17 @@ class EngagementIntegrationTest {
 
     @Test
     void readingList_DELETE_alreadyRemoved_returns404() throws Exception {
-        mockMvc.perform(put("/reading-list/{mangaId}", manga2.getId())
+        mockMvc.perform(put("/reading-list/{workId}", work2.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"COMPLETED\"}").with(auth(readerA)));
-        mockMvc.perform(delete("/reading-list/{mangaId}", manga2.getId()).with(auth(readerA)));
+        mockMvc.perform(delete("/reading-list/{workId}", work2.getId()).with(auth(readerA)));
 
-        mockMvc.perform(delete("/reading-list/{mangaId}", manga2.getId()).with(auth(readerA)))
+        mockMvc.perform(delete("/reading-list/{workId}", work2.getId()).with(auth(readerA)))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void readingList_DELETE_nonexistentManga_returns404() throws Exception {
-        mockMvc.perform(delete("/reading-list/{mangaId}", UUID.randomUUID()).with(auth(readerA)))
+    void readingList_DELETE_nonexistentWork_returns404() throws Exception {
+        mockMvc.perform(delete("/reading-list/{workId}", UUID.randomUUID()).with(auth(readerA)))
                 .andExpect(status().isNotFound());
     }
 }

@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
-import {createTag, createTagCategory, deleteTag, listTagCategories, listTags, updateTag} from "@/api/mangaApi";
-import type {Tag, TagCategory} from "@/types/manga";
+import {createTag, createTagCategory, deleteTag, listTagCategories, listTags, updateTag} from "@/api/workApi";
+import type {Tag, TagCategory} from "@/types/work";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";

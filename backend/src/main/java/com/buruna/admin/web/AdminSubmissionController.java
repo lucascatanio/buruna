@@ -1,8 +1,8 @@
 package com.buruna.admin.web;
 
-import com.buruna.manga.application.ListPendingSubmissionsUseCase;
-import com.buruna.manga.application.ReviewSubmissionUseCase;
-import com.buruna.manga.application.PendingSubmissionResponse;
+import com.buruna.work.application.ListPendingSubmissionsUseCase;
+import com.buruna.work.application.ReviewSubmissionUseCase;
+import com.buruna.work.application.PendingSubmissionResponse;
 import com.buruna.identity.domain.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

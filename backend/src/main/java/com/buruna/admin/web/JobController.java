@@ -1,8 +1,8 @@
 package com.buruna.admin.web;
 
 import com.buruna.identity.application.admin.RunInactivityUseCase;
-import com.buruna.manga.application.maintenance.DeleteOrphanVolumeFilesUseCase;
-import com.buruna.manga.application.maintenance.OrphanVolumeFilesResult;
+import com.buruna.work.application.maintenance.DeleteOrphanVolumeFilesUseCase;
+import com.buruna.work.application.maintenance.OrphanVolumeFilesResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

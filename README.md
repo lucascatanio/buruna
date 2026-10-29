@@ -23,7 +23,7 @@ Biblioteca pessoal de mangás com autenticação, upload e leitor web inline.
 ## Stack
 
 Backend em Java 21 + Spring Boot 3.5.16, Clean Architecture por bounded context
-(`identity`, `manga`, `reading`, `engagement`, `admin`), PostgreSQL + Flyway,
+(`identity`, `work`, `reading`, `engagement`, `admin`), PostgreSQL + Flyway,
 JWT + Refresh Token + 2FA (TOTP), arquivos no Google Cloud Storage via URLs
 assinadas. Frontend em React 19 + TypeScript, Vite, shadcn/ui, Tailwind CSS.
 Deploy em Cloud Run (GCP). Detalhes completos: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

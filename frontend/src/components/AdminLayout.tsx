@@ -13,6 +13,7 @@ const NAV_ITEMS = [
     {label: "Usuários", path: "/admin/users"},
     {label: "Tags", path: "/admin/tags"},
     {label: "Submissões", path: "/admin/submissions"},
+    {label: "Importar", path: "/admin/import"},
 ];
 
 export function AdminLayout() {

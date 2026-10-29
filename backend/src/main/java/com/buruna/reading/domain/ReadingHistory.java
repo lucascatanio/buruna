@@ -20,8 +20,12 @@ public class ReadingHistory {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "volume_id", nullable = false)
+    /** Volume (legado) ou capítulo: exatamente um dos dois (V30). */
+    @Column(name = "volume_id")
     private UUID volumeId;
+
+    @Column(name = "chapter_id")
+    private UUID chapterId;
 
     @Column(name = "read_at", nullable = false)
     private OffsetDateTime readAt;

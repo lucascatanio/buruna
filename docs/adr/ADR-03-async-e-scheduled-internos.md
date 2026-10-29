@@ -33,3 +33,8 @@ uma vez por janela de 1 h. O Cloud Scheduler não servia: o contador vive na mem
 instância, e uma chamada HTTP limparia só uma delas. Sem nenhum `@Scheduled`, o
 `@EnableScheduling` foi removido, e com ele a tentação de agendar trabalho interno que o
 `cpu-throttling` não deixa rodar (issue #44).
+
+**Atualização (2026-10-17):** terceiro job do Cloud Scheduler, `buruna-sourcing-sync`, a cada
+3 h. Ele não chama o backend: roda o Cloud Run Job de ingest no modo sync pela API do Cloud Run
+([ADR-49](ADR-49-sync-das-obras-acompanhadas.md)), porque o sync baixa capítulos por minutos ou
+horas, o que não cabe numa requisição.

@@ -74,3 +74,8 @@ foi feita: eles continuam em `volumes/<uuid>.pdf`, sem o `mangaId` no caminho, e
 `VolumeObjectName` nunca precisa reanalisá-los — só o `objectName` do finalize passa
 pela validação). O `VolumeFileCleaner` adiciona uma query por delete; irrelevante
 para o volume de escrita deste domínio.
+
+**Atualização (2026-10-10):** o upload por capítulo segue o mesmo desenho, com o VO
+`ChapterObjectName`: `pending/chapters/{workId}/{uuid}.cbz` na fase 1, validado com regex
+ancorada contra o `workId` do request no finalize, e movido para
+`chapter-sources/{workId}/{uuid}.cbz` até as páginas serem extraídas ([ADR-48](ADR-48-ingest-em-cloud-run-job.md)).

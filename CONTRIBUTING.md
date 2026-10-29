@@ -23,7 +23,7 @@ Pré-requisitos, comandos de setup local e variáveis de ambiente:
   "Update with rebase"), não merge. PRs entre `dev` e `main` (release e sincronização)
   usam merge commit, nunca squash — ver [DEPLOYMENT.md](docs/DEPLOYMENT.md) §6.
 - PRs pequenos e focados numa mudança. Se sua mudança cruza bounded context (ex.:
-  `manga` + `identity`), considere se não deveria ser dois PRs.
+  `work` + `identity`), considere se não deveria ser dois PRs.
 - CI (`.github/workflows/ci.yml`) roda `./mvnw test` em todo PR para `dev`/`main` —
   inclui `ArchitectureTest`.
 
@@ -31,14 +31,14 @@ Pré-requisitos, comandos de setup local e variáveis de ambiente:
 
 Resumo — detalhes completos e exemplos em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md):
 
-- **Clean Architecture por bounded context**: cada contexto (`identity`, `manga`,
+- **Clean Architecture por bounded context**: cada contexto (`identity`, `work`,
   `reading`, `engagement`, `admin`) segue `domain/ → application/ → persistence/ → web/`.
   Não crie `service/` nem `repository/` como nome de pacote.
 - **Cross-contexto só via `application` pública do outro contexto.** Nunca importe
   `domain`/`persistence` de outro contexto. Referências cross-contexto são por **UUID**
   (`actorId`, `ownerId`) — nunca a entidade de outro contexto.
 - **Domínio rico, sem setter público.** Regra de negócio é método com invariante no
-  agregado (`manga.promoteToPublic()`, `user.approve()`), não um setter chamado de
+  agregado (`work.promoteToPublic()`, `user.approve()`), não um setter chamado de
   fora.
 - **Exceções de domínio são puras** (sem `HttpStatus`) — tradução para HTTP só no
   `GlobalExceptionHandler`. Estenda `DomainException` com um `DomainErrorType`; nenhuma

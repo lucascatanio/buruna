@@ -26,7 +26,7 @@ Secret Manager e Cloud Scheduler.
 
 ## Arquitetura
 
-Clean Architecture por bounded context: `identity` (auth+user fundidos), `manga`
+Clean Architecture por bounded context: `identity` (auth+user fundidos), `work`
 (catálogo+coleção+volumes+tags), `reading` (leitor+progresso+histórico), `engagement`
 (ratings+reading-list), `admin` (casca). Cada contexto segue
 `domain/ → application/ → persistence/ → web/`. NÃO existe mais o padrão antigo
@@ -54,7 +54,7 @@ Camadas, fluxos de usuário atualizados e diagrama completo:
 ## Domínio (DDD)
 
 Regra de negócio mora no agregado, como método com invariante
-(ex.: manga.promoteToPublic(), user.approve(), rating via Score VO). Domain service
+(ex.: work.promoteToPublic(), user.approve(), rating via Score VO). Domain service
 só quando a lógica não pertence a nenhuma entidade e depende de repositório/serviço
 externo (ex.: QuotaService, SlugAllocator). Não crie por padrão. Domínio rico anotado
 com JPA na mesma classe (ADR-32) — sem separar entidade-de-domínio de entidade-JPA.

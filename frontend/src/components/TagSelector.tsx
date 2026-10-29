@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
-import {listTagCategories, listTags} from "@/api/mangaApi";
-import type {Tag, TagCategory} from "@/types/manga";
+import {listTagCategories, listTags} from "@/api/workApi";
+import type {Tag, TagCategory} from "@/types/work";
 import {Badge} from "@/components/ui/badge";
 import {X} from "lucide-react";
 

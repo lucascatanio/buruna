@@ -13,3 +13,9 @@
 **Por quê:** A raiz `Manga` protege as invariantes de volume num lugar só e elimina a duplicação entre os dois services atuais. Um agregado para os dois modos evita duplicar a tabela `mangas`. Recálculo síncrono é trivial no volume atual; eventos seriam complexidade (e infra) sem retorno (coerente com ADR-03). VOs seletivos encapsulam regra real (range de score, normalização de slug, aritmética de cota) sem poluir o código com wrappers vazios — o que também mantém a leitura simples para quem chega de fora.
 
 **Tradeoff:** Recálculo síncrono acopla a transação de `Rating` ao `Manga` (duas tabelas numa tx) — aceitável e mais simples que consistência eventual. Carregar o agregado `Manga` inteiro para operar um `Volume` pode trazer mais dados que o necessário; mitigado mantendo `VolumeRepository` para leituras/queries específicas, sem violar a fronteira de escrita.
+
+**Atualização (2026-10-09):** com o capítulo como unidade de leitura ([ADR-44](ADR-44-capitulo-como-unidade-de-leitura.md)),
+`Chapter` é **agregado próprio** e referencia a `Work` por id, em vez de entidade interna
+como o `Volume`. A invariante de número único sai do agregado e vai para o
+`RegisterChapterUseCase`, sob lock na obra ([ADR-53](ADR-53-regra-de-negocio-na-aplicacao-sem-unique.md)).
+`Volume` continua dentro da `Work` até a migração do legado.

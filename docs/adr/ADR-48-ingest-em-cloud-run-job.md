@@ -1,0 +1,98 @@
+# ADR-48 — Ingest de capítulos num Cloud Run Job
+
+**Status:** Aceita
+
+**Contexto:** Com o capítulo como unidade de leitura ([ADR-44](ADR-44-capitulo-como-unidade-de-leitura.md)),
+o upload passa a aceitar CBZ (e, depois, CBR e PDF), e as páginas precisam ser extraídas no
+servidor antes da leitura. A importação de fontes externas faz o mesmo trabalho: baixar
+páginas e gravá-las no bucket. As opções eram processar no próprio serviço backend, dentro de
+uma requisição (Pub/Sub push ou Cloud Tasks), num Cloud Run Job separado, ou no navegador.
+
+O que pesou:
+
+- No backend, a extração disputaria memória e CPU com os leitores na mesma instância, e um
+  arquivo grande pede mais memória do que o serviço precisa no resto do tempo.
+- Fora de uma requisição, o `cpu-throttling` do Cloud Run congela o trabalho
+  ([ADR-03](ADR-03-async-e-scheduled-internos.md), [ADR-42](ADR-42-forgot-password-via-pubsub.md)).
+  Pub/Sub push limita a 10 min e Cloud Tasks a 30 min por tarefa.
+- No navegador, o celular do usuário faria o trabalho pesado, e o código de conversão
+  existiria duas vezes (front e back).
+
+**Decisão:**
+
+- **Cloud Run Job `buruna-ingest`** em us-east1, com a **mesma imagem do backend** e o
+  profile `ingest`. O `IngestJobRunner` recebe `--ingest.chapter-id=<id>`, chama o
+  `ProcessChapterSourceUseCase` e encerra. Tem memória própria (2 GiB), CPU alocada do começo
+  ao fim e tarefa de até 24 h.
+- **Disparo:** o finalize do upload registra o capítulo em `PROCESSING` e, **depois do
+  commit**, o `CloudRunChapterIngestTrigger` chama a API `jobs.run` com o id
+  (`CloudRunJobLauncher`, REST com ADC, na própria requisição). Se o disparo falhar, o
+  capítulo vai para `FAILED` com o arquivo mantido, e o usuário pode tentar de novo. No
+  profile `local` o processamento roda na própria requisição (`InlineChapterIngestTrigger`).
+- **Formato:** os bytes originais das imagens são mantidos (JPEG, PNG, WebP). GIF, BMP e TIFF
+  viram JPEG com qualidade 0,85. A conversão e a extração moram em `shared/media`, porque o
+  upload (contexto `work`) e a importação (contexto `sourcing`) usam as duas.
+- **Segurança do arquivo:** até 1.000 páginas, 1 GB descompactado e 50 MB por página,
+  aplicados sobre os bytes realmente lidos e não sobre o tamanho declarado no zip
+  (`APP_INGEST_MAX_*`). Tipo de imagem pelos magic bytes, não pela extensão.
+- **Arquivo enviado:** sai de `pending/` para `chapter-sources/` no finalize, fora do alcance
+  da lifecycle rule de 1 dia, e é **apagado depois da extração**: as páginas já são os bytes
+  originais. Falha transitória (storage, Job que caiu) mantém o arquivo e permite retry
+  (`POST .../chapters/{id}/retry`). Arquivo inválido o apaga, com o motivo no capítulo,
+  porque tentar de novo não resolveria.
+- **Idempotência:** capítulo fora de `PROCESSING` é ignorado, e as páginas têm nome
+  determinístico (`chapters/{chapterId}/{posição}.{ext}`). Uma reexecução sobrescreve os
+  mesmos objetos. O processamento não segura transação longa: só lê o capítulo no começo e
+  publica no fim, cada um numa transação própria (`REQUIRES_NEW`).
+- **Quota:** passa a contar as páginas e os arquivos enviados ainda guardados.
+
+**Tradeoff:** é uma peça de infra a mais (o Job, a permissão do backend para dispará-lo e a
+atualização da imagem do Job no deploy), e o upload ganha a partida a frio da JVM (~10–30 s)
+antes do processamento. O Job em us-east1 grava no bucket de São Paulo pagando transferência
+entre regiões ([ADR-26](ADR-26-gcs-southamerica-cloudrun-useast1.md)), alguns dólares por
+centena de obras importadas.
+
+**Pendente:** o job de órfãos (`DeleteOrphanVolumeFilesUseCase`) só olha `volumes/`. Páginas
+e arquivos de capítulo que sobrarem de um delete com falha no storage não são limpos ainda.
+
+**Atualização (2026-10-10):** o upload por capítulo passou a aceitar CBR e PDF, além de CBZ
+(`PageExtractor`, em `shared/media`).
+
+- **CBR (RAR4 e RAR5):** extraído pelo `bsdtar` (libarchive, licença BSD, pacote
+  `libarchive-tools` do Alpine, instalado na imagem). O processo roda sem shell e sem stdin.
+  - Antes de extrair, a listagem (`bsdtar -tvf`) recusa arquivos com senha, tamanho declarado
+    acima do limite ou páginas demais.
+  - Durante a extração, um vigia mede o diretório a cada 200 ms e mata o processo se passar
+    de `APP_INGEST_MAX_TOTAL_MB` ou de 5 min.
+  - Depois, só arquivos regulares são lidos: symlinks são ignorados e caminho real fora do
+    diretório recusa o arquivo. O `bsdtar` já recusa caminho absoluto e `..` por padrão. Mesmo
+    que algo escape, o estrago fica no container do Job, que existe só para aquele capítulo.
+  - A primeira escolha foi o `7zz` (7-Zip). Os pacotes `7zip` do Alpine e do Ubuntu, porém, vêm
+    compilados **sem o código do unRAR**, por licença, e não abrem RAR nenhum. Isso foi conferido
+    com os fixtures num container da imagem base e na CI. As outras saídas eram baixar o binário
+    oficial no build ou trocar a imagem para Ubuntu com `7zip-rar`. O `bsdtar` não abre RAR com
+    senha, que já é recusado, e pode falhar em recursos raros do RAR5.
+- **PDF (PDFBox):**
+  - Página escaneada com um único JPEG que cobre a página sai com os **bytes originais**.
+  - O resto (texto, vetor, várias imagens, Flate, JBIG2) é renderizado em JPEG 0,85 com
+    ~1400 px de largura.
+  - Imagem em **JPEG2000 é recusada** com o motivo: o plugin de decodificação tem licença
+    não OSI e quase não recebe manutenção.
+  - PDF que exige senha de usuário é recusado.
+  - PDF escaneado com camada de OCR (texto invisível) cai na renderização e perde o JPEG
+    original. É uma escolha conservadora, a rever se esse caso for comum.
+- **Livro:** em obra `LIVRO`, PDF não vira imagens (`Work.assertAcceptsPagesFrom`): o livro
+  continua PDF, como capítulo-arquivo, no próximo épico.
+- **Memória do Job:** no Cloud Run, o `/tmp` fica em memória. Um CBR no limite soma o arquivo
+  enviado (até `MAX_FILE_SIZE_MB`), o conteúdo extraído (até `APP_INGEST_MAX_TOTAL_MB`) e a JVM,
+  então o Job usa **4 GiB**.
+
+**Atualização (2026-10-17), importação:** o mesmo Job tem um segundo modo, `--sourcing.run=true`
+(`SourcingJobRunner`). Uma rodada pega o lease do MangaDex, lista os capítulos das obras
+recém-importadas e baixa as versões pendentes até não sobrar nada (`SourcingRunner`). Se o lease
+estiver ocupado, espera até 15 min e desiste; quem o segura repete a busca no fim e pega o que
+chegou. Cada página é baixada nas duas qualidades da fonte (original e `data-saver`), com os
+bytes originais. Se a execução cair, a versão continua PENDING com o capítulo registrado, e a
+próxima rodada (`POST /admin/sourcing/run`, outro import ou o sync) retoma do mesmo capítulo.
+Uma obra longa leva horas (cerca de 1,4 s por imagem, serial), então o Job roda com
+`--task-timeout` de 24 h.

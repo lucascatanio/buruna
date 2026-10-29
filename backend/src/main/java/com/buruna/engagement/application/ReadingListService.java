@@ -5,9 +5,9 @@ import com.buruna.engagement.domain.ReadingListItemNotFoundException;
 import com.buruna.engagement.persistence.ReadingListRepository;
 
 
-import com.buruna.manga.application.FindPublicMangaUseCase;
-import com.buruna.manga.application.GetMangaInfoUseCase;
-import com.buruna.manga.application.MangaInfo;
+import com.buruna.work.application.FindPublicWorkUseCase;
+import com.buruna.work.application.GetWorkInfoUseCase;
+import com.buruna.work.application.WorkInfo;
 import com.buruna.shared.storage.StorageClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,17 +25,17 @@ public class ReadingListService {
     private static final Duration COVER_URL_EXPIRATION = Duration.ofHours(1);
 
     private final ReadingListRepository readingListRepository;
-    private final FindPublicMangaUseCase findPublicMangaUseCase;
-    private final GetMangaInfoUseCase getMangaInfoUseCase;
+    private final FindPublicWorkUseCase findPublicWorkUseCase;
+    private final GetWorkInfoUseCase getWorkInfoUseCase;
     private final StorageClient storageClient;
 
     public ReadingListService(ReadingListRepository readingListRepository,
-                              FindPublicMangaUseCase findPublicMangaUseCase,
-                              GetMangaInfoUseCase getMangaInfoUseCase,
+                              FindPublicWorkUseCase findPublicWorkUseCase,
+                              GetWorkInfoUseCase getWorkInfoUseCase,
                               StorageClient storageClient) {
         this.readingListRepository = readingListRepository;
-        this.findPublicMangaUseCase = findPublicMangaUseCase;
-        this.getMangaInfoUseCase = getMangaInfoUseCase;
+        this.findPublicWorkUseCase = findPublicWorkUseCase;
+        this.getWorkInfoUseCase = getWorkInfoUseCase;
         this.storageClient = storageClient;
     }
 
@@ -44,21 +44,21 @@ public class ReadingListService {
         List<ReadingList> entries = readingListRepository.findAllByUserIdOrderByUpdatedAtDesc(actorId);
         if (entries.isEmpty()) return List.of();
 
-        Set<UUID> mangaIds = entries.stream().map(ReadingList::getMangaId).collect(Collectors.toSet());
-        Map<UUID, MangaInfo> infoMap = getMangaInfoUseCase.getInfoByIds(mangaIds);
+        Set<UUID> workIds = entries.stream().map(ReadingList::getWorkId).collect(Collectors.toSet());
+        Map<UUID, WorkInfo> infoMap = getWorkInfoUseCase.getInfoByIds(workIds);
 
         return entries.stream()
-                .map(rl -> toResponse(rl, infoMap.get(rl.getMangaId())))
+                .map(rl -> toResponse(rl, infoMap.get(rl.getWorkId())))
                 .toList();
     }
 
     @Transactional
-    public ReadingListResponse upsert(UUID mangaId, ReadingListRequest request, UUID actorId) {
-        MangaInfo info = findPublicMangaUseCase.getPublicMangaInfo(mangaId);
+    public ReadingListResponse upsert(UUID workId, ReadingListRequest request, UUID actorId) {
+        WorkInfo info = findPublicWorkUseCase.getPublicWorkInfo(workId);
 
         ReadingList entry = readingListRepository
-                .findByUserIdAndMangaId(actorId, mangaId)
-                .orElseGet(() -> ReadingList.create(actorId, mangaId, request.status()));
+                .findByUserIdAndWorkId(actorId, workId)
+                .orElseGet(() -> ReadingList.create(actorId, workId, request.status()));
 
         if (entry.getId() != null) {
             entry.updateStatus(request.status());
@@ -69,14 +69,14 @@ public class ReadingListService {
     }
 
     @Transactional
-    public void remove(UUID mangaId, UUID actorId) {
-        if (!readingListRepository.existsByUserIdAndMangaId(actorId, mangaId)) {
-            throw new ReadingListItemNotFoundException(mangaId);
+    public void remove(UUID workId, UUID actorId) {
+        if (!readingListRepository.existsByUserIdAndWorkId(actorId, workId)) {
+            throw new ReadingListItemNotFoundException(workId);
         }
-        readingListRepository.deleteByUserIdAndMangaId(actorId, mangaId);
+        readingListRepository.deleteByUserIdAndWorkId(actorId, workId);
     }
 
-    private ReadingListResponse toResponse(ReadingList rl, MangaInfo info) {
+    private ReadingListResponse toResponse(ReadingList rl, WorkInfo info) {
         String coverUrl = info.coverUrl() != null
                 ? storageClient.generateSignedUrl(info.coverUrl(), COVER_URL_EXPIRATION).toString()
                 : null;

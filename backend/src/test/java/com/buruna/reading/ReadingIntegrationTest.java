@@ -1,13 +1,13 @@
 package com.buruna.reading;
 
-import com.buruna.manga.domain.Manga;
-import com.buruna.manga.domain.MangaFormat;
-import com.buruna.manga.domain.MangaStatusOrigin;
-import com.buruna.manga.domain.MangaStatusSite;
-import com.buruna.manga.domain.Slug;
-import com.buruna.manga.domain.Volume;
-import com.buruna.manga.persistence.MangaRepository;
-import com.buruna.manga.persistence.VolumeRepository;
+import com.buruna.work.domain.Work;
+import com.buruna.work.domain.WorkFormat;
+import com.buruna.work.domain.WorkStatusOrigin;
+import com.buruna.work.domain.WorkStatusSite;
+import com.buruna.work.domain.Slug;
+import com.buruna.work.domain.Volume;
+import com.buruna.work.persistence.WorkRepository;
+import com.buruna.work.persistence.VolumeRepository;
 import com.buruna.reading.persistence.ReadingHistoryRepository;
 import com.buruna.reading.persistence.ReadingProgressRepository;
 import com.buruna.shared.storage.StorageClient;
@@ -66,7 +66,7 @@ class ReadingIntegrationTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired UserRepository userRepository;
-    @Autowired MangaRepository mangaRepository;
+    @Autowired WorkRepository workRepository;
     @Autowired VolumeRepository volumeRepository;
     @Autowired ReadingHistoryRepository historyRepository;
     @Autowired ReadingProgressRepository progressRepository;
@@ -74,8 +74,8 @@ class ReadingIntegrationTest {
 
     User readerA;
     User readerB;
-    Manga publicManga;
-    Manga privateManga;
+    Work publicWork;
+    Work privateWork;
     Volume publicVol1;
     Volume publicVol2;
     Volume privateVol;
@@ -96,18 +96,18 @@ class ReadingIntegrationTest {
         historyRepository.deleteAllInBatch();
         progressRepository.deleteAllInBatch();
         volumeRepository.deleteAllInBatch();
-        mangaRepository.deleteAllInBatch();
+        workRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
 
         readerA = userRepository.save(buildUser("readerA@reading.test", "readReaderA"));
         readerB = userRepository.save(buildUser("readerB@reading.test", "readReaderB"));
 
-        publicManga  = mangaRepository.save(buildManga("reading-public-manga",  "Reading Test Manga",    true,  readerA));
-        privateManga = mangaRepository.save(buildManga("reading-private-manga", "Reading Private Manga", false, readerA));
+        publicWork  = workRepository.save(buildWork("reading-public-work",  "Reading Test Work",    true,  readerA));
+        privateWork = workRepository.save(buildWork("reading-private-work", "Reading Private Work", false, readerA));
 
-        publicVol1 = volumeRepository.save(buildVolume(publicManga,  1, "test/pub_v1.pdf",  readerA));
-        publicVol2 = volumeRepository.save(buildVolume(publicManga,  2, "test/pub_v2.pdf",  readerA));
-        privateVol = volumeRepository.save(buildVolume(privateManga, 1, "test/priv_v1.pdf", readerA));
+        publicVol1 = volumeRepository.save(buildVolume(publicWork,  1, "test/pub_v1.pdf",  readerA));
+        publicVol2 = volumeRepository.save(buildVolume(publicWork,  2, "test/pub_v2.pdf",  readerA));
+        privateVol = volumeRepository.save(buildVolume(privateWork, 1, "test/priv_v1.pdf", readerA));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
@@ -128,17 +128,17 @@ class ReadingIntegrationTest {
         return u;
     }
 
-    static Manga buildManga(String slug, String title, boolean isPublic, User owner) {
-        Manga m = isPublic
-                ? Manga.createPublic(Slug.of(slug), owner.getId())
-                : Manga.createPrivate(Slug.of(slug), title, null, owner.getId());
-        m.updateCatalogDetails(title, null, null, MangaFormat.MANGA, null,
-                MangaStatusOrigin.ONGOING, MangaStatusSite.INCOMPLETE, null, null, null);
+    static Work buildWork(String slug, String title, boolean isPublic, User owner) {
+        Work m = isPublic
+                ? Work.createPublic(Slug.of(slug), owner.getId())
+                : Work.createPrivate(Slug.of(slug), title, null, owner.getId());
+        m.updateCatalogDetails(title, null, null, WorkFormat.MANGA, null,
+                WorkStatusOrigin.ONGOING, WorkStatusSite.INCOMPLETE, null, null, null);
         return m;
     }
 
-    static Volume buildVolume(Manga manga, int volumeNumber, String fileUrl, User uploadedBy) {
-        return new Volume(manga, volumeNumber, fileUrl,
+    static Volume buildVolume(Work work, int volumeNumber, String fileUrl, User uploadedBy) {
+        return new Volume(work, volumeNumber, fileUrl,
                 "hash-" + UUID.randomUUID(), 1024L, uploadedBy.getId());
     }
 
@@ -162,12 +162,12 @@ class ReadingIntegrationTest {
 
     @Test
     void getVolumeUrl_incrementsViewCount() throws Exception {
-        int before = mangaRepository.findById(publicManga.getId()).orElseThrow().getViewCount();
+        int before = workRepository.findById(publicWork.getId()).orElseThrow().getViewCount();
 
         mockMvc.perform(get("/reader/{id}/url", publicVol1.getId()).with(auth(readerB)))
                 .andExpect(status().isOk());
 
-        int after = mangaRepository.findById(publicManga.getId()).orElseThrow().getViewCount();
+        int after = workRepository.findById(publicWork.getId()).orElseThrow().getViewCount();
         org.assertj.core.api.Assertions.assertThat(after).isGreaterThan(before);
     }
 
@@ -327,12 +327,12 @@ class ReadingIntegrationTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    //  3. GET /reader/progress/{mangaId}
+    //  3. GET /reader/progress/{workId}
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
     void getProgress_withoutToken_returns401() throws Exception {
-        mockMvc.perform(get("/reader/progress/{id}", publicManga.getId()))
+        mockMvc.perform(get("/reader/progress/{id}", publicWork.getId()))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -341,7 +341,7 @@ class ReadingIntegrationTest {
         mockMvc.perform(post("/reader/{id}/progress", publicVol1.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"currentPage\":25}").with(auth(readerA)));
 
-        mockMvc.perform(get("/reader/progress/{id}", publicManga.getId()).with(auth(readerA)))
+        mockMvc.perform(get("/reader/progress/{id}", publicWork.getId()).with(auth(readerA)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentPage").value(25));
     }
@@ -353,19 +353,19 @@ class ReadingIntegrationTest {
         mockMvc.perform(post("/reader/{id}/progress", publicVol2.getId())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"currentPage\":3}").with(auth(readerA)));
 
-        mockMvc.perform(get("/reader/progress/{id}", publicManga.getId()).with(auth(readerA)))
+        mockMvc.perform(get("/reader/progress/{id}", publicWork.getId()).with(auth(readerA)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.volumeId").value(publicVol2.getId().toString()));
     }
 
     @Test
     void getProgress_neverRead_returns204() throws Exception {
-        mockMvc.perform(get("/reader/progress/{id}", publicManga.getId()).with(auth(readerA)))
+        mockMvc.perform(get("/reader/progress/{id}", publicWork.getId()).with(auth(readerA)))
                 .andExpect(status().isNoContent());
     }
 
     @Test
-    void getProgress_nonexistentManga_returns404() throws Exception {
+    void getProgress_nonexistentWork_returns404() throws Exception {
         mockMvc.perform(get("/reader/progress/{id}", UUID.randomUUID()).with(auth(readerA)))
                 .andExpect(status().isNotFound());
     }
@@ -398,7 +398,7 @@ class ReadingIntegrationTest {
                 .andExpect(jsonPath("$.content.length()").value(1))
                 .andExpect(jsonPath("$.content[0].volumeId").exists())
                 .andExpect(jsonPath("$.content[0].volumeNumber").exists())
-                .andExpect(jsonPath("$.content[0].mangaTitle").exists())
+                .andExpect(jsonPath("$.content[0].workTitle").exists())
                 .andExpect(jsonPath("$.content[0].readAt").exists());
     }
 

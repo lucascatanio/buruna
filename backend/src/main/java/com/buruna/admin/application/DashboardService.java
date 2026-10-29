@@ -3,8 +3,8 @@ package com.buruna.admin.application;
 import com.buruna.identity.application.GetUserSummaryUseCase;
 import com.buruna.identity.application.UserSummary;
 import com.buruna.identity.application.admin.CountActiveUsersUseCase;
-import com.buruna.manga.application.admin.GetStorageByOwnerUseCase;
-import com.buruna.manga.application.admin.OwnerStorageUsage;
+import com.buruna.work.application.admin.GetStorageByOwnerUseCase;
+import com.buruna.work.application.admin.OwnerStorageUsage;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;

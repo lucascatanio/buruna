@@ -29,10 +29,11 @@ overrides do `pom.xml` que o Boot 4 já cobrir e rode o Trivy de novo.
 
 - [x] Dívidas técnicas revisadas em 2026-10-08:
   - Órfãos em `volumes/` no GCS: job `POST /admin/jobs/storage-orphans` (PR #75) apaga o que
-    não tem linha em `volumes` e tem mais de 7 dias, com `dryRun` e trava de proporção. Falta
-    a primeira execução em `dryRun` e o job semanal no Cloud Scheduler.
+    não tem linha em `volumes` e tem mais de 7 dias, com `dryRun` e trava de proporção. Job
+    semanal `buruna-storage-orphans` no Cloud Scheduler desde 2026-10-09.
   - Backend direto pelo `run.app`: segredo compartilhado nginx → backend (PR #76, ADR-43).
-    Falta criar o segredo e ligá-lo aos dois serviços, nessa ordem: frontend e depois backend.
+    Segredo `buruna-proxy-secret` ligado aos dois serviços em 2026-10-09: chamada direta ao
+    `run.app` responde 403.
   - Overrides do `pom.xml` revisados (PR #74): todos ainda necessários, Jackson 2.21.7,
     patches de postgresql/httpclient5/httpcore5 e OpenTelemetry 1.62.0. O Trivy foi de 10 achados
     para 2, que dependem do Spring Boot 4 (ver Dívida técnica).

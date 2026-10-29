@@ -8,24 +8,38 @@ import {AdminLayout} from "@/components/AdminLayout";
 import {LoginPage} from "@/pages/LoginPage";
 import {RegisterPage} from "@/pages/RegisterPage";
 import {LibraryPage} from "@/pages/LibraryPage";
-import {MangaDetailPage} from "@/pages/MangaDetailPage";
-import {MangaUploadPage} from "@/pages/MangaUploadPage";
-import {MangaEditPage} from "@/pages/MangaEditPage";
+import {WorkDetailPage} from "@/pages/WorkDetailPage";
+import {WorkUploadPage} from "@/pages/WorkUploadPage";
+import {WorkEditPage} from "@/pages/WorkEditPage";
 import {PendingUsersPage} from "@/pages/admin/PendingUsersPage";
 import {PendingSubmissionsPage} from "@/pages/admin/PendingSubmissionsPage";
 import {UsersPage} from "@/pages/admin/UsersPage";
 import {TagsPage} from "@/pages/admin/TagsPage";
+import {SourcingPage} from "@/pages/admin/SourcingPage";
 import {MyCollectionPage} from "@/pages/MyCollectionPage.tsx";
-import {PrivateMangaUploadPage} from "@/pages/PrivateMangaUploadPage.tsx";
-import {PrivateMangaDetailPage} from "@/pages/PrivateMangaDetailPage.tsx";
+import {PrivateWorkUploadPage} from "@/pages/PrivateWorkUploadPage.tsx";
+import {PrivateWorkDetailPage} from "@/pages/PrivateWorkDetailPage.tsx";
 import {ReadingHistoryPage} from "@/pages/ReadingHistoryPage.tsx";
 import {ReadingListPage} from "@/pages/ReadingListPage.tsx";
 import {ReaderPage} from "@/pages/ReaderPage.tsx";
+import {ChapterReaderPage} from "@/pages/ChapterReaderPage.tsx";
 import {useParams} from "react-router-dom";
 
 function ReaderPageWrapper() {
     const {volumeId} = useParams();
     return <ReaderPage key={volumeId}/>;
+}
+
+// remonta a cada capítulo: o "próximo capítulo" navega para a mesma rota com outro id
+function ChapterReaderPageWrapper() {
+    const {chapterId} = useParams();
+    return <ChapterReaderPage key={chapterId}/>;
+}
+
+// rota antiga, de antes do rename mangá → obra (ADR-45): links salvos continuam funcionando
+function LegacyWorkEditRedirect() {
+    const {id} = useParams();
+    return <Navigate to={`/obras/${id}/editar`} replace/>;
 }
 import {AdminDashboardPage} from "@/pages/AdminDashboardPage.tsx";
 import {ForgotPasswordPage} from "@/pages/ForgotPasswordPage.tsx";
@@ -49,23 +63,26 @@ export default function App() {
                     <Route element={<AppLayout/>}>
                         <Route path="/" element={<Navigate to="/biblioteca" replace/>}/>
                         <Route path="/biblioteca" element={<LibraryPage/>}/>
-                        <Route path="/biblioteca/:slug" element={<MangaDetailPage/>}/>
+                        <Route path="/biblioteca/:slug" element={<WorkDetailPage/>}/>
                         <Route path="/colecao" element={<MyCollectionPage/>}/>
-                        <Route path="/colecao/novo" element={<PrivateMangaUploadPage/>}/>
-                        <Route path="/colecao/:id" element={<PrivateMangaDetailPage/>}/>
+                        <Route path="/colecao/novo" element={<PrivateWorkUploadPage/>}/>
+                        <Route path="/colecao/:id" element={<PrivateWorkDetailPage/>}/>
                         <Route path="/historico" element={<ReadingHistoryPage/>}/>
                         <Route path="/lista" element={<ReadingListPage/>}/>
                         <Route path="/seguranca" element={<SecuritySettingsPage/>}/>
                     </Route>
                     <Route element={<ProtectedRoute/>}>
+                        <Route path="/leitor/capitulo/:chapterId" element={<ChapterReaderPageWrapper/>}/>
                         <Route path="/leitor/:volumeId" element={<ReaderPageWrapper/>}/>
                     </Route>
                 </Route>
 
                 <Route element={<ProtectedRoute requiredRole="COLLABORATOR"/>}>
                     <Route element={<AppLayout/>}>
-                        <Route path="/mangas/novo" element={<MangaUploadPage/>}/>
-                        <Route path="/mangas/:id/editar" element={<MangaEditPage/>}/>
+                        <Route path="/obras/nova" element={<WorkUploadPage/>}/>
+                        <Route path="/obras/:id/editar" element={<WorkEditPage/>}/>
+                        <Route path="/mangas/novo" element={<Navigate to="/obras/nova" replace/>}/>
+                        <Route path="/mangas/:id/editar" element={<LegacyWorkEditRedirect/>}/>
                     </Route>
                 </Route>
 
@@ -76,6 +93,7 @@ export default function App() {
                         <Route path="/admin/tags" element={<TagsPage/>}/>
                         <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
                         <Route path="/admin/submissions" element={<PendingSubmissionsPage/>}/>
+                        <Route path="/admin/import" element={<SourcingPage/>}/>
                     </Route>
                 </Route>
 
