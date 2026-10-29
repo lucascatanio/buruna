@@ -127,6 +127,26 @@ Bucket privado; acesso só via URLs assinadas V4 de expiração curta (leitura d
 30 min; capa privada: 1h; upload PUT: 15 min). Detalhe completo em
 [DEPLOYMENT.md](docs/DEPLOYMENT.md#3-urls-assinadas-do-gcs-v4).
 
+## Arquivos enviados e fontes externas
+
+- **Upload de capítulo (CBZ, CBR, PDF, EPUB):** o arquivo vai direto ao GCS por URL assinada
+  presa à obra (`pending/chapters/{workId}/...`, ADR-40) e só é aberto no Cloud Run Job. A
+  extração tem teto de páginas, de tamanho total e por página (`APP_INGEST_MAX_*`, contra zip
+  bomb), recusa caminho com `..` e link simbólico (path traversal) e confere o tipo da imagem
+  pelos bytes, não pela extensão. O XML do EPUB é lido sem DTD nem entidade externa (XXE).
+- **EPUB no leitor (ADR-51):** o livro abre num iframe `blob:` que herda o CSP da página, sem
+  `'unsafe-inline'` nem `blob:` em `script-src`, então script do livro não roda. Antes da carga,
+  o XHTML/SVG perde `script`, `iframe`, `object`, `form`, atributos `on*` e URLs `javascript:`.
+  O CSP do nginx libera `blob:` só em `frame-src`, `style-src` e `font-src`. Quem mexer no CSP
+  precisa ler o ADR-51.
+- **MangaDex (ADR-46):** a URL das imagens vem da resposta da fonte, e o Job roda dentro da
+  VPC. O adaptador só baixa de `https` com nome de host público (sem IP literal, `localhost`,
+  `.internal` ou userinfo) e não segue redirect, para um endereço adulterado não alcançar a
+  rede interna nem o servidor de metadados do GCP. O proxy de capa da busca
+  (`/admin/sourcing/cover`, só ADMIN) só aceita `https://uploads.mangadex.org/covers/`.
+- **Disparo do Job:** o backend e o Cloud Scheduler disparam o Job com a conta
+  `buruna-backend@`, que tem só `roles/run.jobsExecutorWithOverrides` no Job.
+
 ## Exceções de domínio
 
 Nunca vazam detalhes internos — são tipos puros (`DomainErrorType`) traduzidos para

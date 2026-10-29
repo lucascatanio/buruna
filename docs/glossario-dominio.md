@@ -12,8 +12,9 @@
 | Termo | Contexto | Definição |
 |---|---|---|
 | **Identity & Access** (`identity`) | — | Fusão de `auth`+`user`. Dono do agregado `User`, autenticação (JWT+refresh, TOTP), aprovação e política de inatividade. |
-| **Catalog & Collection** (`work`) | — | Core domain. Um único agregado `Work` (VO `isPublic`) cobre catálogo público e coleção privada, mais `Volume`, `Tag`/`TagCategory`. |
-| **Reading** (`reading`) | — | Supporting. Progresso de leitura, histórico e URL assinada de acesso a volume. |
+| **Catalog & Collection** (`work`) | — | Core domain. Um único agregado `Work` (VO `isPublic`) cobre catálogo público e coleção privada; `Chapter` é agregado próprio (a unidade de leitura), mais `Volume` (legado), `Tag`/`TagCategory`. |
+| **Reading** (`reading`) | — | Supporting. Manifesto do capítulo, progresso por capítulo (página ou CFI), histórico e URL assinada de volume e livro. |
+| **Sourcing** (`sourcing`) | — | Supporting. Import e sync do MangaDex: obras acompanhadas, versões de capítulo, lease do executor (§5.1). |
 | **Engagement** (`engagement`) | — | Supporting. Avaliações (`Rating`) e lista de leitura (`ReadingList`). |
 | **Administration** (`admin`) | — | Casca/orquestração, sem domínio próprio — controllers chamam use cases públicos dos outros contextos. |
 
