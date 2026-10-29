@@ -28,7 +28,7 @@ import java.util.UUID;
 @RestController
 // /mangas: rota de antes do rename (ADR-45), mantida por uma versão para abas abertas com o
 // front antigo. Remover na versão seguinte.
-@RequestMapping({"/works", "/mangas"})
+@RequestMapping("/works")
 public class WorkController {
 
     // sem allowlist o Pageable ordena por qualquer atributo da entidade, inclusive os de

@@ -32,7 +32,7 @@ import java.util.UUID;
 @RestController
 // /mangas: rota de antes do rename (ADR-45), mantida por uma versão para abas abertas com o
 // front antigo. Remover na versão seguinte.
-@RequestMapping({"/my/works", "/my/mangas"})
+@RequestMapping("/my/works")
 public class PrivateWorkController {
 
     private final CreatePrivateWorkUseCase createPrivateWork;
