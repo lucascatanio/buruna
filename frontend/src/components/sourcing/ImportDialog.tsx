@@ -1,19 +1,18 @@
 import {useEffect, useState} from "react";
 import {toast} from "sonner";
-import {Download, Loader2, X} from "lucide-react";
-import {importWork, listSourceGroups} from "@/api/sourcingApi";
+import {Download, X} from "lucide-react";
+import {importWork} from "@/api/sourcingApi";
 import {listWorks} from "@/api/workApi";
-import type {SourceGroupSummary, SourceSearchResult} from "@/types/sourcing";
+import type {SourceSearchResult} from "@/types/sourcing";
 import type {WorkCard} from "@/types/work";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
-import {NativeSelect} from "@/components/ui/native-select";
 import {languageName} from "@/lib/chapterLabel";
 import {apiErrorMessage} from "@/lib/apiError";
+import {LanguageGroupPicker} from "./LanguageGroupPicker";
 
 const DEFAULT_LANGUAGE = "pt-BR";
-const NO_GROUP = "";
 
 interface ImportDialogProps {
     work: SourceSearchResult;
@@ -22,9 +21,7 @@ interface ImportDialogProps {
 }
 
 interface LanguageState {
-    /** undefined: carregando; null: falhou */
-    groups: SourceGroupSummary[] | null | undefined;
-    preferredGroupId: string;
+    preferredGroup: { id: string; name: string } | null;
 }
 
 /**
@@ -35,7 +32,7 @@ export function ImportDialog({work, onClose, onImported}: ImportDialogProps) {
     const [selected, setSelected] = useState<Record<string, LanguageState>>(() => {
         const initial: Record<string, LanguageState> = {};
         if (work.availableLanguages.includes(DEFAULT_LANGUAGE)) {
-            initial[DEFAULT_LANGUAGE] = {groups: undefined, preferredGroupId: NO_GROUP};
+            initial[DEFAULT_LANGUAGE] = {preferredGroup: null};
         }
         return initial;
     });
@@ -47,17 +44,6 @@ export function ImportDialog({work, onClose, onImported}: ImportDialogProps) {
     const languages = [...work.availableLanguages].sort((a, b) =>
         a === DEFAULT_LANGUAGE ? -1 : b === DEFAULT_LANGUAGE ? 1 : languageName(a).localeCompare(languageName(b)));
     const selectedLanguages = Object.keys(selected);
-
-    // grupos de cada idioma marcado, sob demanda
-    useEffect(() => {
-        for (const language of selectedLanguages) {
-            if (selected[language].groups !== undefined) continue;
-            listSourceGroups(work.externalId, language)
-                .then((groups) => updateLanguage(language, {groups}))
-                .catch(() => updateLanguage(language, {groups: null}));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedLanguages.join(","), work.externalId]);
 
     // obras do catálogo com título parecido, para não criar uma duplicata
     useEffect(() => {
@@ -87,7 +73,7 @@ export function ImportDialog({work, onClose, onImported}: ImportDialogProps) {
                 delete next[language];
                 return next;
             }
-            return {...current, [language]: {groups: undefined, preferredGroupId: NO_GROUP}};
+            return {...current, [language]: {preferredGroup: null}};
         });
     }
 
@@ -98,8 +84,7 @@ export function ImportDialog({work, onClose, onImported}: ImportDialogProps) {
                 externalId: work.externalId,
                 linkWorkId,
                 languages: selectedLanguages.map((language) => {
-                    const state = selected[language];
-                    const group = state.groups?.find((g) => g.id === state.preferredGroupId);
+                    const group = selected[language].preferredGroup;
                     return {language, preferredGroupId: group?.id ?? null, preferredGroupName: group?.name ?? null};
                 }),
             });
@@ -128,8 +113,8 @@ export function ImportDialog({work, onClose, onImported}: ImportDialogProps) {
                     <fieldset className="space-y-3">
                         <legend className="text-sm font-medium">Idiomas</legend>
                         <p className="text-xs text-muted-foreground">
-                            Todos os capítulos dos idiomas marcados são baixados. Sem grupo preferido, entra a
-                            versão publicada mais recentemente.
+                            Todos os capítulos disponíveis dos idiomas marcados são baixados. Sem grupo
+                            preferido, entra a versão publicada mais recentemente.
                         </p>
                         {languages.length === 0 && (
                             <p className="text-sm text-muted-foreground">O MangaDex não tem capítulos desta obra.</p>
@@ -144,41 +129,15 @@ export function ImportDialog({work, onClose, onImported}: ImportDialogProps) {
                             ))}
                         </div>
 
-                        {selectedLanguages.map((language) => {
-                            const state = selected[language];
-                            return (
-                                <div key={language} className="space-y-1.5">
-                                    <Label htmlFor={`group-${language}`}>Grupo preferido · {languageName(language)}</Label>
-                                    {state.groups === undefined ? (
-                                        <p className="flex h-9 items-center gap-2 text-sm text-muted-foreground">
-                                            <Loader2 className="size-4 animate-spin"/> Carregando grupos…
-                                        </p>
-                                    ) : (
-                                        <NativeSelect
-                                            id={`group-${language}`}
-                                            value={state.preferredGroupId}
-                                            onChange={(e) => updateLanguage(language, {preferredGroupId: e.target.value})}
-                                        >
-                                            <option value={NO_GROUP}>Sem preferência</option>
-                                            {(state.groups ?? []).map((group) => (
-                                                <option key={group.id} value={group.id}>
-                                                    {group.name} ({group.chapterCount} cap.)
-                                                </option>
-                                            ))}
-                                        </NativeSelect>
-                                    )}
-                                    {state.groups?.length === 0 && (
-                                        <p className="text-xs text-muted-foreground">
-                                            Nenhum capítulo disponível neste idioma agora. O MangaDex ainda lista o
-                                            idioma, mas os capítulos podem ter sido retirados.
-                                        </p>
-                                    )}
-                                    {state.groups === null && (
-                                        <p className="text-xs text-destructive">Não deu para carregar os grupos. Dá para importar sem preferência.</p>
-                                    )}
-                                </div>
-                            );
-                        })}
+                        {selectedLanguages.map((language) => (
+                            <LanguageGroupPicker
+                                key={language}
+                                externalId={work.externalId}
+                                language={language}
+                                preferredGroupId={selected[language].preferredGroup?.id ?? null}
+                                onChange={(preferredGroup) => updateLanguage(language, {preferredGroup})}
+                            />
+                        ))}
                     </fieldset>
 
                     <fieldset className="space-y-3">

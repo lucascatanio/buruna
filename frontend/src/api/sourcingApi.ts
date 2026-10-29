@@ -1,9 +1,10 @@
 import api from "@/lib/axios";
 import type {
     ImportWorkRequest,
+    LanguageAvailability,
+    LanguageChoice,
     SourceAlert,
     TrackedGroup,
-    SourceGroupSummary,
     SourceSearchResult,
     TrackedWork,
     WorkSource,
@@ -13,8 +14,8 @@ export function searchSource(query: string): Promise<SourceSearchResult[]> {
     return api.get<SourceSearchResult[]>("/admin/sourcing/search", {params: {q: query}}).then((r) => r.data);
 }
 
-export function listSourceGroups(externalId: string, language: string): Promise<SourceGroupSummary[]> {
-    return api.get<SourceGroupSummary[]>(`/admin/sourcing/works/${encodeURIComponent(externalId)}/groups`,
+export function getLanguageAvailability(externalId: string, language: string): Promise<LanguageAvailability> {
+    return api.get<LanguageAvailability>(`/admin/sourcing/works/${encodeURIComponent(externalId)}/availability`,
         {params: {language}}).then((r) => r.data);
 }
 
@@ -78,4 +79,14 @@ export type SourceChapterAction = "retry" | "redownload" | "use";
 
 export function runSourceChapterAction(sourceChapterId: string, action: SourceChapterAction): Promise<void> {
     return api.post(`/admin/sourcing/source-chapters/${sourceChapterId}/${action}`).then(() => undefined);
+}
+
+/** Idiomas que o MangaDex tem desta obra e que ainda não são acompanhados. */
+export function listUntrackedSourceLanguages(id: string): Promise<string[]> {
+    return api.get<string[]>(`/admin/sourcing/tracked/${id}/source-languages`).then((r) => r.data);
+}
+
+/** Acrescenta um idioma à obra acompanhada (ou troca o grupo preferido dele) e verifica a obra. */
+export function trackLanguage(id: string, choice: LanguageChoice): Promise<void> {
+    return api.post(`/admin/sourcing/tracked/${id}/languages`, choice).then(() => undefined);
 }

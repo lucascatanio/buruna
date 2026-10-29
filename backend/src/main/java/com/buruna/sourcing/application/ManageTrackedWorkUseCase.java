@@ -1,10 +1,14 @@
 package com.buruna.sourcing.application;
 
+import com.buruna.shared.source.ExternalSource;
+import com.buruna.shared.source.ExternalSourceException;
 import com.buruna.sourcing.domain.ChapterSelection;
 import com.buruna.sourcing.domain.InvalidSourceActionException;
 import com.buruna.sourcing.domain.SourceChapter;
 import com.buruna.sourcing.domain.SourceChapterNotFoundException;
 import com.buruna.sourcing.domain.SourceChapterState;
+import com.buruna.sourcing.domain.SourceUnavailableException;
+import com.buruna.sourcing.domain.TrackedLanguage;
 import com.buruna.sourcing.domain.TrackedWork;
 import com.buruna.sourcing.domain.TrackedWorkNotFoundException;
 import com.buruna.sourcing.persistence.SourceChapterRepository;
@@ -22,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -35,17 +40,20 @@ public class ManageTrackedWorkUseCase {
     private final TrackedWorkRepository trackedWorkRepository;
     private final SourceChapterRepository sourceChapterRepository;
     private final DeleteChapterUseCase deleteChapter;
+    private final ExternalSource source;
     private final SourcingTrigger trigger;
     private final Clock clock;
 
     public ManageTrackedWorkUseCase(TrackedWorkRepository trackedWorkRepository,
                                     SourceChapterRepository sourceChapterRepository,
                                     DeleteChapterUseCase deleteChapter,
+                                    ExternalSource source,
                                     SourcingTrigger trigger,
                                     Clock clock) {
         this.trackedWorkRepository = trackedWorkRepository;
         this.sourceChapterRepository = sourceChapterRepository;
         this.deleteChapter = deleteChapter;
+        this.source = source;
         this.trigger = trigger;
         this.clock = clock;
     }
@@ -93,6 +101,31 @@ public class ManageTrackedWorkUseCase {
         }
         ChapterSelection.apply(versions, tracked::preferredGroupFor, tracked.ignoredGroupIds());
         trigger.requestRun();
+    }
+
+    /** Acrescenta um idioma (ou troca o grupo preferido dele) e já verifica a obra. */
+    @Transactional
+    public void trackLanguage(UUID trackedWorkId, String language, String preferredGroupId, String preferredGroupName) {
+        TrackedWork tracked = lock(trackedWorkId);
+        tracked.trackLanguage(TrackedLanguage.of(language, preferredGroupId, preferredGroupName));
+        if (tracked.isActive()) {
+            trigger.requestRun();
+        }
+    }
+
+    /** Idiomas que a fonte tem desta obra e que ainda não são acompanhados. */
+    @Transactional(readOnly = true)
+    public List<String> untrackedSourceLanguages(UUID trackedWorkId) {
+        TrackedWork tracked = trackedWorkRepository.findById(trackedWorkId)
+                .orElseThrow(() -> new TrackedWorkNotFoundException(trackedWorkId));
+        List<String> available;
+        try {
+            available = source.fetchWork(tracked.getExternalId()).availableLanguages();
+        } catch (ExternalSourceException e) {
+            throw new SourceUnavailableException();
+        }
+        Set<String> tracking = tracked.languageTags();
+        return available.stream().filter(language -> !tracking.contains(language)).sorted().toList();
     }
 
     /** Volta a aceitar o grupo; números sem capítulo podem passar a vir dele. */

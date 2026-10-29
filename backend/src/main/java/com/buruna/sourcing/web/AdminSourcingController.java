@@ -3,12 +3,12 @@ package com.buruna.sourcing.web;
 import com.buruna.identity.domain.User;
 import com.buruna.sourcing.application.ImportWorkRequest;
 import com.buruna.sourcing.application.ImportWorkUseCase;
+import com.buruna.sourcing.application.LanguageAvailability;
 import com.buruna.sourcing.application.ListTrackedWorksUseCase;
 import com.buruna.sourcing.application.ManageTrackedWorkUseCase;
 import com.buruna.sourcing.application.RequestSourcingRunUseCase;
 import com.buruna.sourcing.application.SearchSourceUseCase;
 import com.buruna.sourcing.application.SourceAlert;
-import com.buruna.sourcing.application.SourceGroupSummary;
 import com.buruna.sourcing.application.SourceSearchResult;
 import com.buruna.sourcing.application.TrackedGroupResponse;
 import com.buruna.sourcing.application.TrackedWorkResponse;
@@ -65,10 +65,10 @@ public class AdminSourcingController {
         return searchSource.search(query.trim());
     }
 
-    @GetMapping("/works/{externalId}/groups")
-    public List<SourceGroupSummary> groups(@PathVariable @Size(max = 100) String externalId,
-                                           @RequestParam @NotBlank @Size(max = 35) String language) {
-        return searchSource.groups(externalId, language);
+    @GetMapping("/works/{externalId}/availability")
+    public LanguageAvailability availability(@PathVariable @Size(max = 100) String externalId,
+                                             @RequestParam @NotBlank @Size(max = 35) String language) {
+        return searchSource.availability(externalId, language);
     }
 
     @GetMapping("/cover")
@@ -115,6 +115,20 @@ public class AdminSourcingController {
     public ResponseEntity<Void> resume(@PathVariable UUID id) {
         manage.resume(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Idiomas que o MangaDex tem desta obra e que ainda não são acompanhados. */
+    @GetMapping("/tracked/{id}/source-languages")
+    public List<String> sourceLanguages(@PathVariable UUID id) {
+        return manage.untrackedSourceLanguages(id);
+    }
+
+    /** Acrescenta um idioma à obra acompanhada (ou troca o grupo preferido dele). */
+    @PostMapping("/tracked/{id}/languages")
+    public ResponseEntity<Void> trackLanguage(@PathVariable UUID id,
+                                              @Valid @RequestBody ImportWorkRequest.LanguageChoice request) {
+        manage.trackLanguage(id, request.language(), request.preferredGroupId(), request.preferredGroupName());
+        return ResponseEntity.accepted().build();
     }
 
     @GetMapping("/tracked/{id}/alerts")
