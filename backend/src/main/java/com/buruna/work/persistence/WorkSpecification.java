@@ -1,5 +1,8 @@
 package com.buruna.work.persistence;
 
+import com.buruna.work.domain.Chapter;
+import com.buruna.work.domain.ChapterStatus;
+import com.buruna.work.domain.Volume;
 import com.buruna.work.domain.Work;
 import com.buruna.work.domain.WorkFormat;
 import com.buruna.work.domain.WorkStatusOrigin;
@@ -12,6 +15,9 @@ import java.util.Set;
 import java.util.UUID;
 
 public class WorkSpecification {
+
+    /** Idioma atribuído aos volumes legados, que não guardam idioma. */
+    public static final String LEGACY_VOLUME_LANGUAGE = "pt-BR";
 
     private WorkSpecification() {}
 
@@ -38,6 +44,29 @@ public class WorkSpecification {
     public static Specification<Work> hasStatusOrigin(WorkStatusOrigin statusOrigin) {
         return (root, query, cb) ->
                 statusOrigin == null ? null : cb.equal(root.get("statusOrigin"), statusOrigin);
+    }
+
+    /**
+     * Obra com capítulo publicado no idioma. Volume legado não tem idioma e conta como pt-BR,
+     * o idioma de quase todo upload antigo, até a migração do legado (E8) virar capítulo.
+     */
+    public static Specification<Work> hasLanguage(String language) {
+        return (root, query, cb) -> {
+            if (language == null) return null;
+            var chapters = query.subquery(Long.class);
+            var chapter = chapters.from(Chapter.class);
+            chapters.select(cb.literal(1L)).where(
+                    cb.equal(chapter.get("workId"), root.get("id")),
+                    cb.equal(chapter.get("language"), language),
+                    cb.equal(chapter.get("status"), ChapterStatus.PUBLISHED));
+            if (!LEGACY_VOLUME_LANGUAGE.equals(language)) {
+                return cb.exists(chapters);
+            }
+            var volumes = query.subquery(Long.class);
+            var volume = volumes.from(Volume.class);
+            volumes.select(cb.literal(1L)).where(cb.equal(volume.get("work").get("id"), root.get("id")));
+            return cb.or(cb.exists(chapters), cb.exists(volumes));
+        };
     }
 
     public static Specification<Work> hasTagIds(Set<UUID> tagIds) {

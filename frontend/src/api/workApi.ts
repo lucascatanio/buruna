@@ -20,7 +20,13 @@ export function listWorks(filters: WorkListFilters): Promise<Page<WorkCard>> {
     if (filters.format) params.set("format", filters.format);
     if (filters.statusOrigin) params.set("statusOrigin", filters.statusOrigin);
     if (filters.tagIds && filters.tagIds.length > 0) params.set("tagIds", filters.tagIds.join(","));
+    if (filters.language) params.set("language", filters.language);
     return api.get<Page<WorkCard>>(`/works?${params}`).then((r) => r.data);
+}
+
+/** Idiomas que existem no catálogo, para o filtro da biblioteca. */
+export function listCatalogLanguages(): Promise<string[]> {
+    return api.get<string[]>("/works/languages").then((r) => r.data);
 }
 
 export function getWork(slugOrId: string): Promise<WorkDetail> {

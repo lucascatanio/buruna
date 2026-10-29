@@ -32,6 +32,14 @@ public record WorkResponse(
         // populado apenas no endpoint de detalhe (/works/{slug}) vazio na listagem.
         List<VolumeResponse> volumes,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        // idiomas com capítulo publicado (volume legado conta como pt-BR); só na listagem
+        List<String> languages
 ) {
+
+    WorkResponse withLanguages(List<String> languages) {
+        return new WorkResponse(id, slug, title, alternativeTitles, synopsis, coverUrl, format, originCountry,
+                statusOrigin, statusSite, year, contentWarnings, avgRating, ratingCount, viewCount, isPublic,
+                ownerId, tags, volumes, createdAt, updatedAt, languages);
+    }
 }
