@@ -1,6 +1,6 @@
 import {useEffect, useState, useCallback} from "react";
 import {Link} from "react-router-dom";
-import {listWorks} from "@/api/workApi";
+import {listCatalogLanguages, listWorks} from "@/api/workApi";
 import type {Page} from "@/types/common";
 import type {WorkCard} from "@/types/work";
 import {Button} from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
 import {WorkCover} from "@/components/WorkCover";
 import {NativeSelect} from "@/components/ui/native-select";
+import {languageName} from "@/lib/chapterLabel";
 import {Search, SlidersHorizontal, X, Plus, Star, ChevronLeft, ChevronRight} from "lucide-react";
 import {useAuthStore} from "@/store/authStore";
 
@@ -49,19 +50,27 @@ export function LibraryPage() {
     const [format, setFormat] = useState("");
     const [statusOrigin, setStatusOrigin] = useState("");
     const [tagIds, setTagIds] = useState<string[]>([]);
+    const [language, setLanguage] = useState("");
+    const [languages, setLanguages] = useState<string[]>([]);
     const [page, setPage] = useState(0);
 
-    const hasActiveFilters = format !== "" || statusOrigin !== "" || tagIds.length > 0;
+    const hasActiveFilters = format !== "" || statusOrigin !== "" || tagIds.length > 0 || language !== "";
 
     const fetchWorks = useCallback(async (pageNum: number) => {
         setLoading(true);
         try {
-            const res = await listWorks({page: pageNum, size: 24, title, format, statusOrigin, tagIds});
+            const res = await listWorks({page: pageNum, size: 24, title, format, statusOrigin, tagIds, language});
             setData(res);
         } finally {
             setLoading(false);
         }
-    }, [title, format, statusOrigin, tagIds]);
+    }, [title, format, statusOrigin, tagIds, language]);
+
+    useEffect(() => {
+        listCatalogLanguages()
+            .then(setLanguages)
+            .catch((e) => console.warn("[LibraryPage] falha ao carregar idiomas:", e));
+    }, []);
 
     useEffect(() => {
         setPage(0);
@@ -75,6 +84,7 @@ export function LibraryPage() {
 
     function clearFilters() {
         setFormat("");
+        setLanguage("");
         setStatusOrigin("");
         setTagIds([]);
     }
@@ -129,7 +139,7 @@ export function LibraryPage() {
                             </Button>
                         )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label className="text-xs text-muted-foreground mb-1 block">Formato</label>
                             <NativeSelect
@@ -149,6 +159,18 @@ export function LibraryPage() {
                             >
                                 {STATUS_OPTIONS.map((o) => (
                                     <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                            </NativeSelect>
+                        </div>
+                        <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">Idioma</label>
+                            <NativeSelect
+                                value={language}
+                                onChange={(e) => setLanguage(e.target.value)}
+                            >
+                                <option value="">Todos os idiomas</option>
+                                {languages.map((l) => (
+                                    <option key={l} value={l}>{languageName(l)}</option>
                                 ))}
                             </NativeSelect>
                         </div>
@@ -247,6 +269,12 @@ function WorkCardItem({work}: {work: WorkCard}) {
             />
             <div className="flex flex-col gap-0.5">
                 <span className="text-[13px] sm:text-sm font-medium leading-snug line-clamp-2">{work.title}</span>
+                {work.languages.length > 0 && (
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+                          title={work.languages.map(languageName).join(", ")}>
+                        {work.languages.join(" · ")}
+                    </span>
+                )}
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     {work.year}
                     {work.year && work.ratingCount > 0 && <span aria-hidden="true">·</span>}

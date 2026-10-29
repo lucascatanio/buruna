@@ -12,6 +12,13 @@ import java.util.UUID;
 
 public interface VolumeRepository extends JpaRepository<Volume, UUID> {
 
+    /** Obras da lista que têm volume legado (contam como pt-BR no catálogo, até a migração). */
+    @Query("SELECT DISTINCT v.work.id FROM Volume v WHERE v.work.id IN :workIds")
+    List<UUID> findWorkIdsWithVolumes(@Param("workIds") Collection<UUID> workIds);
+
+    @Query("SELECT COUNT(v) > 0 FROM Volume v WHERE v.work.isPublic = true")
+    boolean existsInPublicWorks();
+
     boolean existsByWorkIdAndVolumeNumber(UUID workId, Integer volumeNumber);
 
     Optional<Volume> findByIdAndWorkId(UUID id, UUID workId);

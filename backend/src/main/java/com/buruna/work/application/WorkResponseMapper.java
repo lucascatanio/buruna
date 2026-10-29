@@ -62,7 +62,7 @@ public class WorkResponseMapper {
                 tags,
                 volumes,
                 work.getCreatedAt(),
-                work.getUpdatedAt()
-        );
+                work.getUpdatedAt(),
+                List.of());
     }
 }

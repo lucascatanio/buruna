@@ -15,7 +15,7 @@ import java.util.UUID;
 @RestController
 // /mangas: rota de antes do rename (ADR-45), mantida por uma versão para abas abertas com o
 // front antigo. Remover na versão seguinte.
-@RequestMapping({"/works/{workId}/rating", "/mangas/{workId}/rating"})
+@RequestMapping("/works/{workId}/rating")
 public class RatingController {
 
     private final RatingService ratingService;

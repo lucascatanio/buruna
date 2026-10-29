@@ -22,13 +22,14 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 @RestController
 // /mangas: rota de antes do rename (ADR-45), mantida por uma versão para abas abertas com o
 // front antigo. Remover na versão seguinte.
-@RequestMapping({"/works", "/mangas"})
+@RequestMapping("/works")
 public class WorkController {
 
     // sem allowlist o Pageable ordena por qualquer atributo da entidade, inclusive os de
@@ -60,6 +61,7 @@ public class WorkController {
             @RequestParam(required = false) WorkFormat format,
             @RequestParam(required = false) WorkStatusOrigin statusOrigin,
             @RequestParam(required = false) Set<UUID> tagIds,
+            @RequestParam(required = false) String language,
             @PageableDefault(size = 20, sort = "title") Pageable pageable
     ) {
         pageable.getSort().forEach(order -> {
@@ -68,7 +70,13 @@ public class WorkController {
                         "Campo de ordenação inválido: " + order.getProperty());
             }
         });
-        return ResponseEntity.ok(catalogQuery.handle(title, format, statusOrigin, tagIds, pageable));
+        return ResponseEntity.ok(catalogQuery.handle(title, format, statusOrigin, tagIds, language, pageable));
+    }
+
+    /** Idiomas que existem no catálogo, para o filtro da biblioteca. */
+    @GetMapping("/languages")
+    public List<String> languages() {
+        return catalogQuery.availableLanguages();
     }
 
     @GetMapping("/{slugOrId}")

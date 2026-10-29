@@ -22,7 +22,7 @@ import java.util.UUID;
 @RestController
 // /mangas: rota de antes do rename (ADR-45), mantida por uma versão para abas abertas com o
 // front antigo. Remover na versão seguinte.
-@RequestMapping({"/works/{workId}/volumes", "/mangas/{workId}/volumes"})
+@RequestMapping("/works/{workId}/volumes")
 public class VolumeController {
 
     private final ListPublicVolumesUseCase listPublicVolumes;

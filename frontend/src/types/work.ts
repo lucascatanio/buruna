@@ -27,6 +27,8 @@ export interface WorkCard {
     year: number | null;
     avgRating: number;
     ratingCount: number;
+    /** Idiomas com capítulo publicado; volume antigo conta como pt-BR. */
+    languages: string[];
 }
 
 export interface WorkDetail {
@@ -71,6 +73,8 @@ export interface WorkListFilters {
     format?: string;
     statusOrigin?: string;
     tagIds?: string[];
+    /** Só obras com capítulo publicado neste idioma (BCP 47). */
+    language?: string;
     page?: number;
     size?: number;
 }
