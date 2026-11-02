@@ -135,7 +135,7 @@ export function WorkDetailPage() {
             })
             .catch((e) => console.warn("[WorkDetailPage] falha ao carregar avaliação do usuário:", e));
 
-        // crédito exigido pelo MangaDex nas obras importadas de lá (ADR-46)
+        // crédito exigido pelo MangaDex nas obras importadas de lá
         getWorkSource(work.id)
             .then(setWorkSource)
             .catch((e) => console.warn("[WorkDetailPage] falha ao carregar a fonte da obra:", e));

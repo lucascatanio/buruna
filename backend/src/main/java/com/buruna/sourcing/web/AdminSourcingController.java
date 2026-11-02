@@ -35,7 +35,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
-/** Importação de obras do MangaDex pelo ADM (ADR-46). */
+/** Importação de obras do MangaDex pelo ADM. */
 @RestController
 @RequestMapping("/admin/sourcing")
 @PreAuthorize("hasRole('ADMIN')")

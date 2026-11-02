@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Fonte externa de obras e capítulos (ADR-46). Uma implementação por fonte; hoje só o MangaDex.
+ * Fonte externa de obras e capítulos. Uma implementação por fonte; hoje só o MangaDex.
  * Idiomas entram e saem como tag BCP 47 ({@code pt-BR}, {@code es-419}): a tradução dos códigos
  * próprios da fonte fica na implementação.
  *

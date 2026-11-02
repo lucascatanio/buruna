@@ -32,8 +32,8 @@ diz o que mudou desde a última leitura.
 - **Pausa automática:** 8 falhas seguidas ao listar uma obra (~1 dia) a pausam, com o motivo. O
   ADM retoma pelo botão, o que zera o contador e pede uma verificação. Pausada pelo ADM, a obra
   não é verificada nem baixa nada.
-- **Ignorar um grupo** (pedido de remoção do grupo, exigência da AUP do MangaDex,
-  [ADR-46](ADR-46-mangadex-como-fonte-externa.md)): apaga os capítulos que vieram dele e deixa a
+- **Ignorar um grupo** (pedido de remoção do grupo, exigência da AUP do MangaDex):
+  apaga os capítulos que vieram dele e deixa a
   escolha trazer a versão de outro grupo. As versões futuras do grupo não entram.
 - **E-mail diário** para todos os ADMs ativos, só quando há novidade desde o último: versão que
   falhou de vez, removida na fonte, páginas trocadas, versão do grupo preferido disponível, obra

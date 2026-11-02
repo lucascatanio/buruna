@@ -33,7 +33,7 @@ O frontend é uma SPA React sem Clean Architecture própria: apenas uma camada l
 | **work** | `com.buruna.work` | Catálogo público (com idiomas), coleção privada, capítulos (páginas, ou arquivo PDF/EPUB no livro), volumes legados, tags, submissão/promoção, processamento do upload |
 | **reading** | `com.buruna.reading` | Leitor (manifesto do capítulo com URLs assinadas, PDF de volume e livro), progresso por capítulo (página, ou CFI no EPUB), histórico |
 | **engagement** | `com.buruna.engagement` | Avaliações (ratings) e lista de leitura |
-| **sourcing** | `com.buruna.sourcing` | Importação do MangaDex: obras acompanhadas, versões de capítulo por grupo, lease de um executor por fonte (ADR-46, ADR-47) |
+| **sourcing** | `com.buruna.sourcing` | Importação do MangaDex: obras acompanhadas, versões de capítulo por grupo, lease de um executor por fonte (ADR-47) |
 | **admin** | `com.buruna.admin` | Casca administrativa — dashboard, jobs, revisão de submissões. Sem `domain` próprio; a `application` (`DashboardService`) só orquestra os use cases públicos dos outros contextos |
 
 Dois pacotes adicionais fora desse modelo, por não serem bounded contexts de domínio:
@@ -263,7 +263,7 @@ coleção ou conta também apaga os objetos dos capítulos (`ChapterStorageClean
 ### 6.4.2 Importação do MangaDex
 
 ADM, em `/admin/sourcing` (`AdminSourcingController`). A fonte fica atrás de
-`shared.source.ExternalSource` ([ADR-46](adr/ADR-46-mangadex-como-fonte-externa.md)); o estado
+`shared.source.ExternalSource`; o estado
 mora no contexto `sourcing` ([ADR-47](adr/ADR-47-contexto-sourcing.md)).
 
 ```

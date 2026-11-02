@@ -139,7 +139,7 @@ Bucket privado; acesso só via URLs assinadas V4 de expiração curta (leitura d
   o XHTML/SVG perde `script`, `iframe`, `object`, `form`, atributos `on*` e URLs `javascript:`.
   O CSP do nginx libera `blob:` só em `frame-src`, `style-src` e `font-src`. Quem mexer no CSP
   precisa ler o ADR-51.
-- **MangaDex (ADR-46):** a URL das imagens vem da resposta da fonte, e o Job roda dentro da
+- **MangaDex:** a URL das imagens vem da resposta da fonte, e o Job roda dentro da
   VPC. O adaptador só baixa de `https` com nome de host público (sem IP literal, `localhost`,
   `.internal` ou userinfo) e não segue redirect, para um endereço adulterado não alcançar a
   rede interna nem o servidor de metadados do GCP. O proxy de capa da busca
