@@ -10,6 +10,7 @@ import com.buruna.identity.persistence.UserRepository;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.source.ExternalSource;
 import com.buruna.shared.source.ExternalSourceException;
+import com.buruna.shared.source.ExternalWorkNotFoundException;
 import com.buruna.shared.source.SourceChapterInfo;
 import com.buruna.shared.source.SourceContentRating;
 import com.buruna.shared.source.SourceGroup;
@@ -18,6 +19,8 @@ import com.buruna.shared.source.SourceTag;
 import com.buruna.shared.source.SourceTagGroup;
 import com.buruna.shared.source.SourceWorkDetails;
 import com.buruna.shared.source.SourceWorkStatus;
+import com.buruna.shared.source.SourceWorkSummary;
+import com.buruna.shared.source.WorkMetadataSource;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.sourcing.application.SourcingRunner;
 import com.buruna.sourcing.domain.SourceChapter;
@@ -69,6 +72,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -108,6 +112,7 @@ class SourcingIntegrationTest {
     @Autowired SourcingRunner runner;
     @Autowired TransactionTemplate transactionTemplate;
     @MockitoBean ExternalSource source;
+    @MockitoBean WorkMetadataSource metadataSource;
     @MockitoBean StorageClient storageClient;
     @MockitoBean EmailService emailService;
 
@@ -353,5 +358,72 @@ class SourcingIntegrationTest {
                 .andExpect(jsonPath("$.publishedChapters").value(119))
                 .andExpect(jsonPath("$.groups[0].id").value("gB"))
                 .andExpect(jsonPath("$.groups[0].chapterCount").value(3));
+    }
+
+    // ── Metadados do AniList (ADR-54) ───────────────────────────────────────
+
+    @Test
+    void shouldListAniListResults_whenAdminSearchesMetadata() throws Exception {
+        when(metadataSource.search("frieren", 20)).thenReturn(List.of(new SourceWorkSummary("118586",
+                "Sousou no Frieren", 2020, SourceContentRating.SAFE, "ja", SourceWorkStatus.ONGOING, List.of(),
+                "https://s4.anilist.co/file/anilistcdn/media/manga/cover/medium/x.jpg",
+                "https://anilist.co/manga/118586")));
+
+        mockMvc.perform(get("/admin/sourcing/metadata/search").param("q", " frieren ").with(auth(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].externalId").value("118586"))
+                .andExpect(jsonPath("$[0].title").value("Sousou no Frieren"))
+                .andExpect(jsonPath("$[0].status").value("ONGOING"));
+    }
+
+    @Test
+    void shouldPreviewWorkInCatalogVocabulary_whenAdminOpensAniListWork() throws Exception {
+        when(metadataSource.fetchWork("118586")).thenReturn(new SourceWorkDetails("118586", "Sousou no Frieren",
+                List.of("Frieren: Beyond Journey's End"), Map.of("en", "An elf mage."), "ja",
+                SourceWorkStatus.ONGOING, 2020, SourceContentRating.SAFE,
+                List.of(new SourceTag("Adventure", SourceTagGroup.GENRE), new SourceTag("Magic", SourceTagGroup.THEME)),
+                false, "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/x.jpg",
+                "https://anilist.co/manga/118586", "shounen", List.of()));
+
+        mockMvc.perform(get("/admin/sourcing/metadata/works/118586").with(auth(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.format").value("MANGA"))
+                .andExpect(jsonPath("$.originCountry").value("Japan"))
+                .andExpect(jsonPath("$.synopsis").value("An elf mage."))
+                .andExpect(jsonPath("$.tags[0].name").value("Aventura"))
+                .andExpect(jsonPath("$.tags[1].name").value("Magia"))
+                .andExpect(jsonPath("$.tags[2].name").value("Shounen"));
+    }
+
+    @Test
+    void shouldReturnNotFound_whenAniListHasNoSuchWork() throws Exception {
+        when(metadataSource.fetchWork("999")).thenThrow(new ExternalWorkNotFoundException("999"));
+
+        mockMvc.perform(get("/admin/sourcing/metadata/works/999").with(auth(admin)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Obra não encontrada no AniList: 999"));
+    }
+
+    @Test
+    void shouldNameAniList_whenMetadataSearchFails() throws Exception {
+        when(metadataSource.search(anyString(), anyInt())).thenThrow(new ExternalSourceException("429"));
+
+        mockMvc.perform(get("/admin/sourcing/metadata/search").param("q", "frieren").with(auth(admin)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value("O AniList não respondeu. Tente de novo em alguns minutos."));
+    }
+
+    @Test
+    void shouldReturnNotFound_whenMetadataCoverIsRefused() throws Exception {
+        when(metadataSource.download(anyString(), anyLong())).thenThrow(new ExternalSourceException("recusada"));
+
+        mockMvc.perform(get("/admin/sourcing/metadata/cover").param("url", "https://evil.test/x.jpg").with(auth(admin)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturnForbidden_whenReaderSearchesMetadata() throws Exception {
+        mockMvc.perform(get("/admin/sourcing/metadata/search").param("q", "frieren").with(auth(reader)))
+                .andExpect(status().isForbidden());
     }
 }

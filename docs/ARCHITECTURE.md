@@ -41,7 +41,8 @@ Dois pacotes adicionais fora desse modelo, por não serem bounded contexts de do
 - `shared/` — infraestrutura cross-context: `StorageClient` (GCS/local), `EmailSender`,
   `Clock` injetável, `GlobalExceptionHandler`, config de segurança, e ainda:
   `shared/media` (extração de páginas de CBZ/CBR/PDF, `ImageInspector`, validação de livro),
-  `shared/source` (porta `ExternalSource` e o adaptador do MangaDex), `shared/jobs` (disparo do
+  `shared/source` (porta `ExternalSource` e o adaptador do MangaDex; porta `WorkMetadataSource` e
+  o adaptador do AniList), `shared/jobs` (disparo do
   Cloud Run Job) e `shared/transaction` (`AfterCommit`).
 - `feedback/` — módulo utilitário isolado (`POST /feedback`), sem lógica de domínio
   suficiente para justificar camadas próprias.
@@ -294,6 +295,12 @@ usar esta versão).
 `GET /admin/sourcing/tracked` lista as obras acompanhadas com a contagem por estado. Na página
 da obra, `GET /works/{id}/source` dá o crédito da fonte. No profile local a rodada acontece na
 própria requisição, depois do commit (`InlineSourcingTrigger`).
+
+Metadados do AniList ([ADR-54](adr/ADR-54-fontes-pelo-manga-downloader-e-anilist.md)), ainda sem
+tela: `GET /admin/sourcing/metadata/search?q=` busca, `GET /admin/sourcing/metadata/works/{id}`
+mostra a obra como o import vai criá-la (mesmo `WorkMetadataMapper`, tags no vocabulário do
+catálogo) e `GET /admin/sourcing/metadata/cover?url=` serve a capa, só de `s4.anilist.co`, porque
+o CSP do site não libera imagens de fora.
 
 ### 6.5 Upload privado + submissão/promoção
 
