@@ -74,7 +74,9 @@ com capa, sinopse **só em inglês** com HTML, 19 gêneros e 430 tags com `rank`
     entrega hoje, medido nas que já estão no bucket. O leitor não muda;
   - **lease único** `MANGA_DOWNLOADER` para todos os sites: um executor por vez. Capítulo de
     mangadex.org segura **também** o lease `MANGADEX`, para não bater no MangaDex junto com o sync
-    legado;
+    legado. Se o `MANGADEX` estiver ocupado, o capítulo fica `PENDING` para a próxima rodada e o
+    executor segue com os outros sites, sem esperar. Uma rodada do sync legado pode levar horas;
+    esperar travaria todos os sites por causa de um;
   - paralelismo da CLI por variável de ambiente (`--concurrency`, `--concurrency-pages`), começando
     conservador;
   - processo sem shell, com timeout e diretório próprio por capítulo. Falha vira `FAILED` com o
