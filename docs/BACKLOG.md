@@ -33,6 +33,19 @@ o 2FA de novo, com segredo novo.
   snapshot; quota em bytes, tolerando estouro; `/leitor/{volumeId}` redireciona; depois de 30
   dias, apagar só os PDFs totalmente cobertos e a tabela `volumes`. Dry-run numa cópia do banco
   de produção antes. Até lá, volume legado conta como pt-BR no catálogo (ADR-50).
+- [ ] **Fontes pelo manga-downloader, com metadados do AniList (ADR-54).** Em ordem:
+  1. PR `list --json` no manga-downloader. Se for recusado ou demorar, wrapper Go AGPL num repo
+     público separado;
+  2. porta de metadados (AniList), com a tabela de tags (rank ≥ 80) e a sinopse revisada no
+     import;
+  3. porta de capítulos (manga-downloader): `MANGA_DOWNLOADER` com URL da série, várias fontes
+     por obra;
+  4. imagem própria do Job, com o binário e o Chromium, como segundo target do Dockerfile, e o
+     Dependabot para a versão;
+  5. versão leve das páginas gerada no ingest;
+  6. tela do import.
+  Depois, em ADR própria: sync pelo manga-downloader, migração das obras do MangaDex legado e
+  desligamento do adaptador atual.
 - [ ] Termos de uso e política de privacidade: caixa de aceite obrigatória no cadastro, com
   link para o texto, e tela ou modal pedindo o aceite a quem já tem conta. Decidir antes: quem
   escreve o texto; se o aceite guarda versão e data (para pedir de novo quando mudar); o que
@@ -43,7 +56,8 @@ o 2FA de novo, com segredo novo.
   limiares mudam. Atualizar ADR-36, glossário §7 e `InactivityJobIntegrationTest`.
 - [ ] Fonte de livros em domínio público (Project Gutenberg via Gutendex, ou Standard Ebooks
   via OPDS), como segundo adaptador do `sourcing` (ADR-46): importa EPUB como edição. Exige
-  tirar o MangaDex fixo do `sourcing` (lease, link e crédito da fonte).
+  tirar o MangaDex fixo do `sourcing` (lease, link e crédito da fonte); a ADR-54 já divide a
+  porta e generaliza a fonte.
 - [ ] Medir a leitura em 4G (DevTools "Fast 4G" e um celular): tempo até a primeira página e
   bytes por sessão, no leitor de capítulo e no de PDF.
 - [ ] Compressão de PDF no upload
