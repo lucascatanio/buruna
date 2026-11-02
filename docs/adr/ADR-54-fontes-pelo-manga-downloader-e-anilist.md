@@ -60,7 +60,10 @@ com capa, sinopse **só em inglês** com HTML, 19 gêneros e 430 tags com `rank`
   domínio sai dela). **Uma obra pode ter várias fontes** (o MangaDex legado e um site, ou dois
   sites). A escolha de versão é a do `ChapterSelection`: grupo preferido, senão a mais recente.
   **Número que já existe na obra fica**, venha de upload, do MangaDex ou de outra fonte: a versão
-  nova fica `IGNORED` e pode ser trocada pelo ADM (o "usar esta versão" de hoje).
+  nova fica `IGNORED` sem ser baixada, porque a checagem consulta os capítulos da obra (use case
+  público do `work`) antes do download, e não só as versões da mesma fonte. O ADM pode trocá-la
+  pelo "usar esta versão", que hoje só acha o capítulo ocupante entre as versões da mesma
+  `TrackedWork` e passa a procurá-lo na obra inteira.
 - **Execução no Job** ([ADR-48](ADR-48-ingest-em-cloud-run-job.md)):
   - **imagem própria do Job**, com backend, manga-downloader, Chromium e tela virtual, saída de um
     segundo `--target` do mesmo Dockerfile. O serviço web continua sem navegador, e o deploy passa
