@@ -48,7 +48,7 @@ function Cover({url, title}: { url: string | null; title: string }) {
 
 
 
-/** Importação do MangaDex e andamento das obras acompanhadas (ADR-46). */
+/** Importação do MangaDex e andamento das obras acompanhadas. */
 export function SourcingPage() {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<SourceSearchResult[] | null>(null);

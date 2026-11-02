@@ -80,7 +80,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Importação do MangaDex ponta a ponta (ADR-46 a ADR-48). A fonte e o storage são mockados. No
+ * Importação do MangaDex ponta a ponta (ADR-47 e ADR-48). A fonte e o storage são mockados. No
  * profile local a rodada do executor acontece na própria requisição, depois do commit, então o
  * import já volta com os capítulos baixados.
  */

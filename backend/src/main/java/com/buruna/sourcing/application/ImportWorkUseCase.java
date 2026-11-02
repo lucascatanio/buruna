@@ -31,7 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Começa a acompanhar uma obra do MangaDex (ADR-46, ADR-47): cria a obra no Burūna, ou vincula
+ * Começa a acompanhar uma obra do MangaDex (ADR-47): cria a obra no Burūna, ou vincula
  * a uma que já existe, e pede uma rodada do executor, que lista e baixa os capítulos.
  *
  * <p>As chamadas à fonte (metadados e capa) ficam fora da transação. A gravação trava a linha
