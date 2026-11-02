@@ -156,6 +156,12 @@ class AniListSourceTest {
     }
 
     @Test
+    void shouldThrowWorkNotFound_whenIdDoesNotFitGraphQLInt() {
+        assertThatThrownBy(() -> source.fetchWork("99999999999")).isInstanceOf(ExternalWorkNotFoundException.class);
+        server.verify();
+    }
+
+    @Test
     void shouldFailRightAway_whenRateLimited() {
         server.expect(requestTo(API)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
 

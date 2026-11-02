@@ -116,9 +116,10 @@ public class AniListSource implements WorkMetadataSource {
 
     @Override
     public SourceWorkDetails fetchWork(String externalId) {
-        long id;
+        // o id do AniList é um Int do GraphQL (32 bits): fora disso a API responderia 400
+        int id;
         try {
-            id = Long.parseLong(externalId);
+            id = Integer.parseInt(externalId);
         } catch (NumberFormatException e) {
             throw new ExternalWorkNotFoundException(externalId);
         }
@@ -139,13 +140,9 @@ public class AniListSource implements WorkMetadataSource {
             throw new ExternalSourceException("URL de capa recusada: " + url);
         }
         try {
-            byte[] bytes = restTemplate.execute(URI.create(url), HttpMethod.GET,
+            return restTemplate.execute(URI.create(url), HttpMethod.GET,
                     request -> request.getHeaders().set(HttpHeaders.USER_AGENT, userAgent),
-                    response -> readLimited(response.getBody(), maxBytes));
-            if (bytes == null) {
-                throw new ExternalSourceException("Capa passa de " + maxBytes + " bytes: " + url);
-            }
-            return bytes;
+                    response -> readLimited(response.getBody(), maxBytes, url));
         } catch (RestClientException | IllegalArgumentException e) {
             throw new ExternalSourceException("Falha ao baixar " + url, e);
         }
@@ -185,8 +182,8 @@ public class AniListSource implements WorkMetadataSource {
         lastCall = clock.instant();
     }
 
-    // devolve nulo ao passar do limite, sem puxar a imagem inteira para a memória
-    private static byte[] readLimited(InputStream body, long maxBytes) throws IOException {
+    // para de ler ao passar do limite, sem puxar a imagem inteira para a memória
+    private static byte[] readLimited(InputStream body, long maxBytes, String url) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buffer = new byte[8192];
         long total = 0;
@@ -194,7 +191,7 @@ public class AniListSource implements WorkMetadataSource {
         while ((read = body.read(buffer)) != -1) {
             total += read;
             if (total > maxBytes) {
-                return null;
+                throw new ExternalSourceException("Capa passa de " + maxBytes + " bytes: " + url);
             }
             out.write(buffer, 0, read);
         }
@@ -230,6 +227,7 @@ public class AniListSource implements WorkMetadataSource {
                 media.startDate() == null ? null : media.startDate().year(),
                 contentRating(media),
                 catalogTags(media, tags),
+                // decide o formato (webtoon), então vale com qualquer rank: é fato técnico, não opinião votada
                 tags.stream().anyMatch(tag -> "Long Strip".equals(tag.name())),
                 media.coverImage() == null ? null : media.coverImage().extraLarge(),
                 media.siteUrl(),

@@ -1,6 +1,7 @@
 package com.buruna.sourcing.web;
 
 import com.buruna.identity.domain.User;
+import com.buruna.sourcing.application.CoverThumbnail;
 import com.buruna.sourcing.application.ImportWorkRequest;
 import com.buruna.sourcing.application.ImportWorkUseCase;
 import com.buruna.sourcing.application.LanguageAvailability;
@@ -8,7 +9,6 @@ import com.buruna.sourcing.application.ListTrackedWorksUseCase;
 import com.buruna.sourcing.application.ManageTrackedWorkUseCase;
 import com.buruna.sourcing.application.RequestSourcingRunUseCase;
 import com.buruna.sourcing.application.SearchSourceUseCase;
-import com.buruna.sourcing.application.SearchSourceUseCase.CoverThumbnail;
 import com.buruna.sourcing.application.SearchWorkMetadataUseCase;
 import com.buruna.sourcing.application.SourceAlert;
 import com.buruna.sourcing.application.SourceSearchResult;

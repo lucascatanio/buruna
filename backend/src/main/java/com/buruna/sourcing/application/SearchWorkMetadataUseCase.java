@@ -4,7 +4,6 @@ import com.buruna.shared.media.ImageInspector;
 import com.buruna.shared.source.ExternalSourceException;
 import com.buruna.shared.source.ExternalWorkNotFoundException;
 import com.buruna.shared.source.WorkMetadataSource;
-import com.buruna.sourcing.application.SearchSourceUseCase.CoverThumbnail;
 import com.buruna.sourcing.domain.SourceUnavailableException;
 import com.buruna.sourcing.domain.SourceWorkNotFoundException;
 import org.slf4j.Logger;

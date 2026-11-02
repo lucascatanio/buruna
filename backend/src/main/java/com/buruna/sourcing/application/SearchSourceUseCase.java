@@ -66,9 +66,6 @@ public class SearchSourceUseCase {
         }
     }
 
-    public record CoverThumbnail(byte[] content, String contentType) {
-    }
-
     /**
      * Disponibilidade da obra no idioma: quanto dá para baixar, quanto já foi publicado e os
      * grupos. Obra licenciada costuma ter quase tudo retirado (ex.: 3 de 119).
