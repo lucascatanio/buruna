@@ -1,6 +1,7 @@
 package com.buruna.sourcing.web;
 
 import com.buruna.identity.domain.User;
+import com.buruna.sourcing.application.CoverThumbnail;
 import com.buruna.sourcing.application.ImportWorkRequest;
 import com.buruna.sourcing.application.ImportWorkUseCase;
 import com.buruna.sourcing.application.LanguageAvailability;
@@ -8,10 +9,13 @@ import com.buruna.sourcing.application.ListTrackedWorksUseCase;
 import com.buruna.sourcing.application.ManageTrackedWorkUseCase;
 import com.buruna.sourcing.application.RequestSourcingRunUseCase;
 import com.buruna.sourcing.application.SearchSourceUseCase;
+import com.buruna.sourcing.application.SearchWorkMetadataUseCase;
 import com.buruna.sourcing.application.SourceAlert;
 import com.buruna.sourcing.application.SourceSearchResult;
 import com.buruna.sourcing.application.TrackedGroupResponse;
 import com.buruna.sourcing.application.TrackedWorkResponse;
+import com.buruna.sourcing.application.WorkMetadataPreview;
+import com.buruna.sourcing.application.WorkMetadataSearchResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -33,6 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Importação de obras do MangaDex pelo ADM. */
@@ -43,17 +48,20 @@ import java.util.UUID;
 public class AdminSourcingController {
 
     private final SearchSourceUseCase searchSource;
+    private final SearchWorkMetadataUseCase searchMetadata;
     private final ImportWorkUseCase importWork;
     private final ListTrackedWorksUseCase listTrackedWorks;
     private final RequestSourcingRunUseCase requestRun;
     private final ManageTrackedWorkUseCase manage;
 
     public AdminSourcingController(SearchSourceUseCase searchSource,
+                                   SearchWorkMetadataUseCase searchMetadata,
                                    ImportWorkUseCase importWork,
                                    ListTrackedWorksUseCase listTrackedWorks,
                                    RequestSourcingRunUseCase requestRun,
                                    ManageTrackedWorkUseCase manage) {
         this.searchSource = searchSource;
+        this.searchMetadata = searchMetadata;
         this.importWork = importWork;
         this.listTrackedWorks = listTrackedWorks;
         this.requestRun = requestRun;
@@ -73,7 +81,26 @@ public class AdminSourcingController {
 
     @GetMapping("/cover")
     public ResponseEntity<byte[]> cover(@RequestParam @Size(max = 500) String url) {
-        return searchSource.coverThumbnail(url)
+        return coverResponse(searchSource.coverThumbnail(url));
+    }
+
+    @GetMapping("/metadata/search")
+    public List<WorkMetadataSearchResult> searchMetadata(@RequestParam("q") @NotBlank @Size(max = 200) String query) {
+        return searchMetadata.search(query.trim());
+    }
+
+    @GetMapping("/metadata/works/{externalId}")
+    public WorkMetadataPreview metadataPreview(@PathVariable @Size(max = 20) String externalId) {
+        return searchMetadata.preview(externalId);
+    }
+
+    @GetMapping("/metadata/cover")
+    public ResponseEntity<byte[]> metadataCover(@RequestParam @Size(max = 500) String url) {
+        return coverResponse(searchMetadata.coverThumbnail(url));
+    }
+
+    private static ResponseEntity<byte[]> coverResponse(Optional<CoverThumbnail> thumbnail) {
+        return thumbnail
                 .map(cover -> ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(cover.contentType()))
                         .cacheControl(CacheControl.maxAge(Duration.ofDays(1)).cachePrivate())
