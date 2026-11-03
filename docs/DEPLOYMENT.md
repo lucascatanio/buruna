@@ -206,7 +206,19 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
    ```bash
    git fetch origin && git tag -a vX.Y.Z origin/main -m "vX.Y.Z" && git push origin vX.Y.Z
    ```
-4. Sincronize a `main` de volta na `dev` com um PR `main` → `dev`
+4. Crie a Release do GitHub para a tag. Sem ela, o "Latest" da página do repositório fica numa
+   versão antiga (foi o que aconteceu da v1.5.1 à v2.1.0, criadas depois, em 2026-11-03). As
+   notas seguem o formato das anteriores: seções "Funcionalidades", "Correções", "Segurança",
+   "Interno" e "Migrations", só as que tiverem conteúdo, com o número do PR quando houver. Para
+   montar, liste o que entrou desde a tag anterior:
+   ```bash
+   git log --no-merges --format='%s' vANTERIOR..vX.Y.Z                       # commits da versão
+   git diff --name-only --diff-filter=A vANTERIOR vX.Y.Z -- backend/src/main/resources/db/migration
+   gh release create vX.Y.Z --verify-tag --title vX.Y.Z --notes-file notas.md --latest
+   ```
+   A Release é pública. Numa sessão do Claude Code, o auto mode bloqueia o `gh release create`:
+   o Claude escreve as notas e o comando, e quem roda é o mantenedor.
+5. Sincronize a `main` de volta na `dev` com um PR `main` → `dev`
    (`gh pr create --base dev --head main`). O merge da release cria na `main` um commit que
    a `dev` não tem; sem esse PR as duas nunca se reencontram e o GitHub mostra a `dev`
    "atrás" da `main`. O auto-delete de branches do repositório não apaga `main` nem `dev`,
