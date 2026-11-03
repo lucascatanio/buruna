@@ -2,6 +2,7 @@ package com.buruna.sourcing.application;
 
 import com.buruna.sourcing.domain.SourceChapter;
 import com.buruna.sourcing.domain.SourceChapterState;
+import com.buruna.sourcing.domain.SourceName;
 import com.buruna.sourcing.domain.TrackedWork;
 import com.buruna.sourcing.persistence.SourceChapterRepository;
 import com.buruna.sourcing.persistence.TrackedWorkRepository;
@@ -37,10 +38,16 @@ public class ListTrackedWorksUseCase {
         return trackedWorkRepository.findAllByOrderByCreatedAtDesc().stream().map(this::toResponse).toList();
     }
 
-    /** Crédito na página da obra: de onde ela vem, se vier de uma fonte. */
+    /**
+     * Crédito na página da obra, que a AUP do MangaDex exige: só quando uma das fontes é o
+     * MangaDex, pela API ou por uma série do mangadex.org. Dos outros sites, o crédito é só o do
+     * grupo, no capítulo (ADR-54).
+     */
     @Transactional(readOnly = true)
     public Optional<WorkSourceResponse> sourceOf(UUID workId) {
-        return trackedWorkRepository.findByWorkId(workId)
+        return trackedWorkRepository.findAllByWorkId(workId).stream()
+                .filter(tracked -> tracked.getSource() == SourceName.MANGADEX || tracked.sharesMangaDexLease())
+                .findFirst()
                 .map(tracked -> new WorkSourceResponse("MangaDex", SourceUrls.work(tracked)));
     }
 

@@ -5,11 +5,13 @@ import com.buruna.sourcing.application.CoverThumbnail;
 import com.buruna.sourcing.application.ImportWorkRequest;
 import com.buruna.sourcing.application.ImportWorkUseCase;
 import com.buruna.sourcing.application.LanguageAvailability;
+import com.buruna.sourcing.application.ListSiteSeriesUseCase;
 import com.buruna.sourcing.application.ListTrackedWorksUseCase;
 import com.buruna.sourcing.application.ManageTrackedWorkUseCase;
 import com.buruna.sourcing.application.RequestSourcingRunUseCase;
 import com.buruna.sourcing.application.SearchSourceUseCase;
 import com.buruna.sourcing.application.SearchWorkMetadataUseCase;
+import com.buruna.sourcing.application.SiteSeriesListing;
 import com.buruna.sourcing.application.SourceAlert;
 import com.buruna.sourcing.application.SourceSearchResult;
 import com.buruna.sourcing.application.TrackedGroupResponse;
@@ -49,6 +51,7 @@ public class AdminSourcingController {
 
     private final SearchSourceUseCase searchSource;
     private final SearchWorkMetadataUseCase searchMetadata;
+    private final ListSiteSeriesUseCase listSiteSeries;
     private final ImportWorkUseCase importWork;
     private final ListTrackedWorksUseCase listTrackedWorks;
     private final RequestSourcingRunUseCase requestRun;
@@ -56,12 +59,14 @@ public class AdminSourcingController {
 
     public AdminSourcingController(SearchSourceUseCase searchSource,
                                    SearchWorkMetadataUseCase searchMetadata,
+                                   ListSiteSeriesUseCase listSiteSeries,
                                    ImportWorkUseCase importWork,
                                    ListTrackedWorksUseCase listTrackedWorks,
                                    RequestSourcingRunUseCase requestRun,
                                    ManageTrackedWorkUseCase manage) {
         this.searchSource = searchSource;
         this.searchMetadata = searchMetadata;
+        this.listSiteSeries = listSiteSeries;
         this.importWork = importWork;
         this.listTrackedWorks = listTrackedWorks;
         this.requestRun = requestRun;
@@ -97,6 +102,12 @@ public class AdminSourcingController {
     @GetMapping("/metadata/cover")
     public ResponseEntity<byte[]> metadataCover(@RequestParam @Size(max = 500) String url) {
         return coverResponse(searchMetadata.coverThumbnail(url));
+    }
+
+    /** Série de um site do manga-downloader (ADR-54), antes do import. Roda a CLI: leva segundos. */
+    @GetMapping("/site-listing")
+    public SiteSeriesListing siteListing(@RequestParam @NotBlank @Size(max = 500) String url) {
+        return listSiteSeries.list(url);
     }
 
     private static ResponseEntity<byte[]> coverResponse(Optional<CoverThumbnail> thumbnail) {
@@ -154,7 +165,8 @@ public class AdminSourcingController {
     @PostMapping("/tracked/{id}/languages")
     public ResponseEntity<Void> trackLanguage(@PathVariable UUID id,
                                               @Valid @RequestBody ImportWorkRequest.LanguageChoice request) {
-        manage.trackLanguage(id, request.language(), request.preferredGroupId(), request.preferredGroupName());
+        manage.trackLanguage(id, request.language(), request.preferredGroupId(), request.preferredGroupName(),
+                request.sourceLanguage());
         return ResponseEntity.accepted().build();
     }
 

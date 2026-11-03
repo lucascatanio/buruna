@@ -11,6 +11,7 @@ final class SourceUrls {
     static String work(TrackedWork tracked) {
         return switch (tracked.getSource()) {
             case MANGADEX -> "https://mangadex.org/title/" + tracked.getExternalId();
+            case MANGA_DOWNLOADER -> tracked.getExternalId();
         };
     }
 }

@@ -20,10 +20,13 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -39,6 +42,8 @@ import java.util.UUID;
 public class TrackedWork {
 
     private static final int MAX_ERROR_LENGTH = 2000;
+    private static final int MAX_EXTERNAL_ID_LENGTH = 500;
+    private static final String MANGADEX_HOST = "mangadex.org";
     /** Falhas seguidas de listagem até a obra pausar sozinha (~1 dia com sync a cada 3 h). */
     public static final int FAILURES_BEFORE_PAUSE = 8;
 
@@ -54,7 +59,8 @@ public class TrackedWork {
     @Column(nullable = false, updatable = false, columnDefinition = "external_source")
     private SourceName source;
 
-    @Column(name = "external_id", nullable = false, updatable = false, length = 100)
+    // no MangaDex, o id da obra; no manga-downloader, a URL da série (ADR-54)
+    @Column(name = "external_id", nullable = false, updatable = false, length = MAX_EXTERNAL_ID_LENGTH)
     private String externalId;
 
     @Enumerated(EnumType.STRING)
@@ -107,6 +113,12 @@ public class TrackedWork {
         if (externalId == null || externalId.isBlank()) {
             throw new InvalidTrackedWorkException("Id da obra na fonte obrigatório");
         }
+        if (externalId.length() > MAX_EXTERNAL_ID_LENGTH) {
+            throw new InvalidTrackedWorkException("O id da obra na fonte passa de " + MAX_EXTERNAL_ID_LENGTH + " caracteres.");
+        }
+        if (source == SourceName.MANGA_DOWNLOADER) {
+            requireSeriesUrl(externalId);
+        }
         if (languages == null || languages.isEmpty()) {
             throw new InvalidTrackedWorkException("Escolha ao menos um idioma");
         }
@@ -130,6 +142,60 @@ public class TrackedWork {
         Set<String> tags = new HashSet<>();
         languages.forEach(language -> tags.add(language.getLanguage()));
         return tags;
+    }
+
+    /** Idiomas como a fonte os escreve, para pedir a listagem a ela. */
+    public Set<String> sourceLanguageCodes() {
+        Set<String> codes = new HashSet<>();
+        languages.forEach(language -> codes.add(language.sourceCode()));
+        return codes;
+    }
+
+    /** Idioma do Burūna (BCP 47) de um código da fonte; vazio quando não é acompanhado. */
+    public Optional<String> languageFromSource(String sourceCode) {
+        String code = sourceCode == null ? "" : sourceCode;
+        return languages.stream()
+                .filter(language -> language.sourceCode().equalsIgnoreCase(code))
+                .findFirst()
+                .map(TrackedLanguage::getLanguage);
+    }
+
+    /** O código da fonte para um idioma acompanhado (o inverso de {@link #languageFromSource}). */
+    public Optional<String> sourceCodeFor(String language) {
+        return languages.stream()
+                .filter(l -> l.getLanguage().equals(language))
+                .findFirst()
+                .map(TrackedLanguage::sourceCode);
+    }
+
+    /**
+     * Série do mangadex.org baixada pelo manga-downloader: segura também o lease do MangaDex,
+     * para não bater na API dele junto com o sync das obras antigas (ADR-54).
+     */
+    public boolean sharesMangaDexLease() {
+        return source == SourceName.MANGA_DOWNLOADER && hostOf(externalId)
+                .map(host -> host.equals(MANGADEX_HOST) || host.endsWith("." + MANGADEX_HOST))
+                .orElse(false);
+    }
+
+    /** URL de série de site (ADR-54): só http ou https, com host. */
+    public static void requireSeriesUrl(String url) {
+        if (url == null || hostOf(url).isEmpty()) {
+            throw new InvalidTrackedWorkException("Endereço da série inválido: use a URL completa, com http ou https.");
+        }
+    }
+
+    private static Optional<String> hostOf(String url) {
+        try {
+            URI uri = new URI(url.trim());
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
+            if ((!scheme.equals("http") && !scheme.equals("https")) || uri.getHost() == null) {
+                return Optional.empty();
+            }
+            return Optional.of(uri.getHost().toLowerCase(Locale.ROOT));
+        } catch (URISyntaxException e) {
+            return Optional.empty();
+        }
     }
 
     public Optional<String> preferredGroupFor(String language) {

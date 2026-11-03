@@ -1,12 +1,8 @@
 package com.buruna.sourcing.application;
 
 import com.buruna.shared.exception.DomainException;
-import com.buruna.shared.media.ImageInspector;
 import com.buruna.shared.media.ImageInspector.InspectedImage;
-import com.buruna.shared.media.InvalidArchiveException;
-import com.buruna.shared.source.ExternalSource;
 import com.buruna.shared.source.ExternalSourceException;
-import com.buruna.shared.source.SourcePage;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.sourcing.domain.SourceChapter;
 import com.buruna.sourcing.domain.TrackedWork;
@@ -18,7 +14,6 @@ import com.buruna.work.application.RegisterChapterUseCase;
 import com.buruna.work.application.ReplaceImportedChapterPagesUseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -37,8 +32,9 @@ import java.util.function.Consumer;
 
 /**
  * Transforma uma versão escolhida (PENDING) em capítulo do Burūna: registra o capítulo em
- * processamento, baixa cada página nas duas qualidades que a fonte oferece, grava no storage e
- * publica. Guarda os bytes originais (ADR-48): só GIF, BMP e TIFF são convertidos, como no upload.
+ * processamento, baixa as páginas pela fonte ({@link ChapterSource}, nas qualidades que ela
+ * oferece), grava no storage e publica. Guarda os bytes originais (ADR-48): só GIF, BMP e TIFF
+ * são convertidos, como no upload.
  *
  * <p>Sem transação longa: cada gravação no banco é curta. Se o processo morrer no meio, a versão
  * continua PENDING com o capítulo já registrado, e a próxima rodada retoma do mesmo capítulo:
@@ -48,14 +44,13 @@ import java.util.function.Consumer;
 class SourceChapterImporter {
 
     private static final Logger log = LoggerFactory.getLogger(SourceChapterImporter.class);
-    private static final long MB = 1024L * 1024;
     private static final int MAX_LABEL_LENGTH = 100;
     // chapters.scanlation_group
     private static final int MAX_GROUP_LENGTH = 255;
     private static final int MAX_NUMBER_SCALE = 2;
     private static final int MAX_NUMBER_INTEGER_DIGITS = 8;
 
-    private final ExternalSource source;
+    private final ChapterSources chapterSources;
     private final StorageClient storageClient;
     private final SourceChapterRepository sourceChapterRepository;
     private final RegisterChapterUseCase registerChapter;
@@ -63,18 +58,16 @@ class SourceChapterImporter {
     private final ReplaceImportedChapterPagesUseCase replacePages;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
-    private final long maxPageBytes;
 
-    SourceChapterImporter(ExternalSource source,
+    SourceChapterImporter(ChapterSources chapterSources,
                           StorageClient storageClient,
                           SourceChapterRepository sourceChapterRepository,
                           RegisterChapterUseCase registerChapter,
                           PublishImportedChapterUseCase publishChapter,
                           ReplaceImportedChapterPagesUseCase replacePages,
                           PlatformTransactionManager transactionManager,
-                          Clock clock,
-                          @Value("${app.ingest.max-page-mb}") long maxPageMb) {
-        this.source = source;
+                          Clock clock) {
+        this.chapterSources = chapterSources;
         this.storageClient = storageClient;
         this.sourceChapterRepository = sourceChapterRepository;
         this.registerChapter = registerChapter;
@@ -83,12 +76,11 @@ class SourceChapterImporter {
         this.clock = clock;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        this.maxPageBytes = maxPageMb * MB;
     }
 
     void run(TrackedWork tracked, SourceChapter version) {
         if (version.getReplacesChapterId().isPresent()) {
-            replace(version, version.getReplacesChapterId().get());
+            replace(tracked, version, version.getReplacesChapterId().get());
             return;
         }
         UUID chapterId;
@@ -108,7 +100,7 @@ class SourceChapterImporter {
 
         List<ImportedPage> pages = new ArrayList<>();
         try {
-            download(version, pages,
+            download(tracked, version, pages,
                     (position, ext) -> PublishImportedChapterUseCase.pageObjectName(chapterId, position, ext),
                     (position, ext) -> PublishImportedChapterUseCase.dataSaverObjectName(chapterId, position, ext));
         } catch (RuntimeException e) {
@@ -134,11 +126,11 @@ class SourceChapterImporter {
      * (ADR-49). As novas vão para um subprefixo da revisão, para quem está lendo não ver uma
      * mistura das duas; as antigas são apagadas depois. A versão que ocupava o capítulo sai dele.
      */
-    private void replace(SourceChapter version, UUID target) {
+    private void replace(TrackedWork tracked, SourceChapter version, UUID target) {
         String revision = String.valueOf(clock.millis());
         List<ImportedPage> pages = new ArrayList<>();
         try {
-            download(version, pages,
+            download(tracked, version, pages,
                     (position, ext) -> ReplaceImportedChapterPagesUseCase.pageObjectName(target, revision, position, ext),
                     (position, ext) -> ReplaceImportedChapterPagesUseCase.dataSaverObjectName(target, revision, position, ext));
         } catch (RuntimeException e) {
@@ -194,36 +186,24 @@ class SourceChapterImporter {
         return OffsetDateTime.now(clock);
     }
 
-    private void download(SourceChapter version, List<ImportedPage> pages,
+    private void download(TrackedWork tracked, SourceChapter version, List<ImportedPage> pages,
                           BiFunction<Integer, String, String> pageName,
                           BiFunction<Integer, String, String> dataSaverName) {
-        List<SourcePage> sourcePages = source.fetchPages(version.getExternalId());
-        for (int i = 0; i < sourcePages.size(); i++) {
-            int position = i + 1;
-            SourcePage page = sourcePages.get(i);
-            InspectedImage original = ImageInspector.inspect(source.download(page.url(), maxPageBytes), page.url());
+        chapterSources.of(tracked.getSource()).fetchPages(tracked, version, page -> {
+            int position = pages.size() + 1;
+            InspectedImage original = page.original();
             String objectName = pageName.apply(position, original.extension());
             upload(objectName, original);
-            String dataSaverObject = page.dataSaverUrl() == null ? null
-                    : dataSaver(position, page.dataSaverUrl(), dataSaverName);
+            String dataSaverObject = null;
+            if (page.dataSaver() != null) {
+                dataSaverObject = dataSaverName.apply(position, page.dataSaver().extension());
+                upload(dataSaverObject, page.dataSaver());
+            }
             pages.add(new ImportedPage(position, objectName, dataSaverObject,
                     original.width(), original.height(), original.content().length));
-        }
+        });
         if (pages.isEmpty()) {
             throw new ExternalSourceException("A fonte não devolveu nenhuma página");
-        }
-    }
-
-    // a versão leve é um extra: se falhar, a página fica só com a original
-    private String dataSaver(int position, String url, BiFunction<Integer, String, String> dataSaverName) {
-        try {
-            InspectedImage image = ImageInspector.inspect(source.download(url, maxPageBytes), url);
-            String objectName = dataSaverName.apply(position, image.extension());
-            upload(objectName, image);
-            return objectName;
-        } catch (ExternalSourceException | InvalidArchiveException e) {
-            log.info("Página {} sem versão leve: {}", position, e.getMessage());
-            return null;
         }
     }
 

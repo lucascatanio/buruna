@@ -17,9 +17,12 @@ public interface TrackedWorkRepository extends JpaRepository<TrackedWork, UUID> 
 
     boolean existsBySourceAndExternalId(SourceName source, String externalId);
 
-    boolean existsByWorkId(UUID workId);
+    boolean existsByWorkIdAndSource(UUID workId, SourceName source);
 
-    Optional<TrackedWork> findByWorkId(UUID workId);
+    boolean existsBySourceAndStatus(SourceName source, TrackedWorkStatus status);
+
+    // uma obra pode ter várias fontes (ADR-54)
+    List<TrackedWork> findAllByWorkId(UUID workId);
 
     List<TrackedWork> findBySourceAndStatus(SourceName source, TrackedWorkStatus status);
 

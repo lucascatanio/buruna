@@ -1,6 +1,7 @@
 package com.buruna.sourcing.application;
 
 import com.buruna.shared.transaction.AfterCommit;
+import com.buruna.sourcing.domain.SourceName;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +22,7 @@ public class InlineSourcingTrigger implements SourcingTrigger {
     }
 
     @Override
-    public void requestRun() {
-        AfterCommit.run(() -> runner.run("inline-" + UUID.randomUUID()));
+    public void requestRun(SourceName source) {
+        AfterCommit.run(() -> runner.run("inline-" + UUID.randomUUID(), source));
     }
 }

@@ -3,12 +3,12 @@ package com.buruna.sourcing.application;
 import com.buruna.shared.jobs.JobLaunchException;
 import com.buruna.shared.jobs.JobLauncher;
 import com.buruna.shared.transaction.AfterCommit;
+import com.buruna.sourcing.domain.SourceName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
 
 /**
  * Dispara o Cloud Run Job no modo fonte. Se o disparo falhar, nada se perde: as versões ficam
@@ -27,12 +27,12 @@ public class CloudRunSourcingTrigger implements SourcingTrigger {
     }
 
     @Override
-    public void requestRun() {
+    public void requestRun(SourceName source) {
         AfterCommit.run(() -> {
             try {
-                jobLauncher.run(List.of(SourcingJobArgs.run()));
+                jobLauncher.run(SourcingJobArgs.run(source));
             } catch (JobLaunchException e) {
-                log.error("Não foi possível disparar o executor de fonte", e);
+                log.error("Não foi possível disparar o executor de {}", source, e);
             }
         });
     }

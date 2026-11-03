@@ -5,6 +5,7 @@ import com.buruna.shared.source.ExternalSource;
 import com.buruna.shared.source.ExternalSourceException;
 import com.buruna.shared.source.ExternalWorkNotFoundException;
 import com.buruna.shared.source.SourceWorkDetails;
+import com.buruna.sourcing.domain.InvalidTrackedWorkException;
 import com.buruna.sourcing.domain.SourceChapterState;
 import com.buruna.sourcing.domain.SourceName;
 import com.buruna.sourcing.domain.SourceUnavailableException;
@@ -31,8 +32,9 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Começa a acompanhar uma obra do MangaDex (ADR-47): cria a obra no Burūna, ou vincula
- * a uma que já existe, e pede uma rodada do executor, que lista e baixa os capítulos.
+ * Começa a acompanhar uma obra numa fonte: do MangaDex (ADR-47), criando a obra no Burūna ou
+ * vinculando a uma que já existe, ou de um site do manga-downloader (ADR-54), vinculando. Depois
+ * pede uma rodada do executor da fonte, que lista e baixa os capítulos.
  *
  * <p>As chamadas à fonte (metadados e capa) ficam fora da transação. A gravação trava a linha
  * do lease da fonte: dois imports da mesma obra ao mesmo tempo não criam dois acompanhamentos
@@ -71,6 +73,12 @@ public class ImportWorkUseCase {
     }
 
     public TrackedWorkResponse handle(ImportWorkRequest request, UUID actorId) {
+        return request.source() == SourceName.MANGA_DOWNLOADER
+                ? importSite(request, actorId)
+                : importMangaDex(request, actorId);
+    }
+
+    private TrackedWorkResponse importMangaDex(ImportWorkRequest request, UUID actorId) {
         List<TrackedLanguage> languages = request.languages().stream()
                 .map(choice -> TrackedLanguage.of(choice.language(), choice.preferredGroupId(), choice.preferredGroupName()))
                 .toList();
@@ -87,14 +95,42 @@ public class ImportWorkUseCase {
                     : linkedWork(request.linkWorkId());
             TrackedWork tracked = trackedWorkRepository.save(TrackedWork.track(
                     work.id(), SourceName.MANGADEX, details.externalId(), languages, actorId));
-            trigger.requestRun();
+            trigger.requestRun(SourceName.MANGADEX);
             return TrackedWorkResponse.from(tracked, work.title(), work.slug(), new EnumMap<>(SourceChapterState.class), 0);
         });
     }
 
+    /**
+     * Série de um site do manga-downloader (ADR-54), alimentando uma obra que já existe. Uma obra
+     * pode ter várias fontes; a mesma série não entra duas vezes (lock no lease da fonte, ADR-53).
+     */
+    private TrackedWorkResponse importSite(ImportWorkRequest request, UUID actorId) {
+        if (request.linkWorkId() == null) {
+            throw new InvalidTrackedWorkException("Escolha a obra do Burūna que vai receber os capítulos deste site.");
+        }
+        List<TrackedLanguage> languages = request.languages().stream()
+                .map(choice -> TrackedLanguage.fromSite(choice.language(), choice.sourceLanguage(),
+                        choice.preferredGroupId(), choice.preferredGroupName()))
+                .toList();
+        String seriesUrl = request.externalId().trim();
+
+        return transactionTemplate.execute(tx -> {
+            leaseRepository.lockBySource(SourceName.MANGA_DOWNLOADER).orElseThrow();
+            if (trackedWorkRepository.existsBySourceAndExternalId(SourceName.MANGA_DOWNLOADER, seriesUrl)) {
+                throw new WorkAlreadyTrackedException("Esta série já está sendo acompanhada.");
+            }
+            WorkInfo work = findPublicWork.getPublicWorkInfo(request.linkWorkId());
+            TrackedWork tracked = trackedWorkRepository.save(TrackedWork.track(
+                    work.id(), SourceName.MANGA_DOWNLOADER, seriesUrl, languages, actorId));
+            trigger.requestRun(SourceName.MANGA_DOWNLOADER);
+            return TrackedWorkResponse.from(tracked, work.title(), work.slug(), new EnumMap<>(SourceChapterState.class), 0);
+        });
+    }
+
+    // uma obra do Burūna, um vínculo com o MangaDex (as fontes de site podem ser várias)
     private WorkInfo linkedWork(UUID workId) {
         WorkInfo work = findPublicWork.getPublicWorkInfo(workId);
-        if (trackedWorkRepository.existsByWorkId(workId)) {
+        if (trackedWorkRepository.existsByWorkIdAndSource(workId, SourceName.MANGADEX)) {
             throw new WorkAlreadyTrackedException("Esta obra do Burūna já está vinculada a uma obra do MangaDex.");
         }
         return work;

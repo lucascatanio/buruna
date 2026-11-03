@@ -32,7 +32,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * Uma rodada do executor de fonte (ADR-48): pega o lease do MangaDex, lista os capítulos das
+ * Uma rodada do executor de uma fonte (ADR-48, ADR-54): pega o lease dela, lista os capítulos das
  * obras recém-importadas e baixa as versões pendentes, até não sobrar nada. Repete a busca no
  * fim, porque um import feito durante a rodada só é visto por ela: a execução disparada por
  * esse import encontra o lease ocupado e espera.
@@ -91,67 +91,100 @@ public class SourcingRunner {
     }
 
     /**
-     * Sync (Scheduler, ADR-49): pede a verificação de todas as obras ativas, faz a rodada e, no
-     * fim, manda o e-mail diário se for a hora e houver novidade.
+     * Sync (Scheduler, ADR-49) das obras do MangaDex: pede a verificação de todas as ativas, faz a
+     * rodada e, no fim, manda o e-mail diário se for a hora e houver novidade. O sync dos sites do
+     * manga-downloader fica para outra ADR (ADR-54).
      */
     public void sync(String holder) {
         transactionTemplate.executeWithoutResult(tx -> trackedWorkRepository
                 .findBySourceAndStatus(SourceName.MANGADEX, TrackedWorkStatus.ACTIVE)
                 .forEach(TrackedWork::requestListing));
-        run(holder);
+        run(holder, SourceName.MANGADEX);
         digest.sendIfDue();
     }
 
     /** {@code holder}: identifica esta execução no lease (id da execução do Job). */
-    public void run(String holder) {
-        if (!waitForLease(holder)) {
-            log.info("Lease do MangaDex ocupado por {}; quem o segura baixa o que estiver pendente", leaseWait);
+    public void run(String holder, SourceName source) {
+        if (!waitForLease(holder, source)) {
+            log.info("Lease de {} ocupado por {}; quem o segura baixa o que estiver pendente", source, leaseWait);
             return;
         }
         try {
             Set<UUID> listed = new HashSet<>();
-            while (drainOnce(holder, listed)) {
+            Set<UUID> deferred = new HashSet<>();
+            while (drainOnce(holder, source, listed, deferred)) {
                 // repete até uma passada não encontrar nada
             }
         } finally {
-            transactionTemplate.executeWithoutResult(tx -> leaseRepository.lockBySource(SourceName.MANGADEX)
-                    .ifPresent(lease -> lease.release(holder)));
+            release(holder, source);
         }
     }
 
-    /** Falso quando não havia nada a fazer. */
-    private boolean drainOnce(String holder, Set<UUID> listed) {
+    /**
+     * Falso quando não havia nada a fazer. {@code deferred}: versões que esperam o lease do MangaDex
+     * (ADR-54); ficam PENDING para a próxima rodada, sem prender esta.
+     */
+    private boolean drainOnce(String holder, SourceName source, Set<UUID> listed, Set<UUID> deferred) {
         boolean worked = false;
-        for (TrackedWork tracked : activeWorks()) {
+        for (TrackedWork tracked : activeWorks(source)) {
             // uma tentativa por rodada: listagem que falhou não pode prender a rodada em laço
             if (tracked.needsListing() && listed.add(tracked.getId())) {
-                renewLease(holder);
-                try {
-                    listChapters.run(tracked);
-                } catch (RuntimeException e) {
-                    log.error("Falha ao listar a obra acompanhada {}", tracked.getId(), e);
-                }
-                worked = true;
+                renewLease(holder, source);
+                worked |= withMangaDexLease(tracked, holder, () -> {
+                    try {
+                        listChapters.run(tracked);
+                    } catch (RuntimeException e) {
+                        log.error("Falha ao listar a obra acompanhada {}", tracked.getId(), e);
+                    }
+                });
             }
         }
-        Map<UUID, TrackedWork> byId = activeWorks().stream()
+        Map<UUID, TrackedWork> byId = activeWorks(source).stream()
                 .collect(Collectors.toMap(TrackedWork::getId, Function.identity()));
         if (byId.isEmpty()) {
             return worked;
         }
         List<SourceChapter> pending = read(() -> sourceChapterRepository
                 .findByTrackedWorkIdInAndState(byId.keySet(), SourceChapterState.PENDING)).stream()
+                .filter(version -> !deferred.contains(version.getId()))
                 .sorted(Comparator.comparing(SourceChapter::getTrackedWorkId).thenComparing(READING_ORDER))
                 .toList();
         for (SourceChapter version : pending) {
-            renewLease(holder);
-            importer.run(byId.get(version.getTrackedWorkId()), version);
+            renewLease(holder, source);
+            TrackedWork tracked = byId.get(version.getTrackedWorkId());
+            if (withMangaDexLease(tracked, holder, () -> importer.run(tracked, version))) {
+                worked = true;
+            } else {
+                deferred.add(version.getId());
+            }
         }
-        return worked || !pending.isEmpty();
+        return worked;
     }
 
-    private List<TrackedWork> activeWorks() {
-        return read(() -> trackedWorkRepository.findBySourceAndStatus(SourceName.MANGADEX, TrackedWorkStatus.ACTIVE));
+    /**
+     * Série do mangadex.org pelo manga-downloader: só roda se o lease do MangaDex estiver livre, e
+     * o devolve logo depois. Ocupado (o sync das obras antigas pode levar horas), não espera:
+     * esperar travaria todos os sites por causa de um (ADR-54). Falso quando não rodou.
+     */
+    private boolean withMangaDexLease(TrackedWork tracked, String holder, Runnable action) {
+        if (!tracked.sharesMangaDexLease()) {
+            action.run();
+            return true;
+        }
+        if (!tryLease(holder, SourceName.MANGADEX)) {
+            log.info("Lease do MangaDex ocupado; obra acompanhada {} fica para a próxima rodada", tracked.getId());
+            return false;
+        }
+        try {
+            action.run();
+            return true;
+        } finally {
+            release(holder, SourceName.MANGADEX);
+        }
+    }
+
+    private List<TrackedWork> activeWorks(SourceName source) {
+        return read(() -> trackedWorkRepository.findBySourceAndStatus(source, TrackedWorkStatus.ACTIVE));
     }
 
     // Toda leitura numa transação nova: no profile local a rodada roda no afterCommit do import,
@@ -161,10 +194,10 @@ public class SourcingRunner {
         return transactionTemplate.execute(tx -> query.get());
     }
 
-    private boolean waitForLease(String holder) {
+    private boolean waitForLease(String holder, SourceName source) {
         OffsetDateTime deadline = OffsetDateTime.now(clock).plus(leaseWait);
         while (true) {
-            if (tryLease(holder)) {
+            if (tryLease(holder, source)) {
                 return true;
             }
             if (!OffsetDateTime.now(clock).isBefore(deadline)) {
@@ -174,18 +207,23 @@ public class SourcingRunner {
         }
     }
 
-    private boolean tryLease(String holder) {
-        Boolean acquired = transactionTemplate.execute(tx -> leaseRepository.lockBySource(SourceName.MANGADEX)
+    private boolean tryLease(String holder, SourceName source) {
+        Boolean acquired = transactionTemplate.execute(tx -> leaseRepository.lockBySource(source)
                 .map(lease -> lease.tryAcquire(holder, OffsetDateTime.now(clock), LEASE_TTL))
                 .orElse(false));
         return Boolean.TRUE.equals(acquired);
     }
 
+    private void release(String holder, SourceName source) {
+        transactionTemplate.executeWithoutResult(tx -> leaseRepository.lockBySource(source)
+                .ifPresent(lease -> lease.release(holder)));
+    }
+
     // perder o lease no meio (pausa longa demais) não para a rodada: só avisa no log, porque
     // o risco é outra execução baixar junto por alguns minutos, não perder dado
-    private void renewLease(String holder) {
-        if (!tryLease(holder)) {
-            log.warn("Lease do MangaDex foi tomado por outra execução durante a rodada {}", holder);
+    private void renewLease(String holder, SourceName source) {
+        if (!tryLease(holder, source)) {
+            log.warn("Lease de {} foi tomado por outra execução durante a rodada {}", source, holder);
         }
     }
 }

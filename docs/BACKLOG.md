@@ -40,12 +40,20 @@ o 2FA de novo, com segredo novo.
      público separado;
   2. porta de metadados (AniList), com a tabela de tags (rank ≥ 80) e a sinopse revisada no
      import;
-  3. porta de capítulos (manga-downloader): `MANGA_DOWNLOADER` com URL da série, várias fontes
-     por obra;
-  4. imagem própria do Job, com o binário e o Chromium, como segundo target do Dockerfile, e o
-     Dependabot para a versão;
+  3. ~~porta de capítulos (manga-downloader): `MANGA_DOWNLOADER` com URL da série, várias fontes
+     por obra~~ (feito, import só vinculando a uma obra existente);
+  4. ~~imagem própria do Job, com o binário e o Chromium, como segundo target do Dockerfile, e o
+     Dependabot para a versão~~ (feito);
+  - import criando a obra pelo AniList, com a coluna `anilist_id` (antes da tela);
+  - colisão com capítulo de outra fonte ou de upload vira `IGNORED` (hoje `FAILED`, com o motivo),
+    e o "usar esta versão" procura o capítulo na obra inteira (exige substituir capítulo enviado à
+    mão no `work`);
   5. versão leve das páginas gerada no ingest;
   6. tela do import.
+
+  **Não subir para a `main`** antes de o manga-downloader publicar uma release com o `list` (PR
+  elboletaire/manga-downloader#449) e de o Dockerfile apontar para ela: a v24.1.0 não tem o
+  subcomando, e a listagem falha em produção.
 - [ ] Termos de uso e política de privacidade: caixa de aceite obrigatória no cadastro, com
   link para o texto, e tela ou modal pedindo o aceite a quem já tem conta. Decidir antes: quem
   escreve o texto; se o aceite guarda versão e data (para pedir de novo quando mudar); o que

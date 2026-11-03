@@ -127,6 +127,25 @@ a vir de uma base em inglês, revisada à mão a cada import. Em troca, o Burūn
 centenas de sites com um caminho só, e os metadados vêm de uma base que não depende do site de
 onde vêm as páginas.
 
+**Atualização (2026-11-02), implementação dos passos 3 e 4:**
+
+- **A listagem roda no serviço web.** A ADR previa a CLI só no Job, mas a tela de import lista
+  antes de confirmar, numa requisição. O serviço leva só o binário (~7 MB), sem navegador: site
+  que exige navegador não lista ali, a tela mostra o motivo, e o import segue com idioma e grupo
+  informados. O Job tem o binário e o Chromium.
+- **A URL da série é o `external_id`** da obra acompanhada, que sobe para 500 caracteres (V34).
+- **Executor genérico.** O `SourcingRunner`, a listagem e o importer recebem a fonte; só listar,
+  dizer os idiomas disponíveis e baixar as páginas ficam atrás de `ChapterSource` (o MangaDex
+  embrulha o código que já existia). Uma execução do Job por fonte (`--sourcing.source`).
+- **Capítulo sem id no site:** a chave é `sem-id:` + número (ou título) + idioma + grupos.
+- **Grupo:** o id é o nome codificado em URL (os ids são guardados juntos por vírgula, e um nome
+  pode ter vírgula); o `list --json` ganhou o campo `groups` com os nomes separados.
+- **Idioma do site:** cada idioma acompanhado guarda o código do site (`source_language`); vazio é
+  o site que não informa idioma.
+- **Proteção da CLI:** a URL precisa ser `http(s)` e vai depois de `--`, para não virar flag.
+- **Colisão** continua como no MangaDex (`FAILED` com o motivo, sem baixar, porque o registro vem
+  antes do download). O `IGNORED` e o "usar esta versão" na obra inteira ficaram para um PR próprio.
+
 **Pendente:**
 
 - PR `list --json` no manga-downloader. A feature não sobe sem ele ou sem o plano B.

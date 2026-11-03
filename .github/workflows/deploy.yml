@@ -34,8 +34,14 @@ jobs:
 
       - name: Build and push backend
         run: |
-          docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-backend:latest ./backend
+          docker build --target service -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-backend:latest ./backend
           docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-backend:latest
+
+      # imagem própria do Job, com o Chromium do manga-downloader (ADR-54); o serviço fica sem ele
+      - name: Build and push ingest
+        run: |
+          docker build --target ingest -t ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-ingest:latest ./backend
+          docker push ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-ingest:latest
 
       - name: Deploy backend
         run: |
@@ -49,7 +55,7 @@ jobs:
       - name: Update ingest job image
         run: |
           gcloud run jobs update buruna-ingest \
-            --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-backend:latest \
+            --image ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/buruna/buruna-ingest:latest \
             --region ${{ env.REGION }} \
             --quiet
 

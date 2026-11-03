@@ -46,7 +46,9 @@ public class SourceChapter {
     @Column(name = "tracked_work_id", nullable = false, updatable = false)
     private UUID trackedWorkId;
 
-    @Column(name = "external_id", nullable = false, updatable = false, length = 100)
+    // no manga-downloader, o id do capítulo no site (muitas vezes o caminho da URL) ou uma chave
+    // de número, idioma e grupo quando o site não dá id (ADR-54)
+    @Column(name = "external_id", nullable = false, updatable = false, length = 500)
     private String externalId;
 
     @Column(nullable = false, length = 35)

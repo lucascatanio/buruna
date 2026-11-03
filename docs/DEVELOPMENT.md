@@ -9,6 +9,11 @@
 - Java 21, Docker (Docker Compose), Node 22+.
 - `bsdtar` (pacote `libarchive-tools` no Debian/Ubuntu, `libarchive` no Arch) só para enviar
   capítulo em **CBR** localmente; CBZ e PDF não precisam. Na imagem Docker ele já vem.
+- `manga-downloader` (binário da [release](https://github.com/elboletaire/manga-downloader/releases),
+  no `PATH` ou em `APP_SOURCING_MANGA_DOWNLOADER_BINARY`) só para importar de sites (ADR-54).
+  Sem ele, o resto sobe normalmente, e a listagem e o import de site respondem que não deu para
+  rodar o manga-downloader. O subcomando `list` só existe a partir da release que trouxer o
+  elboletaire/manga-downloader#449; até lá, compile o fork.
 
 O backend exige **Java 21** (`<java.version>21</java.version>` no `pom.xml`), e não há
 toolchain configurado: o Maven usa o `java` que estiver no `PATH`. Se o seu for outro,
