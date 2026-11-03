@@ -21,7 +21,7 @@ const FORMAT_OPTIONS = [
     {value: "MANHWA", label: "Manhwa"},
     {value: "MANHUA", label: "Manhua"},
     {value: "WEBTOON", label: "Webtoon"},
-    {value: "ONE_SHOT", label: "One-shot"},
+    {value: "ONESHOT", label: "One-shot"},
     {value: "LIVRO", label: "Livro"},
 ];
 

@@ -479,6 +479,27 @@ class WorkIntegrationTest {
         }
 
         @Test
+        void getWorks_filterByOneShot_returnsOneShotWork() throws Exception {
+            mockMvc.perform(post("/works").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"title\":\"ITest Oneshot\",\"format\":\"ONESHOT\",\"statusOrigin\":\"COMPLETED\",\"statusSite\":\"INCOMPLETE\"}")
+                            .with(auth(collab)))
+                    .andExpect(status().isCreated());
+
+            mockMvc.perform(get("/works").param("format", "ONESHOT").with(auth(reader)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].title").value("ITest Oneshot"))
+                    .andExpect(jsonPath("$.content[0].format").value("ONESHOT"));
+        }
+
+        @Test
+        void getWorks_unknownFormat_returns400() throws Exception {
+            // valor que não existe no enum (o front mandava ONE_SHOT) é erro de quem chamou, não 500
+            mockMvc.perform(get("/works").param("format", "ONE_SHOT").with(auth(reader)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Valor inválido no parâmetro format"));
+        }
+
+        @Test
         void getWorks_sortByModerationField_returns400() throws Exception {
             // campo da entidade fora do DTO: ordenar por ele vazaria a ordem dos dados de moderação
             mockMvc.perform(get("/works").param("sort", "reviewedAt").with(auth(reader)))
