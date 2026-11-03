@@ -146,6 +146,12 @@ onde vêm as páginas.
 - **Colisão** continua como no MangaDex (`FAILED` com o motivo, sem baixar, porque o registro vem
   antes do download). O `IGNORED` e o "usar esta versão" na obra inteira ficaram para um PR próprio.
 
+**Atualização (2026-11-03), import pelo AniList:** com `aniListId`, o import de site anexa à obra
+que já tem esse id (`works.anilist_id`, V36, sem UNIQUE: a checagem fica sob lock no lease da
+fonte) ou cria uma com os metadados do AniList e a sinopse revisada pelo ADM. A prévia
+(`/metadata/works/{id}`) avisa quando o id já tem obra no catálogo. O pedido traz exatamente uma
+obra: `linkWorkId` ou `aniListId`.
+
 **Pendente:**
 
 - ~~PR `list --json` no manga-downloader~~: aceito (elboletaire/manga-downloader#449, com o campo

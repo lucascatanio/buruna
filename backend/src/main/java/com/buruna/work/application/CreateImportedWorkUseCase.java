@@ -3,6 +3,7 @@ package com.buruna.work.application;
 import com.buruna.work.domain.WorkFormat;
 import com.buruna.work.domain.WorkStatusOrigin;
 import com.buruna.work.domain.WorkStatusSite;
+import com.buruna.work.persistence.WorkRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,10 +21,13 @@ public class CreateImportedWorkUseCase {
 
     private final CreatePublicWorkUseCase createPublicWork;
     private final EnsureTagsUseCase ensureTags;
+    private final WorkRepository workRepository;
 
-    public CreateImportedWorkUseCase(CreatePublicWorkUseCase createPublicWork, EnsureTagsUseCase ensureTags) {
+    public CreateImportedWorkUseCase(CreatePublicWorkUseCase createPublicWork, EnsureTagsUseCase ensureTags,
+                                     WorkRepository workRepository) {
         this.createPublicWork = createPublicWork;
         this.ensureTags = ensureTags;
+        this.workRepository = workRepository;
     }
 
     @Transactional
@@ -44,6 +48,9 @@ public class CreateImportedWorkUseCase {
                 command.contentWarnings(),
                 ensureTags.handle(command.tags()));
         WorkResponse created = createPublicWork.handle(request, actorId);
+        if (command.aniListId() != null) {
+            workRepository.findById(created.id()).orElseThrow().linkAniList(command.aniListId());
+        }
         return new WorkInfo(created.id(), created.slug(), created.title(), created.coverUrl());
     }
 }

@@ -2,6 +2,7 @@ package com.buruna.work.domain;
 
 import com.buruna.shared.converter.StringListConverter;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -66,6 +67,11 @@ public class Work {
     private WorkStatusSite statusSite;
 
     private Integer year;
+
+    // obra no AniList, de onde vieram os metadados (ADR-54); nulo nas que não vieram de lá
+    @Getter(AccessLevel.NONE)
+    @Column(name = "anilist_id")
+    private Integer aniListId;
 
     @Convert(converter = StringListConverter.class)
     @Column(name = "content_warnings", columnDefinition = "TEXT")
@@ -163,6 +169,24 @@ public class Work {
         this.year = year;
         this.contentWarnings = contentWarnings != null ? contentWarnings : new ArrayList<>();
         this.tags = tags != null ? tags : new HashSet<>();
+    }
+
+    /**
+     * Liga a obra à do AniList, para o próximo import do mesmo id achar esta em vez de criar
+     * outra. Uma obra tem um id só: religar com o mesmo não muda nada, com outro é recusado.
+     */
+    public void linkAniList(int id) {
+        if (id <= 0) {
+            throw new InvalidAniListLinkException("Id do AniList inválido: " + id);
+        }
+        if (aniListId != null && aniListId != id) {
+            throw new InvalidAniListLinkException("Esta obra já está ligada a outra obra do AniList.");
+        }
+        aniListId = id;
+    }
+
+    public Optional<Integer> getAniListId() {
+        return Optional.ofNullable(aniListId);
     }
 
     /** Atualiza os campos editáveis de um mangá privado. */

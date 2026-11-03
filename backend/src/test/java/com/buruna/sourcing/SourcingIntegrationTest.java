@@ -66,6 +66,7 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -84,6 +85,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
@@ -597,5 +599,104 @@ class SourcingIntegrationTest {
     void shouldReturnForbidden_whenReaderListsSiteSeries() throws Exception {
         mockMvc.perform(get("/admin/sourcing/site-listing").param("url", SITE_URL).with(auth(reader)))
                 .andExpect(status().isForbidden());
+    }
+
+    // ── Obra criada pelo AniList (ADR-54) ───────────────────────────────────
+
+    static SourceWorkDetails aniListDetails() {
+        return new SourceWorkDetails("118586", "Sousou no Frieren", List.of("Frieren: Beyond Journey's End"),
+                Map.of("en", "An elf mage."), "ja", SourceWorkStatus.ONGOING, 2020, SourceContentRating.SAFE,
+                List.of(new SourceTag("Adventure", SourceTagGroup.GENRE), new SourceTag("Magic", SourceTagGroup.THEME)),
+                false, "https://s4.anilist.co/file/anilistcdn/media/manga/cover/large/x.jpg",
+                "https://anilist.co/manga/118586", "shounen", List.of());
+    }
+
+    String aniListImportBody(String url) {
+        return """
+                {"source":"MANGA_DOWNLOADER","externalId":"%s","aniListId":118586,"synopsis":"Uma elfa maga.",
+                 "languages":[{"language":"en","sourceLanguage":"en","preferredGroupId":"Alpha","preferredGroupName":"Alpha"}]}
+                """.formatted(url);
+    }
+
+    String importFromAniList(String url) throws Exception {
+        // com capa, a resposta da obra criada traz a URL assinada dela
+        when(storageClient.generateSignedUrl(anyString(), any())).thenReturn(URI.create("https://storage.test/capa").toURL());
+        String body = mockMvc.perform(post("/admin/sourcing/imports").contentType(MediaType.APPLICATION_JSON)
+                        .content(aniListImportBody(url)).with(auth(admin)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.workId");
+    }
+
+    @Test
+    void shouldCreateWorkFromAniList_whenSiteImportNamesAniListWork() throws Exception {
+        when(metadataSource.fetchWork("118586")).thenReturn(aniListDetails());
+        when(metadataSource.download(anyString(), anyLong())).thenReturn(png);
+        when(siteClient.list(SITE_URL)).thenReturn(siteListing());
+        siteDownloadsWriteArchives();
+
+        String workId = importFromAniList(SITE_URL);
+
+        Work work = transactionTemplate.execute(tx -> {
+            Work w = workRepository.findById(UUID.fromString(workId)).orElseThrow();
+            w.getTags().size();
+            return w;
+        });
+        assertThat(work.getTitle()).isEqualTo("Sousou no Frieren");
+        assertThat(work.getSynopsis()).isEqualTo("Uma elfa maga.");
+        assertThat(work.getAniListId()).contains(118586);
+        assertThat(work.getCoverUrl()).isNotBlank();
+        assertThat(work.getTags()).extracting(Tag::getName).contains("Aventura", "Magia", "Shounen", "Mangá");
+        assertThat(chaptersOf(workId)).hasSize(2);
+
+        mockMvc.perform(get("/admin/sourcing/metadata/works/118586").with(auth(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.catalogWork.id").value(workId))
+                .andExpect(jsonPath("$.catalogWork.title").value("Sousou no Frieren"));
+    }
+
+    @Test
+    void shouldAttachToSameWork_whenAniListWorkIsImportedFromAnotherSite() throws Exception {
+        String otherSite = "https://outro.test/manga/frieren";
+        when(metadataSource.fetchWork("118586")).thenReturn(aniListDetails());
+        when(metadataSource.download(anyString(), anyLong())).thenReturn(png);
+        when(siteClient.list(anyString())).thenReturn(siteListing());
+        siteDownloadsWriteArchives();
+
+        String first = importFromAniList(SITE_URL);
+        String second = importFromAniList(otherSite);
+
+        assertThat(second).isEqualTo(first);
+        assertThat(workRepository.count()).isEqualTo(1);
+        assertThat(trackedWorkRepository.count()).isEqualTo(2);
+        // o segundo import achou a obra pelo id e nem foi ao AniList
+        verify(metadataSource, times(1)).fetchWork("118586");
+    }
+
+    @Test
+    void shouldRefuseSiteImport_whenBothWorkAndAniListAreGiven() throws Exception {
+        String workId = createWork();
+
+        mockMvc.perform(post("/admin/sourcing/imports").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"source":"MANGA_DOWNLOADER","externalId":"%s","linkWorkId":"%s","aniListId":118586,
+                                 "languages":[{"language":"en","sourceLanguage":"en"}]}
+                                """.formatted(SITE_URL, workId)).with(auth(admin)))
+                .andExpect(status().isBadRequest());
+
+        verify(metadataSource, never()).fetchWork(anyString());
+        assertThat(trackedWorkRepository.count()).isZero();
+    }
+
+    @Test
+    void shouldNameAniList_whenAniListWorkDoesNotExist() throws Exception {
+        when(metadataSource.fetchWork("118586")).thenThrow(new ExternalWorkNotFoundException("118586"));
+
+        mockMvc.perform(post("/admin/sourcing/imports").contentType(MediaType.APPLICATION_JSON)
+                        .content(aniListImportBody(SITE_URL)).with(auth(admin)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Obra não encontrada no AniList: 118586"));
+
+        assertThat(workRepository.count()).isZero();
     }
 }

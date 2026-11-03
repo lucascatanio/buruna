@@ -115,6 +115,7 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V33    | Sync (ADR-49): tracked_works.listing_requested, paused_at, paused_reason; tracked_work_ignored_groups; source_chapters.attempts, failed_at, removed_at_source, source_update_detected_at, replaces_chapter_id; source_leases.last_digest_at |
 | V34    | Fonte MANGA_DOWNLOADER no enum external_source ([ADR-54](adr/ADR-54-fontes-pelo-manga-downloader-e-anilist.md)); tracked_works.external_id e source_chapters.external_id sobem para 500 (a URL da série e o id do capítulo no site); tracked_work_languages.source_language (código do idioma no site) |
 | V35    | Linha do MANGA_DOWNLOADER em source_leases (migration própria: o valor novo do enum não pode ser usado na transação que o cria) |
+| V36    | works.anilist_id com índice comum, sem UNIQUE (ADR-53): o import de site acha por ele a obra que já existe (ADR-54) |
 
 > Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
 > transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill

@@ -72,4 +72,19 @@ class WorkMetadataMapperTest {
                 new TagSpec("Seinen", "Demografia"),
                 new TagSpec("Mangá", "Formato"));
     }
+
+    @Test
+    void shouldLinkAniListAndUseReviewedSynopsis_whenAdminTranslatedIt() {
+        SourceWorkDetails aniList = new SourceWorkDetails("118586", "Sousou no Frieren", List.of(),
+                Map.of("en", "An elf mage."), "ja", SourceWorkStatus.ONGOING, 2020, SourceContentRating.SAFE,
+                List.of(), false, null, "https://anilist.co/manga/118586", null, List.of());
+
+        ImportedWorkCommand reviewed = WorkMetadataMapper.fromAniList(aniList, null, "  Uma elfa maga.  ");
+        ImportedWorkCommand untouched = WorkMetadataMapper.fromAniList(aniList, null, " ");
+
+        assertThat(reviewed.aniListId()).isEqualTo(118586);
+        assertThat(reviewed.synopsis()).isEqualTo("Uma elfa maga.");
+        assertThat(untouched.synopsis()).isEqualTo("An elf mage.");
+        assertThat(WorkMetadataMapper.toCommand(aniList, null).aniListId()).isNull();
+    }
 }

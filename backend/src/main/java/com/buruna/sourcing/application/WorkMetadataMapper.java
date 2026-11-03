@@ -38,7 +38,20 @@ final class WorkMetadataMapper {
                 details.status() == null ? "ONGOING" : details.status().name(),
                 details.year(),
                 contentWarningsOf(details),
-                tagsOf(details, format));
+                tagsOf(details, format),
+                null);
+    }
+
+    /**
+     * Obra vinda do AniList (ADR-54): liga a obra ao id dele e usa a sinopse que o ADM revisou
+     * (o AniList só tem em inglês), quando ele mandou uma.
+     */
+    static ImportedWorkCommand fromAniList(SourceWorkDetails details, String coverDataUri, String reviewedSynopsis) {
+        ImportedWorkCommand base = toCommand(details, coverDataUri);
+        String synopsis = reviewedSynopsis == null || reviewedSynopsis.isBlank() ? base.synopsis() : reviewedSynopsis.strip();
+        return new ImportedWorkCommand(base.title(), base.alternativeTitles(), synopsis, base.coverDataUri(),
+                base.format(), base.originCountry(), base.statusOrigin(), base.year(), base.contentWarnings(),
+                base.tags(), Integer.valueOf(details.externalId()));
     }
 
     // obra sem título na fonte: o primeiro título alternativo, senão o id

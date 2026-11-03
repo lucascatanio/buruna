@@ -43,7 +43,7 @@ o 2FA de novo, com segredo novo.
      por obra~~ (feito, import só vinculando a uma obra existente);
   4. ~~imagem própria do Job, com o binário e o Chromium, como segundo target do Dockerfile, e o
      Dependabot para a versão~~ (feito);
-  - import criando a obra pelo AniList, com a coluna `anilist_id` (antes da tela);
+  - ~~import criando a obra pelo AniList, com a coluna `anilist_id`~~ (feito);
   - colisão com capítulo de outra fonte ou de upload vira `IGNORED` (hoje `FAILED`, com o motivo),
     e o "usar esta versão" procura o capítulo na obra inteira (exige substituir capítulo enviado à
     mão no `work`);
