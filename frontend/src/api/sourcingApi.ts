@@ -3,29 +3,41 @@ import type {
     ImportWorkRequest,
     LanguageAvailability,
     LanguageChoice,
+    SiteSeriesListing,
     SourceAlert,
     TrackedGroup,
-    SourceSearchResult,
     TrackedWork,
+    WorkMetadataPreview,
+    WorkMetadataSearchResult,
     WorkSource,
 } from "@/types/sourcing";
 
-export function searchSource(query: string): Promise<SourceSearchResult[]> {
-    return api.get<SourceSearchResult[]>("/admin/sourcing/search", {params: {q: query}}).then((r) => r.data);
+export function searchMetadata(query: string): Promise<WorkMetadataSearchResult[]> {
+    return api.get<WorkMetadataSearchResult[]>("/admin/sourcing/metadata/search", {params: {q: query}}).then((r) => r.data);
+}
+
+/** A obra do AniList como o import vai criá-la, e a obra do catálogo já ligada a ela, se houver. */
+export function getMetadataPreview(aniListId: string): Promise<WorkMetadataPreview> {
+    return api.get<WorkMetadataPreview>(`/admin/sourcing/metadata/works/${encodeURIComponent(aniListId)}`).then((r) => r.data);
+}
+
+/**
+ * Capa do AniList como blob: o CSP do site não libera imagens de fora, e o endpoint do backend
+ * precisa do token, que um {@code <img src>} não manda. Quem chama revoga a URL criada.
+ */
+export function getMetadataCover(url: string): Promise<string> {
+    return api.get<Blob>("/admin/sourcing/metadata/cover", {params: {url}, responseType: "blob"})
+        .then((r) => URL.createObjectURL(r.data));
+}
+
+/** Lista a série no site pelo manga-downloader; leva alguns segundos. */
+export function listSiteSeries(url: string): Promise<SiteSeriesListing> {
+    return api.get<SiteSeriesListing>("/admin/sourcing/site-listing", {params: {url}}).then((r) => r.data);
 }
 
 export function getLanguageAvailability(externalId: string, language: string): Promise<LanguageAvailability> {
     return api.get<LanguageAvailability>(`/admin/sourcing/works/${encodeURIComponent(externalId)}/availability`,
         {params: {language}}).then((r) => r.data);
-}
-
-/**
- * Miniatura da capa como blob: o MangaDex recusa hotlink, e o endpoint do backend precisa do
- * token, que um {@code <img src>} não manda. Quem chama revoga a URL criada.
- */
-export function getCoverThumbnail(url: string): Promise<string> {
-    return api.get<Blob>("/admin/sourcing/cover", {params: {url}, responseType: "blob"})
-        .then((r) => URL.createObjectURL(r.data));
 }
 
 export function importWork(request: ImportWorkRequest): Promise<TrackedWork> {
@@ -81,7 +93,7 @@ export function runSourceChapterAction(sourceChapterId: string, action: SourceCh
     return api.post(`/admin/sourcing/source-chapters/${sourceChapterId}/${action}`).then(() => undefined);
 }
 
-/** Idiomas que o MangaDex tem desta obra e que ainda não são acompanhados. */
+/** Idiomas que a fonte tem desta obra e que ainda não são acompanhados, como a fonte os escreve. */
 export function listUntrackedSourceLanguages(id: string): Promise<string[]> {
     return api.get<string[]>(`/admin/sourcing/tracked/${id}/source-languages`).then((r) => r.data);
 }

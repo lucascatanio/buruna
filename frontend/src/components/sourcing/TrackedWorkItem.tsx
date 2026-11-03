@@ -18,13 +18,25 @@ import {Button} from "@/components/ui/button";
 import {languageName} from "@/lib/chapterLabel";
 import {AddLanguagePanel} from "./AddLanguagePanel";
 import {apiErrorMessage} from "@/lib/apiError";
+import {siteHost} from "@/lib/siteLanguage";
 
-const ALERT_LABELS: Record<SourceAlertType, string> = {
-    FAILED: "Falhou ao baixar",
-    REMOVED_AT_SOURCE: "Removido no MangaDex (continua no ar aqui)",
-    PAGES_CHANGED: "Páginas trocadas no MangaDex",
-    PREFERRED_AVAILABLE: "Versão do grupo preferido disponível",
-};
+function alertLabel(type: SourceAlertType, source: string): string {
+    switch (type) {
+        case "FAILED":
+            return "Falhou ao baixar";
+        case "REMOVED_AT_SOURCE":
+            return `Removido no ${source} (continua no ar aqui)`;
+        case "PAGES_CHANGED":
+            return `Páginas trocadas no ${source}`;
+        case "PREFERRED_AVAILABLE":
+            return "Versão do grupo preferido disponível";
+    }
+}
+
+/** Como a fonte aparece para o ADM: o MangaDex pelo nome, um site pelo endereço. */
+function sourceName(t: TrackedWork): string {
+    return t.source === "MANGADEX" ? "MangaDex" : siteHost(t.sourceUrl);
+}
 
 const ALERT_ACTIONS: Partial<Record<SourceAlertType, { action: SourceChapterAction; label: string }>> = {
     FAILED: {action: "retry", label: "Tentar de novo"},
@@ -112,7 +124,7 @@ export function TrackedWorkItem({tracked: t, onChanged}: TrackedWorkItemProps) {
                 <Link to={`/biblioteca/${t.workSlug}`} className="font-medium hover:underline">{t.workTitle}</Link>
                 <a href={t.sourceUrl} target="_blank" rel="noopener noreferrer"
                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline">
-                    MangaDex <ExternalLink className="size-3"/>
+                    {sourceName(t)} <ExternalLink className="size-3"/>
                 </a>
             </div>
             <p className="text-sm text-muted-foreground">
@@ -191,7 +203,7 @@ export function TrackedWorkItem({tracked: t, onChanged}: TrackedWorkItemProps) {
                                             <span className="text-muted-foreground"> · {languageName(alert.language)} · {alert.groupNames ?? "sem grupo"}</span>
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                            {ALERT_LABELS[alert.type]}
+                                            {alertLabel(alert.type, sourceName(t))}
                                             {alert.type === "PREFERRED_AVAILABLE" && alert.detail ? `; hoje está a versão de ${alert.detail}` : ""}
                                             {alert.type === "FAILED" && alert.detail ? `: ${alert.detail}` : ""}
                                             {" · "}{formatDate(alert.detectedAt)}
@@ -248,7 +260,7 @@ export function TrackedWorkItem({tracked: t, onChanged}: TrackedWorkItemProps) {
 
             {panel === "languages" && (
                 <div className="rounded-md border">
-                    <AddLanguagePanel trackedId={t.id} externalId={t.externalId} onAdded={onChanged}/>
+                    <AddLanguagePanel tracked={t} onAdded={onChanged}/>
                 </div>
             )}
         </li>

@@ -13,6 +13,7 @@ import {NativeSelect} from "@/components/ui/native-select";
 import {languageName} from "@/lib/chapterLabel";
 import {Search, SlidersHorizontal, X, Plus, Star, ChevronLeft, ChevronRight} from "lucide-react";
 import {useAuthStore} from "@/store/authStore";
+import {FORMAT_LABELS} from "@/lib/workLabels";
 
 const FORMAT_OPTIONS = [
     {value: "", label: "Todos os formatos"},
@@ -32,11 +33,6 @@ const STATUS_OPTIONS = [
     {value: "CANCELLED", label: "Cancelado"},
 ];
 
-const FORMAT_LABELS: Record<string, string> = {
-    MANGA: "Mangá", MANHWA: "Manhwa", MANHUA: "Manhua",
-    WEBTOON: "Webtoon", ONE_SHOT: "One-shot",
-    LIVRO: "Livro",
-};
 
 export function LibraryPage() {
     const user = useAuthStore((s) => s.user);

@@ -1,18 +1,3 @@
-/** Resultado da busca no MangaDex. {@code tracked}: a obra já é acompanhada. */
-export interface SourceSearchResult {
-    externalId: string;
-    title: string;
-    year: number | null;
-    contentRating: "SAFE" | "SUGGESTIVE" | "EROTICA" | "PORNOGRAPHIC" | null;
-    originalLanguage: string | null;
-    status: string | null;
-    availableLanguages: string[];
-    /** Endereço do MangaDex; só abre pelo backend ({@link getCoverThumbnail}). */
-    coverThumbnailUrl: string | null;
-    sourceUrl: string;
-    tracked: boolean;
-}
-
 export interface SourceGroupSummary {
     id: string;
     name: string;
@@ -31,12 +16,70 @@ export interface LanguageChoice {
     language: string;
     preferredGroupId: string | null;
     preferredGroupName: string | null;
+    /** Num site do manga-downloader: o código do idioma como o site o escreve ("" se ele não informa). */
+    sourceLanguage?: string | null;
 }
 
+export type SourceName = "MANGADEX" | "MANGA_DOWNLOADER";
+
+/**
+ * Import de site (ADR-54): {@code externalId} é a URL da série, e a obra vem de
+ * {@code linkWorkId} ou de {@code aniListId}, nunca dos dois.
+ */
 export interface ImportWorkRequest {
+    source: SourceName;
     externalId: string;
     languages: LanguageChoice[];
     linkWorkId: string | null;
+    aniListId: number | null;
+    /** Sinopse revisada pelo ADM; vazia, fica a do AniList. */
+    synopsis: string | null;
+}
+
+/** Resultado da busca no AniList. {@code coverThumbnailUrl} só abre pelo backend. */
+export interface WorkMetadataSearchResult {
+    externalId: string;
+    title: string;
+    year: number | null;
+    contentRating: "SAFE" | "SUGGESTIVE" | "EROTICA" | "PORNOGRAPHIC" | null;
+    originalLanguage: string | null;
+    status: string | null;
+    coverThumbnailUrl: string | null;
+    sourceUrl: string;
+}
+
+/** A obra como o import vai criá-la. {@code catalogWork}: a obra do catálogo já ligada a este id. */
+export interface WorkMetadataPreview {
+    externalId: string;
+    title: string;
+    alternativeTitles: string[];
+    synopsis: string | null;
+    format: string;
+    originCountry: string | null;
+    statusOrigin: string;
+    year: number | null;
+    contentWarnings: string[];
+    tags: { name: string; categoryName: string }[];
+    coverUrl: string | null;
+    sourceUrl: string;
+    catalogWork: { id: string; slug: string; title: string } | null;
+}
+
+/** A série de um site, listada pelo manga-downloader. Idioma "" é o do site que não informa. */
+export interface SiteSeriesListing {
+    title: string;
+    grabber: string;
+    tracked: boolean;
+    languages: { code: string; chapterCount: number }[];
+    groups: { id: string; name: string; chapterCount: number }[];
+    chapters: {
+        number: string | null;
+        title: string | null;
+        language: string;
+        groups: string[];
+        volume: number | null;
+        locked: boolean;
+    }[];
 }
 
 export type SourceChapterState = "PENDING" | "READY" | "FAILED" | "IGNORED";
@@ -46,7 +89,7 @@ export interface TrackedWork {
     workId: string;
     workTitle: string;
     workSlug: string;
-    source: string;
+    source: SourceName;
     externalId: string;
     sourceUrl: string;
     status: "ACTIVE" | "PAUSED";
