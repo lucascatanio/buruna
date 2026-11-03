@@ -5,6 +5,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.FieldError;
@@ -77,6 +78,15 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.BAD_REQUEST, "Requisição inválida",
                 "Corpo da requisição inválido ou mal formatado", request);
+    }
+
+    // valor que não converte para o tipo do parâmetro (enum desconhecido, UUID malformado): é erro
+    // de quem chamou, e sem este handler virava 500 no handleGeneric
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Requisição inválida",
+                "Valor inválido no parâmetro " + ex.getName(), request);
     }
 
     @ExceptionHandler(Exception.class)
