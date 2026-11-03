@@ -36,14 +36,17 @@ o 2FA de novo, com segredo novo.
 - [ ] **Fontes pelo manga-downloader, com metadados do AniList (ADR-54).** O sync, a
   migração das obras do MangaDex legado e o desligamento do adaptador atual ficam para uma ADR
   própria. Passos, em ordem:
-  1. PR `list --json` no manga-downloader. Se for recusado ou demorar, wrapper Go AGPL num repo
-     público separado;
+  1. ~~PR `list --json` no manga-downloader~~ (elboletaire/manga-downloader#449, na v25.0.0);
   2. porta de metadados (AniList), com a tabela de tags (rank ≥ 80) e a sinopse revisada no
      import;
-  3. porta de capítulos (manga-downloader): `MANGA_DOWNLOADER` com URL da série, várias fontes
-     por obra;
-  4. imagem própria do Job, com o binário e o Chromium, como segundo target do Dockerfile, e o
-     Dependabot para a versão;
+  3. ~~porta de capítulos (manga-downloader): `MANGA_DOWNLOADER` com URL da série, várias fontes
+     por obra~~ (feito, import só vinculando a uma obra existente);
+  4. ~~imagem própria do Job, com o binário e o Chromium, como segundo target do Dockerfile, e o
+     Dependabot para a versão~~ (feito);
+  - import criando a obra pelo AniList, com a coluna `anilist_id` (antes da tela);
+  - colisão com capítulo de outra fonte ou de upload vira `IGNORED` (hoje `FAILED`, com o motivo),
+    e o "usar esta versão" procura o capítulo na obra inteira (exige substituir capítulo enviado à
+    mão no `work`);
   5. versão leve das páginas gerada no ingest;
   6. tela do import.
 - [ ] Termos de uso e política de privacidade: caixa de aceite obrigatória no cadastro, com

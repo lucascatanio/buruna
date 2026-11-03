@@ -1,12 +1,12 @@
 package com.buruna.sourcing.application;
 
-import com.buruna.shared.source.ExternalSource;
 import com.buruna.shared.source.ExternalSourceException;
 import com.buruna.sourcing.domain.ChapterSelection;
 import com.buruna.sourcing.domain.InvalidSourceActionException;
 import com.buruna.sourcing.domain.SourceChapter;
 import com.buruna.sourcing.domain.SourceChapterNotFoundException;
 import com.buruna.sourcing.domain.SourceChapterState;
+import com.buruna.sourcing.domain.SourceName;
 import com.buruna.sourcing.domain.SourceUnavailableException;
 import com.buruna.sourcing.domain.TrackedLanguage;
 import com.buruna.sourcing.domain.TrackedWork;
@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,20 +41,20 @@ public class ManageTrackedWorkUseCase {
     private final TrackedWorkRepository trackedWorkRepository;
     private final SourceChapterRepository sourceChapterRepository;
     private final DeleteChapterUseCase deleteChapter;
-    private final ExternalSource source;
+    private final ChapterSources chapterSources;
     private final SourcingTrigger trigger;
     private final Clock clock;
 
     public ManageTrackedWorkUseCase(TrackedWorkRepository trackedWorkRepository,
                                     SourceChapterRepository sourceChapterRepository,
                                     DeleteChapterUseCase deleteChapter,
-                                    ExternalSource source,
+                                    ChapterSources chapterSources,
                                     SourcingTrigger trigger,
                                     Clock clock) {
         this.trackedWorkRepository = trackedWorkRepository;
         this.sourceChapterRepository = sourceChapterRepository;
         this.deleteChapter = deleteChapter;
-        this.source = source;
+        this.chapterSources = chapterSources;
         this.trigger = trigger;
         this.clock = clock;
     }
@@ -66,7 +67,7 @@ public class ManageTrackedWorkUseCase {
             throw new InvalidSourceActionException("Retome a obra antes de verificar.");
         }
         tracked.requestListing();
-        trigger.requestRun();
+        trigger.requestRun(tracked.getSource());
     }
 
     @Transactional
@@ -76,8 +77,9 @@ public class ManageTrackedWorkUseCase {
 
     @Transactional
     public void resume(UUID trackedWorkId) {
-        lock(trackedWorkId).resume();
-        trigger.requestRun();
+        TrackedWork tracked = lock(trackedWorkId);
+        tracked.resume();
+        trigger.requestRun(tracked.getSource());
     }
 
     /**
@@ -100,16 +102,22 @@ public class ManageTrackedWorkUseCase {
             version.detachFromChapter();
         }
         ChapterSelection.apply(versions, tracked::preferredGroupFor, tracked.ignoredGroupIds());
-        trigger.requestRun();
+        trigger.requestRun(tracked.getSource());
     }
 
-    /** Acrescenta um idioma (ou troca o grupo preferido dele) e já verifica a obra. */
+    /**
+     * Acrescenta um idioma (ou troca o grupo preferido dele) e já verifica a obra. Num site,
+     * {@code sourceLanguage} é o código que ele usa para esse idioma (ADR-54).
+     */
     @Transactional
-    public void trackLanguage(UUID trackedWorkId, String language, String preferredGroupId, String preferredGroupName) {
+    public void trackLanguage(UUID trackedWorkId, String language, String preferredGroupId, String preferredGroupName,
+                              String sourceLanguage) {
         TrackedWork tracked = lock(trackedWorkId);
-        tracked.trackLanguage(TrackedLanguage.of(language, preferredGroupId, preferredGroupName));
+        tracked.trackLanguage(tracked.getSource() == SourceName.MANGA_DOWNLOADER
+                ? TrackedLanguage.fromSite(language, sourceLanguage, preferredGroupId, preferredGroupName)
+                : TrackedLanguage.of(language, preferredGroupId, preferredGroupName));
         if (tracked.isActive()) {
-            trigger.requestRun();
+            trigger.requestRun(tracked.getSource());
         }
     }
 
@@ -120,11 +128,11 @@ public class ManageTrackedWorkUseCase {
                 .orElseThrow(() -> new TrackedWorkNotFoundException(trackedWorkId));
         List<String> available;
         try {
-            available = source.fetchWork(tracked.getExternalId()).availableLanguages();
+            available = new ArrayList<>(chapterSources.of(tracked.getSource()).availableLanguages(tracked));
         } catch (ExternalSourceException e) {
-            throw new SourceUnavailableException();
+            throw new SourceUnavailableException(SourceLabels.of(tracked.getSource()));
         }
-        Set<String> tracking = tracked.languageTags();
+        Set<String> tracking = tracked.sourceLanguageCodes();
         return available.stream().filter(language -> !tracking.contains(language)).sorted().toList();
     }
 
@@ -135,7 +143,7 @@ public class ManageTrackedWorkUseCase {
         tracked.stopIgnoringGroup(groupId);
         ChapterSelection.apply(sourceChapterRepository.findByTrackedWorkId(trackedWorkId),
                 tracked::preferredGroupFor, tracked.ignoredGroupIds());
-        trigger.requestRun();
+        trigger.requestRun(tracked.getSource());
     }
 
     /** Tenta de novo uma versão que falhou de vez; a contagem recomeça. */
@@ -146,7 +154,7 @@ public class ManageTrackedWorkUseCase {
             throw new InvalidSourceActionException("Só uma versão com falha pode ser tentada de novo.");
         }
         version.retry(true);
-        trigger.requestRun();
+        trigger.requestRun(sourceOf(version));
     }
 
     /** Baixa de novo as páginas de uma versão que a fonte trocou, no mesmo capítulo. */
@@ -157,7 +165,7 @@ public class ManageTrackedWorkUseCase {
             throw new InvalidSourceActionException("Só uma versão já baixada pode ser baixada de novo.");
         }
         version.requestReplacement(version.getChapterId().get());
-        trigger.requestRun();
+        trigger.requestRun(sourceOf(version));
     }
 
     /**
@@ -186,7 +194,7 @@ public class ManageTrackedWorkUseCase {
             version.retry(true);
             version.select();
         }
-        trigger.requestRun();
+        trigger.requestRun(tracked.getSource());
     }
 
     @Transactional(readOnly = true)
@@ -224,6 +232,10 @@ public class ManageTrackedWorkUseCase {
     private TrackedWork lock(UUID trackedWorkId) {
         return trackedWorkRepository.lockById(trackedWorkId)
                 .orElseThrow(() -> new TrackedWorkNotFoundException(trackedWorkId));
+    }
+
+    private SourceName sourceOf(SourceChapter version) {
+        return lock(version.getTrackedWorkId()).getSource();
     }
 
     /** A versão, com a obra acompanhada dela travada (como na listagem). */

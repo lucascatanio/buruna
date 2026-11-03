@@ -21,6 +21,8 @@ import com.buruna.shared.source.SourceWorkDetails;
 import com.buruna.shared.source.SourceWorkStatus;
 import com.buruna.shared.source.SourceWorkSummary;
 import com.buruna.shared.source.WorkMetadataSource;
+import com.buruna.shared.source.mangadownloader.MangaDownloaderClient;
+import com.buruna.shared.source.mangadownloader.SiteListing;
 import com.buruna.shared.storage.StorageClient;
 import com.buruna.sourcing.application.SourcingRunner;
 import com.buruna.sourcing.domain.SourceChapter;
@@ -64,11 +66,16 @@ import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -76,6 +83,8 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -113,6 +122,7 @@ class SourcingIntegrationTest {
     @Autowired TransactionTemplate transactionTemplate;
     @MockitoBean ExternalSource source;
     @MockitoBean WorkMetadataSource metadataSource;
+    @MockitoBean MangaDownloaderClient siteClient;
     @MockitoBean StorageClient storageClient;
     @MockitoBean EmailService emailService;
 
@@ -128,9 +138,11 @@ class SourcingIntegrationTest {
             trackedWorkRepository.deleteAll();
             chapterRepository.deleteAll();
             workRepository.deleteAll();
-            leaseRepository.lockBySource(SourceName.MANGADEX)
-                    .filter(lease -> lease.getHolder() != null)
-                    .ifPresent(lease -> lease.release(lease.getHolder()));
+            for (SourceName source : SourceName.values()) {
+                leaseRepository.lockBySource(source)
+                        .filter(lease -> lease.getHolder() != null)
+                        .ifPresent(lease -> lease.release(lease.getHolder()));
+            }
         });
         userRepository.deleteAllInBatch();
         admin = userRepository.save(user("admin@sourcing.test", "sourcingAdmin", Role.ADMIN));
@@ -327,7 +339,7 @@ class SourcingIntegrationTest {
 
         transactionTemplate.executeWithoutResult(tx -> leaseRepository.lockBySource(SourceName.MANGADEX)
                 .orElseThrow().release("outra-execucao"));
-        runner.run("rodada-seguinte");
+        runner.run("rodada-seguinte", SourceName.MANGADEX);
 
         assertThat(chaptersOf(workId)).hasSize(4);
         assertThat(leaseRepository.findById(SourceName.MANGADEX).map(SourceLease::getHolder)).isEmpty();
@@ -424,6 +436,166 @@ class SourcingIntegrationTest {
     @Test
     void shouldReturnForbidden_whenReaderSearchesMetadata() throws Exception {
         mockMvc.perform(get("/admin/sourcing/metadata/search").param("q", "frieren").with(auth(reader)))
+                .andExpect(status().isForbidden());
+    }
+
+    // ── Sites do manga-downloader (ADR-54) ──────────────────────────────────
+
+    private static final String SITE_URL = "https://site.test/manga/obra";
+
+    static SiteListing.Chapter siteChapter(String id, double number, String language, String group, boolean locked) {
+        String label = "Capítulo " + BigDecimal.valueOf(number).stripTrailingZeros().toPlainString();
+        return new SiteListing.Chapter(id, number, false, label, language, group,
+                group.isEmpty() ? List.of() : List.of(group), 0, locked);
+    }
+
+    static SiteListing siteListing() {
+        return new SiteListing("Obra do Site", "PlainHTML", List.of(
+                siteChapter("c1-alpha", 1, "en", "Alpha", false),
+                siteChapter("c1-beta", 1, "en", "Beta", false),
+                // sem id no site: a chave sai de número, idioma e grupo
+                siteChapter("", 2, "en", "Alpha", false),
+                siteChapter("c3", 3, "en", "Alpha", true),
+                siteChapter("c1-es", 1, "es", "Alpha", false),
+                new SiteListing.Chapter("extra", 0, true, "Extra", "en", "Alpha", List.of("Alpha"), 0, false)),
+                null, null, "");
+    }
+
+    // o manga-downloader grava um CBZ com duas páginas no diretório pedido
+    void siteDownloadsWriteArchives() {
+        when(siteClient.download(anyString(), anyString(), anyString(), anyString(), any(Path.class)))
+                .thenAnswer(invocation -> {
+                    Path archive = ((Path) invocation.getArgument(4)).resolve(invocation.getArgument(1) + ".cbz");
+                    try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(archive))) {
+                        for (String name : List.of("001.png", "002.png")) {
+                            zip.putNextEntry(new ZipEntry(name));
+                            zip.write(png);
+                            zip.closeEntry();
+                        }
+                    }
+                    return archive;
+                });
+    }
+
+    String createWork() throws Exception {
+        String body = mockMvc.perform(post("/works").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Obra Existente\",\"format\":\"MANGA\",\"statusOrigin\":\"ONGOING\",\"statusSite\":\"INCOMPLETE\"}")
+                        .with(auth(admin)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.id");
+    }
+
+    String siteImportBody(String url, String linkWorkId) {
+        return """
+                {"source":"MANGA_DOWNLOADER","externalId":"%s","linkWorkId":"%s",
+                 "languages":[{"language":"en","sourceLanguage":"en","preferredGroupId":"Alpha","preferredGroupName":"Alpha"}]}
+                """.formatted(url, linkWorkId);
+    }
+
+    @Test
+    void shouldPublishSiteChapters_whenAdminImportsSeriesIntoExistingWork() throws Exception {
+        String workId = createWork();
+        when(siteClient.list(SITE_URL)).thenReturn(siteListing());
+        siteDownloadsWriteArchives();
+
+        mockMvc.perform(post("/admin/sourcing/imports").contentType(MediaType.APPLICATION_JSON)
+                        .content(siteImportBody(SITE_URL, workId)).with(auth(admin)))
+                .andExpect(status().isCreated());
+
+        List<Chapter> chapters = chaptersOf(workId);
+        assertThat(chapters).hasSize(2).allMatch(chapter -> chapter.getStatus() == ChapterStatus.PUBLISHED);
+        assertThat(numberOf(chapters.get(0))).isEqualByComparingTo("1");
+        assertThat(chapters.get(0).getScanlationGroup()).contains("Alpha");
+        assertThat(chapters.get(0).getPages()).hasSize(2);
+        assertThat(chapters.get(0).getPages().get(0).getDataSaverObjectName()).isEmpty();
+        // o rótulo "Capítulo 1" que a CLI monta não vira título
+        assertThat(chapters.get(0).getTitle()).isEmpty();
+        verify(siteClient).download(eq(SITE_URL), eq("1"), eq("en"), eq("Alpha"), any(Path.class));
+        // bloqueado e espanhol (não acompanhado) nem entram; o extra sem número não tem como baixar
+        assertThat(versionStates()).containsOnlyKeys("c1-alpha", "c1-beta", "sem-id:2|en|Alpha", "extra")
+                .containsAllEntriesOf(Map.of("c1-alpha", SourceChapterState.READY, "c1-beta", SourceChapterState.IGNORED,
+                        "sem-id:2|en|Alpha", SourceChapterState.READY, "extra", SourceChapterState.FAILED));
+        // só o crédito do grupo, no capítulo: a página da obra não cita o site
+        mockMvc.perform(get("/works/" + workId + "/source").with(auth(reader)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void shouldLeaveMangaDexSeriesForNextRound_whenMangaDexLeaseIsBusy() throws Exception {
+        String workId = createWork();
+        String url = "https://mangadex.org/title/abc/obra";
+        when(siteClient.list(url)).thenReturn(siteListing());
+        siteDownloadsWriteArchives();
+        transactionTemplate.executeWithoutResult(tx -> leaseRepository.lockBySource(SourceName.MANGADEX).orElseThrow()
+                .tryAcquire("sync-das-obras-antigas", OffsetDateTime.now(), Duration.ofHours(1)));
+
+        mockMvc.perform(post("/admin/sourcing/imports").contentType(MediaType.APPLICATION_JSON)
+                        .content(siteImportBody(url, workId)).with(auth(admin)))
+                .andExpect(status().isCreated());
+
+        verify(siteClient, never()).list(url);
+        assertThat(chaptersOf(workId)).isEmpty();
+
+        transactionTemplate.executeWithoutResult(tx -> leaseRepository.lockBySource(SourceName.MANGADEX).orElseThrow()
+                .release("sync-das-obras-antigas"));
+        runner.run("rodada-seguinte", SourceName.MANGA_DOWNLOADER);
+
+        assertThat(chaptersOf(workId)).hasSize(2);
+        assertThat(leaseRepository.findById(SourceName.MANGADEX).map(SourceLease::getHolder)).isEmpty();
+        // série do mangadex.org: a AUP pede o crédito ao MangaDex
+        mockMvc.perform(get("/works/" + workId + "/source").with(auth(reader)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.source").value("MangaDex"))
+                .andExpect(jsonPath("$.url").value(url));
+    }
+
+    @Test
+    void shouldListSiteSeries_whenAdminPastesUrl() throws Exception {
+        when(siteClient.list(SITE_URL)).thenReturn(siteListing());
+
+        mockMvc.perform(get("/admin/sourcing/site-listing").param("url", " " + SITE_URL + " ").with(auth(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Obra do Site"))
+                .andExpect(jsonPath("$.tracked").value(false))
+                .andExpect(jsonPath("$.languages[0].code").value("en"))
+                .andExpect(jsonPath("$.languages[0].chapterCount").value(5))
+                .andExpect(jsonPath("$.groups[0].id").value("Alpha"))
+                .andExpect(jsonPath("$.chapters[3].locked").value(true))
+                .andExpect(jsonPath("$.chapters[5].number").doesNotExist());
+    }
+
+    @Test
+    void shouldExplainWhy_whenSiteCannotBeListed() throws Exception {
+        when(siteClient.list(SITE_URL)).thenThrow(new ExternalSourceException("O manga-downloader falhou: Site not recognised"));
+
+        mockMvc.perform(get("/admin/sourcing/site-listing").param("url", SITE_URL).with(auth(admin)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message")
+                        .value("Não deu para listar esta série. O manga-downloader falhou: Site not recognised"));
+    }
+
+    @Test
+    void shouldRefuseSeriesUrl_whenItIsNotHttp() throws Exception {
+        mockMvc.perform(get("/admin/sourcing/site-listing").param("url", "--output-dir=/tmp").with(auth(admin)))
+                .andExpect(status().isBadRequest());
+
+        verify(siteClient, never()).list(anyString());
+    }
+
+    @Test
+    void shouldRefuseSiteImport_whenNoWorkIsLinked() throws Exception {
+        mockMvc.perform(post("/admin/sourcing/imports").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"source":"MANGA_DOWNLOADER","externalId":"%s","languages":[{"language":"en","sourceLanguage":"en"}]}
+                                """.formatted(SITE_URL)).with(auth(admin)))
+                .andExpect(status().isBadRequest());
+
+        assertThat(trackedWorkRepository.count()).isZero();
+    }
+
+    @Test
+    void shouldReturnForbidden_whenReaderListsSiteSeries() throws Exception {
+        mockMvc.perform(get("/admin/sourcing/site-listing").param("url", SITE_URL).with(auth(reader)))
                 .andExpect(status().isForbidden());
     }
 }

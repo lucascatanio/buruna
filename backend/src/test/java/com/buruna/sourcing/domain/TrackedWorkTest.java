@@ -117,4 +117,54 @@ class TrackedWorkTest {
         assertThat(tracked.preferredGroupFor("pt-BR")).contains("g2");
         assertThat(tracked.needsListing()).isTrue();
     }
+
+    // ── sites do manga-downloader (ADR-54) ──────────────────────────────────
+
+    static TrackedWork site(String url, List<TrackedLanguage> languages) {
+        return TrackedWork.track(UUID.randomUUID(), SourceName.MANGA_DOWNLOADER, url, languages, UUID.randomUUID());
+    }
+
+    @Test
+    void shouldTranslateSiteLanguageCodes_whenAdminMappedThem() {
+        TrackedWork tracked = site("https://site.test/obra", List.of(
+                TrackedLanguage.fromSite("es-419", "es-la", "A", "A"),
+                TrackedLanguage.fromSite("pt-BR", null, null, null)));
+
+        assertThat(tracked.sourceLanguageCodes()).containsExactlyInAnyOrder("es-la", "");
+        assertThat(tracked.languageFromSource("ES-LA")).contains("es-419");
+        // site que não informa idioma: vazio e nulo caem no idioma declarado pelo ADM
+        assertThat(tracked.languageFromSource("")).contains("pt-BR");
+        assertThat(tracked.languageFromSource(null)).contains("pt-BR");
+        assertThat(tracked.languageFromSource("en")).isEmpty();
+        assertThat(tracked.sourceCodeFor("es-419")).contains("es-la");
+        assertThat(tracked.preferredGroupFor("es-419")).contains("A");
+    }
+
+    @Test
+    void shouldUseTagAsSourceCode_whenSourceIsMangaDex() {
+        TrackedWork tracked = tracked(List.of(TrackedLanguage.of("pt-br", null, null)));
+
+        assertThat(tracked.sourceLanguageCodes()).containsExactly("pt-BR");
+        assertThat(tracked.languageFromSource("pt-BR")).contains("pt-BR");
+    }
+
+    @Test
+    void shouldRejectSeries_whenUrlIsNotHttp() {
+        List<TrackedLanguage> languages = List.of(TrackedLanguage.fromSite("en", "en", null, null));
+
+        assertThatThrownBy(() -> site("--output-dir=/tmp", languages)).isInstanceOf(InvalidTrackedWorkException.class);
+        assertThatThrownBy(() -> site("ftp://site.test/obra", languages)).isInstanceOf(InvalidTrackedWorkException.class);
+        assertThatThrownBy(() -> site("https://" + "a".repeat(500) + ".test", languages))
+                .isInstanceOf(InvalidTrackedWorkException.class);
+    }
+
+    @Test
+    void shouldShareMangaDexLease_onlyForMangaDexSeriesOnSites() {
+        List<TrackedLanguage> languages = List.of(TrackedLanguage.fromSite("en", "en", null, null));
+
+        assertThat(site("https://mangadex.org/title/abc", languages).sharesMangaDexLease()).isTrue();
+        assertThat(site("https://www.mangadex.org/title/abc", languages).sharesMangaDexLease()).isTrue();
+        assertThat(site("https://notmangadex.org/title/abc", languages).sharesMangaDexLease()).isFalse();
+        assertThat(tracked(languages).sharesMangaDexLease()).isFalse();
+    }
 }

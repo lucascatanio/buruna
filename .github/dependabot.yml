@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # versão do manga-downloader na imagem do backend (ADR-54): os sites mudam toda semana e o
+  # projeto solta releases com frequência. Só ele: as outras imagens base seguem à mão.
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-name: elboletaire/manga-downloader
+    commit-message:
+      prefix: chore(deps)

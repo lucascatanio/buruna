@@ -2,6 +2,7 @@ package com.buruna.sourcing.web;
 
 import com.buruna.sourcing.application.SourcingJobArgs;
 import com.buruna.sourcing.application.SourcingRunner;
+import com.buruna.sourcing.domain.SourceName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,12 +13,13 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
  * Entrada do Cloud Run Job no modo fonte: o mesmo Job de ingest (ADR-48) recebe
- * {@code --sourcing.run=true} (rodada) ou {@code --sourcing.sync=true} (sync do Scheduler) e
- * encerra. Sem esses argumentos, quem
+ * {@code --sourcing.run=true} (rodada, de {@code --sourcing.source}, o MangaDex quando falta) ou
+ * {@code --sourcing.sync=true} (sync do Scheduler) e encerra. Sem esses argumentos, quem
  * trata a execução é o {@code IngestJobRunner} (capítulo enviado).
  */
 @Component
@@ -49,8 +51,13 @@ public class SourcingJobRunner implements ApplicationRunner {
         if (sync) {
             runner.sync(holder);
         } else {
-            runner.run(holder);
+            runner.run(holder, sourceOf(args));
         }
         System.exit(SpringApplication.exit(context, () -> 0));
+    }
+
+    private static SourceName sourceOf(ApplicationArguments args) {
+        List<String> values = args.getOptionValues(SourcingJobArgs.SOURCE_OPTION);
+        return values == null || values.isEmpty() ? SourceName.MANGADEX : SourceName.valueOf(values.get(0));
     }
 }
