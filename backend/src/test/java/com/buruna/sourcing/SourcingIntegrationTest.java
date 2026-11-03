@@ -520,6 +520,12 @@ class SourcingIntegrationTest {
         // só o crédito do grupo, no capítulo: a página da obra não cita o site
         mockMvc.perform(get("/works/" + workId + "/source").with(auth(reader)))
                 .andExpect(status().isNoContent());
+        // sem sync que tente de novo, a primeira falha já vira aviso, com "tentar de novo"
+        UUID trackedId = trackedWorkRepository.findAll().get(0).getId();
+        mockMvc.perform(get("/admin/sourcing/tracked/" + trackedId + "/alerts").with(auth(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].type").value("FAILED"))
+                .andExpect(jsonPath("$[0].detail").value(org.hamcrest.Matchers.containsString("só baixa pelo número")));
     }
 
     @Test

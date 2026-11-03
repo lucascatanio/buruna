@@ -81,6 +81,21 @@ class MangaDownloaderClientTest {
     }
 
     @Test
+    void shouldCarryCliReason_whenCliExitsZeroWithoutArchive() throws IOException {
+        // a CLI conta a página que falhou na própria saída e sai com 0
+        MangaDownloaderClient client = client("""
+                echo "downloading Capítulo 59..."
+                printf '\\033[31mfailed Capítulo 59: page 12: 502 Bad Gateway\\033[0m\\n'
+                """, Duration.ofSeconds(10));
+        Path directory = Files.createDirectory(temp.resolve("out"));
+
+        assertThatThrownBy(() -> client.download(URL, "59", "", "", directory))
+                .isInstanceOf(ExternalSourceException.class)
+                .hasMessageEndingWith("failed Capítulo 59: page 12: 502 Bad Gateway")
+                .hasMessageStartingWith("O manga-downloader não gravou o capítulo 59. ");
+    }
+
+    @Test
     void shouldCarryTailOfStderrWithoutColors_whenCliFails() throws IOException {
         MangaDownloaderClient client = client("""
                 printf '\\033[31mSite not recognised\\033[0m\\n' >&2

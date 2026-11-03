@@ -85,12 +85,14 @@ public class MangaDownloaderClient {
         }
         // "--" antes dos posicionais: uma URL que comece com "-" não vira flag da CLI
         args.addAll(List.of("--", seriesUrl, number));
-        run(args, downloadTimeout);
+        Output output = run(args, downloadTimeout);
         try (Stream<Path> files = Files.list(directory)) {
             List<Path> archives = files.filter(file -> file.getFileName().toString().endsWith(".cbz")).sorted().toList();
             if (archives.isEmpty()) {
-                throw new ExternalSourceException("O manga-downloader não gravou o capítulo " + number
-                        + ". Ele pode estar bloqueado ou fora do idioma e do grupo pedidos.");
+                // a CLI sai com 0 quando uma página falha e conta o motivo na própria saída
+                String said = tail(output.stdout() + "\n" + output.stderr());
+                throw new ExternalSourceException("O manga-downloader não gravou o capítulo " + number + ". "
+                        + (said.isEmpty() ? "Ele pode estar bloqueado ou fora do idioma e do grupo pedidos." : said));
             }
             if (archives.size() > 1) {
                 log.warn("Capítulo {} de {} veio em {} arquivos; fica o primeiro", number, seriesUrl, archives.size());
@@ -125,7 +127,7 @@ public class MangaDownloaderClient {
             if (process.exitValue() != 0) {
                 throw new ExternalSourceException("O manga-downloader falhou: " + tail(errors));
             }
-            return new Output(Files.readString(stdout, StandardCharsets.UTF_8));
+            return new Output(Files.readString(stdout, StandardCharsets.UTF_8), errors);
         } catch (IOException e) {
             throw new ExternalSourceException("Não foi possível rodar o manga-downloader.", e);
         } catch (InterruptedException e) {
@@ -154,6 +156,6 @@ public class MangaDownloaderClient {
         }
     }
 
-    private record Output(String stdout) {
+    private record Output(String stdout, String stderr) {
     }
 }
