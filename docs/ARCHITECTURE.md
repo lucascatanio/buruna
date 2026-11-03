@@ -300,7 +300,8 @@ Sites do manga-downloader ([ADR-54](adr/ADR-54-fontes-pelo-manga-downloader-e-an
 sem tela: `GET /admin/sourcing/site-listing?url=` roda o `list --json` da CLI no serviço (idiomas,
 grupos e capítulos, inclusive os bloqueados), e `POST /admin/sourcing/imports` com
 `"source":"MANGA_DOWNLOADER"`, a URL em `externalId` e `linkWorkId` vincula a série a uma obra
-existente. O executor é o mesmo: só listar e baixar ficam atrás de `ChapterSource`, um adaptador
+existente; com `aniListId` no lugar, anexa à obra que já tem esse id ou cria uma com os metadados
+do AniList e a sinopse revisada pelo ADM (`synopsis`), e a obra guarda o id (`works.anilist_id`). O executor é o mesmo: só listar e baixar ficam atrás de `ChapterSource`, um adaptador
 por fonte. Cada fonte tem o seu lease e a sua execução do Job (`--sourcing.source`); série do
 mangadex.org segura também o lease do MangaDex e, ocupado, fica para a próxima rodada. As páginas
 vêm do CBZ que a CLI grava, abertas pelo `PageExtractor` do upload.

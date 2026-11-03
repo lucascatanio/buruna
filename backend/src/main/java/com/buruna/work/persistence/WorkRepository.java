@@ -25,6 +25,9 @@ public interface WorkRepository extends JpaRepository<Work, UUID>, JpaSpecificat
     @EntityGraph(attributePaths = {"tags", "tags.category"})
     Optional<Work> findBySlug(String slug);
 
+    // sem UNIQUE (ADR-53): o import checa sob lock, e a primeira basta
+    Optional<Work> findFirstByAniListId(Integer aniListId);
+
     @EntityGraph(attributePaths = {"tags", "tags.category"})
     Optional<Work> findById(UUID id);
 

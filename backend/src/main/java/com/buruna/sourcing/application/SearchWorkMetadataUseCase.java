@@ -3,9 +3,11 @@ package com.buruna.sourcing.application;
 import com.buruna.shared.media.ImageInspector;
 import com.buruna.shared.source.ExternalSourceException;
 import com.buruna.shared.source.ExternalWorkNotFoundException;
+import com.buruna.shared.source.SourceWorkDetails;
 import com.buruna.shared.source.WorkMetadataSource;
 import com.buruna.sourcing.domain.SourceUnavailableException;
 import com.buruna.sourcing.domain.SourceWorkNotFoundException;
+import com.buruna.work.application.FindPublicWorkUseCase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -26,9 +28,11 @@ public class SearchWorkMetadataUseCase {
     private static final long MAX_THUMBNAIL_BYTES = 2L * 1024 * 1024;
 
     private final WorkMetadataSource source;
+    private final FindPublicWorkUseCase findPublicWork;
 
-    public SearchWorkMetadataUseCase(WorkMetadataSource source) {
+    public SearchWorkMetadataUseCase(WorkMetadataSource source, FindPublicWorkUseCase findPublicWork) {
         this.source = source;
+        this.findPublicWork = findPublicWork;
     }
 
     public List<WorkMetadataSearchResult> search(String title) {
@@ -43,7 +47,8 @@ public class SearchWorkMetadataUseCase {
     /** Os campos da obra como o import vai gravá-los, para o ADM revisar (a sinopse vem em inglês). */
     public WorkMetadataPreview preview(String externalId) {
         try {
-            return WorkMetadataPreview.from(source.fetchWork(externalId));
+            SourceWorkDetails details = source.fetchWork(externalId);
+            return WorkMetadataPreview.from(details, findPublicWork.findByAniListId(Integer.parseInt(details.externalId())));
         } catch (ExternalWorkNotFoundException e) {
             throw new SourceWorkNotFoundException(SOURCE_NAME, externalId);
         } catch (ExternalSourceException e) {
