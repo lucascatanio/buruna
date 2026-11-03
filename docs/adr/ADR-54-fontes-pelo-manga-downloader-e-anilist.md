@@ -1,6 +1,6 @@
 # ADR-54 — Fontes pelo manga-downloader, com metadados do AniList
 
-**Status:** Aceita (implementação depende de um PR no manga-downloader, ver Pendente)
+**Status:** Aceita
 
 **Contexto:** O `sourcing` só conhece o MangaDex ([ADR-47](ADR-47-contexto-sourcing.md)). A porta
 `ExternalSource` (`shared/source`) junta duas coisas: os metadados da obra (busca, capa, sinopse,
@@ -148,7 +148,8 @@ onde vêm as páginas.
 
 **Pendente:**
 
-- PR `list --json` no manga-downloader. A feature não sobe sem ele ou sem o plano B.
+- ~~PR `list --json` no manga-downloader~~: aceito (elboletaire/manga-downloader#449, com o campo
+  `groups` pedido na revisão) e publicado na v25.0.0. O plano B (wrapper AGPL) não foi preciso.
 - Sync pelo manga-downloader (outra ADR). Até lá, capítulo novo de obra importada pelo caminho
   novo é um import manual.
 - Conferir, na implementação, se o binário da imagem oficial roda na base Alpine do Job e como

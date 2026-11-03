@@ -12,8 +12,7 @@
 - `manga-downloader` (binário da [release](https://github.com/elboletaire/manga-downloader/releases),
   no `PATH` ou em `APP_SOURCING_MANGA_DOWNLOADER_BINARY`) só para importar de sites (ADR-54).
   Sem ele, o resto sobe normalmente, e a listagem e o import de site respondem que não deu para
-  rodar o manga-downloader. O subcomando `list` só existe a partir da release que trouxer o
-  elboletaire/manga-downloader#449; até lá, compile o fork.
+  rodar o manga-downloader. Use a v25.0.0 ou mais nova: é a primeira com o subcomando `list`.
 
 O backend exige **Java 21** (`<java.version>21</java.version>` no `pom.xml`), e não há
 toolchain configurado: o Maven usa o `java` que estiver no `PATH`. Se o seu for outro,
