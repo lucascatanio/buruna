@@ -54,6 +54,20 @@ class MangaDownloaderClientTest {
     }
 
     @Test
+    void shouldListOneLanguage_whenLanguageIsGiven() throws IOException {
+        MangaDownloaderClient client = client("""
+                echo "$@" >> "$(dirname "$0")/args"
+                echo '{"title":"Obra","grabber":"Mangafire","chapters":[]}'
+                """, Duration.ofSeconds(10));
+
+        client.list(URL, "pt-br");
+        client.list(URL, "");
+
+        assertThat(Files.readAllLines(temp.resolve("args")))
+                .containsExactly("list --json --language pt-br -- " + URL, "list --json -- " + URL);
+    }
+
+    @Test
     void shouldReturnArchive_whenCliWritesIt() throws IOException {
         // a CLI grava o CBZ no --output-dir com o nome do template ({{.Number}})
         MangaDownloaderClient client = client("""
