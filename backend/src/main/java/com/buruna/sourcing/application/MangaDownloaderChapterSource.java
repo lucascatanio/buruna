@@ -22,8 +22,10 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -72,23 +74,41 @@ class MangaDownloaderChapterSource implements ChapterSource {
         return SourceName.MANGA_DOWNLOADER;
     }
 
+    /**
+     * Uma listagem por idioma acompanhado: com {@code --language all}, alguns sites (mangafire.to)
+     * trazem só o idioma padrão deles. O capítulo listado num idioma fica com o código pedido, como o
+     * ADM o escreveu, e não com o que o site devolve no campo. Idioma vazio (site que não informa)
+     * lista sem filtro e fica com os capítulos sem idioma.
+     */
     @Override
     public List<SourceChapterInfo> listChapters(TrackedWork tracked) {
-        Set<String> codes = tracked.sourceLanguageCodes().stream()
-                .map(code -> code.toLowerCase(Locale.ROOT))
-                .collect(Collectors.toSet());
-        return client.list(tracked.getExternalId()).chapters().stream()
-                .filter(chapter -> !chapter.locked())
-                .filter(chapter -> codes.contains(languageOf(chapter).toLowerCase(Locale.ROOT)))
-                .map(MangaDownloaderChapterSource::toInfo)
-                .toList();
+        Map<String, SourceChapterInfo> byId = new LinkedHashMap<>();
+        for (String code : tracked.sourceLanguageCodes()) {
+            client.list(tracked.getExternalId(), code).chapters().stream()
+                    .filter(chapter -> !chapter.locked())
+                    .filter(chapter -> !code.isEmpty() || languageOf(chapter).isEmpty())
+                    .map(chapter -> toInfo(withLanguage(chapter, code)))
+                    .forEach(info -> byId.putIfAbsent(info.externalId(), info));
+        }
+        return List.copyOf(byId.values());
     }
 
+    /** Os idiomas dos capítulos listados e os que o site oferece no filtro dele. */
     @Override
     public Set<String> availableLanguages(TrackedWork tracked) {
-        return client.list(tracked.getExternalId()).chapters().stream()
+        SiteListing listing = client.list(tracked.getExternalId());
+        Set<String> languages = listing.chapters().stream()
                 .map(MangaDownloaderChapterSource::languageOf)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (listing.languages() != null && listing.languages().values() != null) {
+            languages.addAll(listing.languages().values());
+        }
+        return languages;
+    }
+
+    private static SiteListing.Chapter withLanguage(SiteListing.Chapter chapter, String language) {
+        return new SiteListing.Chapter(chapter.id(), chapter.number(), chapter.unnumbered(), chapter.title(),
+                language, chapter.group(), chapter.groups(), chapter.volume(), chapter.locked());
     }
 
     @Override
