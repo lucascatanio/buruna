@@ -56,11 +56,17 @@ public class ListSiteSeriesUseCase {
             chapters.add(new SiteSeriesListing.Chapter(info.number(), info.title(), info.language(), names,
                     info.volume() == null ? null : Integer.valueOf(info.volume()), chapter.locked()));
         }
+        // idiomas que o site oferece no filtro e que a listagem padrão não trouxe (mangafire.to lista
+        // só o idioma padrão): entram sem contagem, e o Job lista cada um à parte
+        if (listing.languages() != null && listing.languages().values() != null) {
+            listing.languages().values().forEach(code -> languages.putIfAbsent(code, null));
+        }
         return new SiteSeriesListing(listing.title(), listing.grabber(),
                 trackedWorkRepository.existsBySourceAndExternalId(SourceName.MANGA_DOWNLOADER, url),
                 languages.entrySet().stream()
                         .map(entry -> new SiteSeriesListing.Language(entry.getKey(), entry.getValue()))
-                        .sorted(Comparator.comparingInt(SiteSeriesListing.Language::chapterCount).reversed())
+                        .sorted(Comparator.comparing(SiteSeriesListing.Language::chapterCount,
+                                Comparator.nullsLast(Comparator.<Integer>reverseOrder())))
                         .toList(),
                 groups.entrySet().stream()
                         .map(entry -> new SiteSeriesListing.Group(MangaDownloaderChapterSource.groupId(entry.getKey()),

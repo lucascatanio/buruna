@@ -15,8 +15,11 @@ public record SiteSeriesListing(
         List<Chapter> chapters
 ) {
 
-    /** Código do idioma como o site o escreve e quantas versões ele tem. */
-    public record Language(String code, int chapterCount) {
+    /**
+     * Código do idioma como o site o escreve e quantas versões a listagem trouxe dele; nulo quando o
+     * site oferece o idioma no filtro, mas a listagem padrão não o trouxe.
+     */
+    public record Language(String code, Integer chapterCount) {
     }
 
     /** {@code id} é o que vai como grupo preferido no import. */

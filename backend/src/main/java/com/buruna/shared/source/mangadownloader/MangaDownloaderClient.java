@@ -52,9 +52,23 @@ public class MangaDownloaderClient {
         this.pageConcurrency = pageConcurrency;
     }
 
-    /** Lista a série em todos os idiomas e grupos, inclusive os capítulos bloqueados. */
+    /**
+     * Lista a série com {@code --language all}, inclusive os capítulos bloqueados. Em alguns sites
+     * (mangafire.to) "all" é o mesmo que nenhum filtro e traz só o idioma padrão do site; os outros
+     * idiomas que ele oferece vêm em {@link SiteListing#languages()}.
+     */
     public SiteListing list(String seriesUrl) {
-        Output output = run(List.of("list", "--json", "--language", ALL, "--", seriesUrl), listTimeout);
+        return list(seriesUrl, ALL);
+    }
+
+    /** Lista a série num idioma, como o site o escreve; vazio lista sem filtro de idioma. */
+    public SiteListing list(String seriesUrl, String language) {
+        List<String> args = new ArrayList<>(List.of("list", "--json"));
+        if (!language.isEmpty()) {
+            args.addAll(List.of("--language", language));
+        }
+        args.addAll(List.of("--", seriesUrl));
+        Output output = run(args, listTimeout);
         try {
             SiteListing listing = objectMapper.readValue(output.stdout(), SiteListing.class);
             if (listing.chapters() == null) {

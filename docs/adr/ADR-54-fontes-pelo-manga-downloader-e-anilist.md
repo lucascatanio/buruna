@@ -142,6 +142,11 @@ onde vêm as páginas.
   pode ter vírgula); o `list --json` ganhou o campo `groups` com os nomes separados.
 - **Idioma do site:** cada idioma acompanhado guarda o código do site (`source_language`); vazio é
   o site que não informa idioma.
+- **Uma listagem por idioma no Job** (2026-11-07, v2.2.1). Em alguns sites, `--language all` é o mesmo
+  que nenhum filtro e traz só o idioma padrão deles: no mangafire.to, um import em pt-br listou só
+  inglês e não trouxe nada. O Job lista cada idioma acompanhado com `--language <código>`, e o
+  capítulo fica com o código pedido. A tela e o painel "Idiomas" mostram também os idiomas que o site
+  oferece no filtro dele, mesmo os que a listagem padrão não trouxe.
 - **Proteção da CLI:** a URL precisa ser `http(s)` e vai depois de `--`, para não virar flag.
 - **Colisão** continua como no MangaDex (`FAILED` com o motivo, sem baixar, porque o registro vem
   antes do download). O `IGNORED` e o "usar esta versão" na obra inteira ficaram para um PR próprio.

@@ -70,7 +70,8 @@ export interface SiteSeriesListing {
     title: string;
     grabber: string;
     tracked: boolean;
-    languages: { code: string; chapterCount: number }[];
+    /** {@code chapterCount} nulo: o site oferece o idioma, mas a listagem padrão não o trouxe. */
+    languages: { code: string; chapterCount: number | null }[];
     groups: { id: string; name: string; chapterCount: number }[];
     chapters: {
         number: string | null;

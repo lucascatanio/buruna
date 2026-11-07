@@ -463,6 +463,21 @@ class SourcingIntegrationTest {
                 null, null, "");
     }
 
+    /**
+     * O site serve a listagem como a CLI: sem idioma, tudo; com um idioma, só os capítulos dele
+     * (o Job lista um idioma por vez).
+     */
+    void siteServes(String url) {
+        when(siteClient.list(url)).thenReturn(siteListing());
+        when(siteClient.list(eq(url), anyString())).thenAnswer(invocation -> {
+            String language = invocation.getArgument(1);
+            SiteListing all = siteListing();
+            return new SiteListing(all.title(), all.grabber(), all.chapters().stream()
+                    .filter(chapter -> language.isEmpty() || language.equals(chapter.language()))
+                    .toList(), all.languages(), all.scanlators(), all.volumes());
+        });
+    }
+
     // o manga-downloader grava um CBZ com duas páginas no diretório pedido
     void siteDownloadsWriteArchives() {
         when(siteClient.download(anyString(), anyString(), anyString(), anyString(), any(Path.class)))
@@ -497,7 +512,7 @@ class SourcingIntegrationTest {
     @Test
     void shouldPublishSiteChapters_whenAdminImportsSeriesIntoExistingWork() throws Exception {
         String workId = createWork();
-        when(siteClient.list(SITE_URL)).thenReturn(siteListing());
+        siteServes(SITE_URL);
         siteDownloadsWriteArchives();
 
         mockMvc.perform(post("/admin/sourcing/imports").contentType(MediaType.APPLICATION_JSON)
@@ -532,7 +547,7 @@ class SourcingIntegrationTest {
     void shouldLeaveMangaDexSeriesForNextRound_whenMangaDexLeaseIsBusy() throws Exception {
         String workId = createWork();
         String url = "https://mangadex.org/title/abc/obra";
-        when(siteClient.list(url)).thenReturn(siteListing());
+        siteServes(url);
         siteDownloadsWriteArchives();
         transactionTemplate.executeWithoutResult(tx -> leaseRepository.lockBySource(SourceName.MANGADEX).orElseThrow()
                 .tryAcquire("sync-das-obras-antigas", OffsetDateTime.now(), Duration.ofHours(1)));
@@ -541,7 +556,7 @@ class SourcingIntegrationTest {
                         .content(siteImportBody(url, workId)).with(auth(admin)))
                 .andExpect(status().isCreated());
 
-        verify(siteClient, never()).list(url);
+        verify(siteClient, never()).list(eq(url), anyString());
         assertThat(chaptersOf(workId)).isEmpty();
 
         transactionTemplate.executeWithoutResult(tx -> leaseRepository.lockBySource(SourceName.MANGADEX).orElseThrow()
@@ -559,7 +574,7 @@ class SourcingIntegrationTest {
 
     @Test
     void shouldListSiteSeries_whenAdminPastesUrl() throws Exception {
-        when(siteClient.list(SITE_URL)).thenReturn(siteListing());
+        siteServes(SITE_URL);
 
         mockMvc.perform(get("/admin/sourcing/site-listing").param("url", " " + SITE_URL + " ").with(auth(admin)))
                 .andExpect(status().isOk())
@@ -638,7 +653,7 @@ class SourcingIntegrationTest {
     void shouldCreateWorkFromAniList_whenSiteImportNamesAniListWork() throws Exception {
         when(metadataSource.fetchWork("118586")).thenReturn(aniListDetails());
         when(metadataSource.download(anyString(), anyLong())).thenReturn(png);
-        when(siteClient.list(SITE_URL)).thenReturn(siteListing());
+        siteServes(SITE_URL);
         siteDownloadsWriteArchives();
 
         String workId = importFromAniList(SITE_URL);
@@ -666,7 +681,8 @@ class SourcingIntegrationTest {
         String otherSite = "https://outro.test/manga/frieren";
         when(metadataSource.fetchWork("118586")).thenReturn(aniListDetails());
         when(metadataSource.download(anyString(), anyLong())).thenReturn(png);
-        when(siteClient.list(anyString())).thenReturn(siteListing());
+        siteServes(SITE_URL);
+        siteServes(otherSite);
         siteDownloadsWriteArchives();
 
         String first = importFromAniList(SITE_URL);
