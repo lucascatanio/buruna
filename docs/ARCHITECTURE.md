@@ -33,7 +33,7 @@ O frontend é uma SPA React sem Clean Architecture própria: apenas uma camada l
 | **work** | `com.buruna.work` | Catálogo público (com idiomas), coleção privada, capítulos (páginas, ou arquivo PDF/EPUB no livro), volumes legados, tags, submissão/promoção, processamento do upload |
 | **reading** | `com.buruna.reading` | Leitor (manifesto do capítulo com URLs assinadas, PDF de volume e livro), progresso por capítulo (página, ou CFI no EPUB), histórico |
 | **engagement** | `com.buruna.engagement` | Avaliações (ratings) e lista de leitura |
-| **sourcing** | `com.buruna.sourcing` | Importação do MangaDex: obras acompanhadas, versões de capítulo por grupo, lease de um executor por fonte (ADR-46, ADR-47) |
+| **sourcing** | `com.buruna.sourcing` | Importação do MangaDex e dos sites do manga-downloader: obras acompanhadas, versões de capítulo por grupo, lease de um executor por fonte (ADR-47, ADR-54) |
 | **admin** | `com.buruna.admin` | Casca administrativa — dashboard, jobs, revisão de submissões. Sem `domain` próprio; a `application` (`DashboardService`) só orquestra os use cases públicos dos outros contextos |
 
 Dois pacotes adicionais fora desse modelo, por não serem bounded contexts de domínio:
@@ -41,7 +41,8 @@ Dois pacotes adicionais fora desse modelo, por não serem bounded contexts de do
 - `shared/` — infraestrutura cross-context: `StorageClient` (GCS/local), `EmailSender`,
   `Clock` injetável, `GlobalExceptionHandler`, config de segurança, e ainda:
   `shared/media` (extração de páginas de CBZ/CBR/PDF, `ImageInspector`, validação de livro),
-  `shared/source` (porta `ExternalSource` e o adaptador do MangaDex), `shared/jobs` (disparo do
+  `shared/source` (porta `ExternalSource` e o adaptador do MangaDex; porta `WorkMetadataSource` e
+  o adaptador do AniList; `MangaDownloaderClient`, que roda a CLI), `shared/jobs` (disparo do
   Cloud Run Job) e `shared/transaction` (`AfterCommit`).
 - `feedback/` — módulo utilitário isolado (`POST /feedback`), sem lógica de domínio
   suficiente para justificar camadas próprias.
@@ -263,7 +264,7 @@ coleção ou conta também apaga os objetos dos capítulos (`ChapterStorageClean
 ### 6.4.2 Importação do MangaDex
 
 ADM, em `/admin/sourcing` (`AdminSourcingController`). A fonte fica atrás de
-`shared.source.ExternalSource` ([ADR-46](adr/ADR-46-mangadex-como-fonte-externa.md)); o estado
+`shared.source.ExternalSource`; o estado
 mora no contexto `sourcing` ([ADR-47](adr/ADR-47-contexto-sourcing.md)).
 
 ```
@@ -294,6 +295,21 @@ usar esta versão).
 `GET /admin/sourcing/tracked` lista as obras acompanhadas com a contagem por estado. Na página
 da obra, `GET /works/{id}/source` dá o crédito da fonte. No profile local a rodada acontece na
 própria requisição, depois do commit (`InlineSourcingTrigger`).
+
+Sites do manga-downloader ([ADR-54](adr/ADR-54-fontes-pelo-manga-downloader-e-anilist.md)), ainda
+sem tela: `GET /admin/sourcing/site-listing?url=` roda o `list --json` da CLI no serviço (idiomas,
+grupos e capítulos, inclusive os bloqueados), e `POST /admin/sourcing/imports` com
+`"source":"MANGA_DOWNLOADER"`, a URL em `externalId` e `linkWorkId` vincula a série a uma obra
+existente; com `aniListId` no lugar, anexa à obra que já tem esse id ou cria uma com os metadados
+do AniList e a sinopse revisada pelo ADM (`synopsis`), e a obra guarda o id (`works.anilist_id`). O executor é o mesmo: só listar e baixar ficam atrás de `ChapterSource`, um adaptador
+por fonte. Cada fonte tem o seu lease e a sua execução do Job (`--sourcing.source`); série do
+mangadex.org segura também o lease do MangaDex e, ocupado, fica para a próxima rodada. As páginas
+vêm do CBZ que a CLI grava, abertas pelo `PageExtractor` do upload.
+
+Metadados do AniList (ADR-54), ainda sem tela: `GET /admin/sourcing/metadata/search?q=` busca, `GET /admin/sourcing/metadata/works/{id}`
+mostra a obra como o import vai criá-la (mesmo `WorkMetadataMapper`, tags no vocabulário do
+catálogo) e `GET /admin/sourcing/metadata/cover?url=` serve a capa, só de `s4.anilist.co`, porque
+o CSP do site não libera imagens de fora.
 
 ### 6.5 Upload privado + submissão/promoção
 

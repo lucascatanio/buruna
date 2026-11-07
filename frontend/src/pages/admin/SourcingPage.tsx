@@ -1,15 +1,16 @@
 import {type FormEvent, useCallback, useEffect, useState} from "react";
 import {toast} from "sonner";
 import {ExternalLink, Loader2, RotateCcw, Search} from "lucide-react";
-import {getCoverThumbnail, listTrackedWorks, requestSourcingRun, searchSource} from "@/api/sourcingApi";
-import type {SourceSearchResult, TrackedWork} from "@/types/sourcing";
+import {listTrackedWorks, requestSourcingRun, searchMetadata} from "@/api/sourcingApi";
+import type {TrackedWork, WorkMetadataSearchResult} from "@/types/sourcing";
 import {Badge} from "@/components/ui/badge";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {PageHeader} from "@/components/PageHeader";
 import {EmptyState} from "@/components/EmptyState";
 import {Loading} from "@/components/Loading";
-import {ImportDialog} from "@/components/sourcing/ImportDialog";
+import {MetadataCover} from "@/components/sourcing/MetadataCover";
+import {SiteImportDialog} from "@/components/sourcing/SiteImportDialog";
 import {TrackedWorkItem} from "@/components/sourcing/TrackedWorkItem";
 import {apiErrorMessage} from "@/lib/apiError";
 
@@ -22,38 +23,22 @@ const RATING_LABELS: Record<string, string> = {
     PORNOGRAPHIC: "Pornográfico",
 };
 
-function Cover({url, title}: { url: string | null; title: string }) {
-    const [src, setSrc] = useState<string | null>(null);
+const STATUS_LABELS: Record<string, string> = {
+    ONGOING: "Em andamento",
+    COMPLETED: "Completo",
+    HIATUS: "Hiato",
+    CANCELLED: "Cancelado",
+};
 
-    useEffect(() => {
-        if (!url) return;
-        let created: string | null = null;
-        let cancelled = false;
-        getCoverThumbnail(url)
-            .then((objectUrl) => {
-                created = objectUrl;
-                if (!cancelled) setSrc(objectUrl);
-            })
-            .catch(() => undefined);
-        return () => {
-            cancelled = true;
-            if (created) URL.revokeObjectURL(created);
-        };
-    }, [url]);
-
-    return src
-        ? <img src={src} alt={`Capa de ${title}`} className="aspect-[2/3] w-14 shrink-0 rounded border object-cover"/>
-        : <div aria-hidden="true" className="aspect-[2/3] w-14 shrink-0 rounded border bg-muted"/>;
-}
-
-
-
-/** Importação do MangaDex e andamento das obras acompanhadas (ADR-46). */
+/**
+ * Importação de sites pelo manga-downloader, com a obra vinda do AniList (ADR-54), e andamento
+ * das obras acompanhadas, inclusive as antigas do MangaDex.
+ */
 export function SourcingPage() {
     const [query, setQuery] = useState("");
-    const [results, setResults] = useState<SourceSearchResult[] | null>(null);
+    const [results, setResults] = useState<WorkMetadataSearchResult[] | null>(null);
     const [searching, setSearching] = useState(false);
-    const [importing, setImporting] = useState<SourceSearchResult | null>(null);
+    const [importing, setImporting] = useState<WorkMetadataSearchResult | null>(null);
     const [tracked, setTracked] = useState<TrackedWork[] | null>(null);
     const [resuming, setResuming] = useState(false);
 
@@ -79,9 +64,9 @@ export function SourcingPage() {
         if (!q) return;
         setSearching(true);
         try {
-            setResults(await searchSource(q));
+            setResults(await searchMetadata(q));
         } catch (err) {
-            toast.error(apiErrorMessage(err, "A busca no MangaDex falhou."));
+            toast.error(apiErrorMessage(err, "A busca no AniList falhou."));
         } finally {
             setSearching(false);
         }
@@ -100,20 +85,16 @@ export function SourcingPage() {
         }
     }
 
-    function handleImported() {
-        loadTracked();
-        setResults((current) => current?.map((r) => r.externalId === importing?.externalId ? {...r, tracked: true} : r) ?? null);
-    }
 
     return (
         <div className="mx-auto max-w-4xl space-y-10 px-4 py-8 md:px-6">
-            {importing && <ImportDialog work={importing} onClose={() => setImporting(null)} onImported={handleImported}/>}
+            {importing && <SiteImportDialog work={importing} onClose={() => setImporting(null)} onImported={loadTracked}/>}
 
             <section className="space-y-4">
-                <PageHeader title="Importar do MangaDex"
-                            description="Os capítulos ficam com o crédito do grupo que traduziu, e a obra, com o link do MangaDex."/>
+                <PageHeader title="Importar de um site"
+                            description="Busque a obra no AniList e informe o endereço da série num site que o manga-downloader baixa. Os capítulos ficam com o crédito do grupo que traduziu."/>
                 <form onSubmit={handleSearch} className="flex gap-2">
-                    <Input aria-label="Título no MangaDex" placeholder="Título da obra" value={query}
+                    <Input aria-label="Título no AniList" placeholder="Título da obra" value={query}
                            onChange={(e) => setQuery(e.target.value)} maxLength={200}/>
                     <Button type="submit" disabled={searching || !query.trim()}>
                         {searching ? <Loader2 className="size-4 animate-spin"/> : <Search className="size-4"/>}
@@ -128,29 +109,22 @@ export function SourcingPage() {
                     <ul className="divide-y rounded-lg border bg-card">
                         {results.map((result) => (
                             <li key={result.externalId} className="flex items-center gap-4 p-3">
-                                <Cover url={result.coverThumbnailUrl} title={result.title}/>
+                                <MetadataCover url={result.coverThumbnailUrl} title={result.title}/>
                                 <div className="min-w-0 flex-1 space-y-1">
                                     <p className="truncate font-medium">{result.title}</p>
                                     <div className="flex flex-wrap items-center gap-1.5">
                                         {result.year && <Badge variant="meta">{result.year}</Badge>}
-                                        {result.contentRating && (
-                                            <Badge variant={result.contentRating === "SAFE" ? "meta" : "destructive"}>
-                                                {RATING_LABELS[result.contentRating]}
-                                            </Badge>
+                                        {result.status && <Badge variant="meta">{STATUS_LABELS[result.status] ?? result.status}</Badge>}
+                                        {result.contentRating && result.contentRating !== "SAFE" && (
+                                            <Badge variant="destructive">{RATING_LABELS[result.contentRating]}</Badge>
                                         )}
-                                        <span className="text-xs text-muted-foreground">
-                                            {result.availableLanguages.includes("pt-BR") ? "Tem pt-BR · " : ""}
-                                            {result.availableLanguages.length} idiomas
-                                        </span>
                                     </div>
                                     <a href={result.sourceUrl} target="_blank" rel="noopener noreferrer"
                                        className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:underline">
-                                        Ver no MangaDex <ExternalLink className="size-3"/>
+                                        Ver no AniList <ExternalLink className="size-3"/>
                                     </a>
                                 </div>
-                                {result.tracked
-                                    ? <span className="font-mono text-[11px] text-muted-foreground">já acompanhada</span>
-                                    : <Button variant="outline" onClick={() => setImporting(result)}>Importar</Button>}
+                                <Button variant="outline" onClick={() => setImporting(result)}>Importar</Button>
                             </li>
                         ))}
                     </ul>

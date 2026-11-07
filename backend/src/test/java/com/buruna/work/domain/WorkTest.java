@@ -183,4 +183,25 @@ class WorkTest {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> comic.chapterKindFor(ChapterSourceFormat.EPUB))
                 .isInstanceOf(UnsupportedChapterSourceException.class);
     }
+
+    @Test
+    void shouldKeepAniListId_whenLinkedAgainWithSameId() {
+        Work work = Work.createPublic(Slug.of("ligada"), OWNER);
+
+        work.linkAniList(118586);
+        work.linkAniList(118586);
+
+        assertThat(work.getAniListId()).contains(118586);
+    }
+
+    @Test
+    void shouldRefuseOtherAniListId_whenWorkIsAlreadyLinked() {
+        Work work = Work.createPublic(Slug.of("ligada"), OWNER);
+        work.linkAniList(118586);
+
+        assertThatThrownBy(() -> work.linkAniList(30013)).isInstanceOf(InvalidAniListLinkException.class);
+        assertThatThrownBy(() -> Work.createPublic(Slug.of("outra"), OWNER).linkAniList(0))
+                .isInstanceOf(InvalidAniListLinkException.class);
+        assertThat(Work.createPublic(Slug.of("sem"), OWNER).getAniListId()).isEmpty();
+    }
 }

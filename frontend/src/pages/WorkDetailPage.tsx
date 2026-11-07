@@ -30,11 +30,8 @@ import {Macron} from "@/components/Macron";
 import {FileInput} from "@/components/ui/file-input";
 import {toast} from "sonner";
 import {BookOpen, ChevronLeft, Pencil, Trash2, Upload, X, Star, BookMarked, ChevronDown} from "lucide-react";
+import {FORMAT_LABELS} from "@/lib/workLabels";
 
-const FORMAT_LABELS: Record<string, string> = {
-    MANGA: "Mangá", MANHWA: "Manhwa", MANHUA: "Manhua",
-    WEBTOON: "Webtoon", ONE_SHOT: "One-shot", LIVRO: "Livro"
-};
 
 const STATUS_ORIGIN_LABELS: Record<string, string> = {
     ONGOING: "Em andamento", COMPLETED: "Completo",
@@ -135,7 +132,7 @@ export function WorkDetailPage() {
             })
             .catch((e) => console.warn("[WorkDetailPage] falha ao carregar avaliação do usuário:", e));
 
-        // crédito exigido pelo MangaDex nas obras importadas de lá (ADR-46)
+        // crédito exigido pelo MangaDex nas obras importadas de lá
         getWorkSource(work.id)
             .then(setWorkSource)
             .catch((e) => console.warn("[WorkDetailPage] falha ao carregar a fonte da obra:", e));

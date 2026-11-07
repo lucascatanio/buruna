@@ -11,11 +11,58 @@ O Trivy aponta CVE-2026-47884 e CVE-2026-47890 (CRITICAL) no `spring-webmvc` 6.2
 Spring Boot 4. É uma migração de versão maior, com issue própria. Ao migrar, remova os
 overrides do `pom.xml` que o Boot 4 já cobrir e rode o Trivy de novo.
 
+### Corrida no logout (500 raro)
+
+`POST /auth/logout` deu 500 uma vez em 30 dias (2026-10-09, 1 em 18):
+`TokenService.deleteRefreshToken` busca e apaga a entidade, e um refresh concorrente já tinha
+apagado o token (`StaleObjectStateException`). Correção provável: apagar por consulta
+(`deleteByToken`), idempotente.
+
+### 2FA ativado antes da v1.6.0
+
+Quem ativou 2FA antes da v1.6.0 teve o segredo TOTP enviado ao `api.qrserver.com` para gerar o
+QR code (corrigido no #64). Falta decidir se pedimos para essas pessoas desativarem e ativarem
+o 2FA de novo, com segredo novo.
+
 ## Features
 
-- [ ] Trocar volumes por capítulos. Decidir entre criar tabela de capítulo vinculada ao volume,
-  ou usar a tabela de volumes como se fosse capítulo. Muda a modelagem do contexto `manga`.
-- [ ] Suporte a CBZ e CBR
+- [ ] **E8: migração do legado (último épico do redesenho de capítulos).** Plano aprovado em
+  2026-10-09 (`ADR-52` a escrever): quadrinho fora do MangaDex vira um capítulo por volume;
+  livro vira capítulo-arquivo apontando para o mesmo PDF; obra que existe no MangaDex é
+  vinculada e re-importada, mantendo os volumes não cobertos; progresso mapeado e histórico em
+  snapshot; quota em bytes, tolerando estouro; `/leitor/{volumeId}` redireciona; depois de 30
+  dias, apagar só os PDFs totalmente cobertos e a tabela `volumes`. Dry-run numa cópia do banco
+  de produção antes. Até lá, volume legado conta como pt-BR no catálogo (ADR-50).
+- [ ] **Fontes pelo manga-downloader, com metadados do AniList (ADR-54).** O sync, a
+  migração das obras do MangaDex legado e o desligamento do adaptador atual ficam para uma ADR
+  própria. Passos, em ordem:
+  1. ~~PR `list --json` no manga-downloader~~ (elboletaire/manga-downloader#449, na v25.0.0);
+  2. porta de metadados (AniList), com a tabela de tags (rank ≥ 80) e a sinopse revisada no
+     import;
+  3. ~~porta de capítulos (manga-downloader): `MANGA_DOWNLOADER` com URL da série, várias fontes
+     por obra~~ (feito, import só vinculando a uma obra existente);
+  4. ~~imagem própria do Job, com o binário e o Chromium, como segundo target do Dockerfile, e o
+     Dependabot para a versão~~ (feito);
+  - ~~import criando a obra pelo AniList, com a coluna `anilist_id`~~ (feito);
+  - colisão com capítulo de outra fonte ou de upload vira `IGNORED` (hoje `FAILED`, com o motivo),
+    e o "usar esta versão" procura o capítulo na obra inteira (exige substituir capítulo enviado à
+    mão no `work`);
+  5. versão leve das páginas gerada no ingest;
+  6. tela do import.
+- [ ] Termos de uso e política de privacidade: caixa de aceite obrigatória no cadastro, com
+  link para o texto, e tela ou modal pedindo o aceite a quem já tem conta. Decidir antes: quem
+  escreve o texto; se o aceite guarda versão e data (para pedir de novo quando mudar); o que
+  acontece se a pessoa recusar; se vale igual para leitores e colaboradores.
+- [ ] Inatividade só apaga a coleção privada, sem desativar a conta (pedido de 2026-10-10).
+  Hoje: 75 dias sem acesso → e-mail de aviso; 90 → `INACTIVE` + coleção apagada. Decidir
+  antes: se o aviso continua (com texto novo), o que fazer com quem já está `INACTIVE` e se os
+  limiares mudam. Atualizar ADR-36, glossário §7 e `InactivityJobIntegrationTest`.
+- [ ] Fonte de livros em domínio público (Project Gutenberg via Gutendex, ou Standard Ebooks
+  via OPDS), como segundo adaptador do `sourcing` (ADR-46): importa EPUB como edição. Exige
+  tirar o MangaDex fixo do `sourcing` (lease, link e crédito da fonte); a ADR-54 já divide a
+  porta e generaliza a fonte.
+- [ ] Medir a leitura em 4G (DevTools "Fast 4G" e um celular): tempo até a primeira página e
+  bytes por sessão, no leitor de capítulo e no de PDF.
 - [ ] Compressão de PDF no upload
 - [ ] Notificações de novos volumes (e-mail e sino no site)
 - [ ] Login social com Google (OAuth)
@@ -26,6 +73,11 @@ overrides do `pom.xml` que o Boot 4 já cobrir e rode o Trivy de novo.
 - [ ] Identidade visual Mahoraga (em estudo)
 
 ## Concluído
+
+- [x] Redesenho de capítulos, épicos E0 a E7 (v2.0.0 em 2026-10-29, v2.1.0 em 2026-10-29):
+  capítulo como unidade de leitura, upload em CBZ, CBR e PDF num Cloud Run Job, livros em PDF
+  e EPUB, import e sync do MangaDex, idiomas no catálogo. Ver ADR-44 a ADR-53. Falta o E8
+  (acima).
 
 - [x] Dívidas técnicas revisadas em 2026-10-08:
   - Órfãos em `volumes/` no GCS: job `POST /admin/jobs/storage-orphans` (PR #75) apaga o que

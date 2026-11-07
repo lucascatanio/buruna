@@ -2,7 +2,7 @@
 
 **Status:** Aceita
 
-**Contexto:** Importar do MangaDex ([ADR-46](ADR-46-mangadex-como-fonte-externa.md)) traz
+**Contexto:** Importar do MangaDex traz
 conceitos que não são da obra: a obra acompanhada numa fonte, as versões de cada capítulo
 (uma por grupo), qual delas entrou, falhas e um executor por vez. Pôr isso no `work` misturaria
 o catálogo com o estado de uma integração.

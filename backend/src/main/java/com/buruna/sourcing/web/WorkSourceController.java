@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
-/** Crédito público da fonte na página da obra (exigência da AUP do MangaDex, ADR-46). */
+/** Crédito público da fonte na página da obra (exigência da AUP do MangaDex). */
 @RestController
 public class WorkSourceController {
 

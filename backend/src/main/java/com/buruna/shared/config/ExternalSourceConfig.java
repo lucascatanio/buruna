@@ -2,8 +2,12 @@ package com.buruna.shared.config;
 
 import com.buruna.shared.source.ExternalSource;
 import com.buruna.shared.source.ExternalSourceException;
+import com.buruna.shared.source.WorkMetadataSource;
+import com.buruna.shared.source.anilist.AniListSource;
 import com.buruna.shared.source.mangadex.MangaDexSource;
+import com.buruna.shared.source.mangadownloader.MangaDownloaderClient;
 import com.buruna.shared.time.Sleeper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +32,24 @@ public class ExternalSourceConfig {
                                          Sleeper sleeper) {
         return new MangaDexSource(restTemplate(CONNECT_TIMEOUT, READ_TIMEOUT), userAgent, clock, sleeper,
                 restTemplate(REPORT_TIMEOUT, REPORT_TIMEOUT));
+    }
+
+    @Bean
+    public WorkMetadataSource workMetadataSource(@Value("${app.sourcing.user-agent}") String userAgent, Clock clock,
+                                                 Sleeper sleeper) {
+        return new AniListSource(restTemplate(CONNECT_TIMEOUT, READ_TIMEOUT), userAgent, clock, sleeper);
+    }
+
+    @Bean
+    public MangaDownloaderClient mangaDownloaderClient(
+            ObjectMapper objectMapper,
+            @Value("${app.sourcing.manga-downloader.binary}") String binary,
+            @Value("${app.sourcing.manga-downloader.list-timeout}") Duration listTimeout,
+            @Value("${app.sourcing.manga-downloader.download-timeout}") Duration downloadTimeout,
+            @Value("${app.sourcing.manga-downloader.concurrency-chapters}") int chapterConcurrency,
+            @Value("${app.sourcing.manga-downloader.concurrency-pages}") int pageConcurrency) {
+        return new MangaDownloaderClient(binary, objectMapper, listTimeout, downloadTimeout,
+                chapterConcurrency, pageConcurrency);
     }
 
     // sem seguir redirect: a URL é conferida antes da chamada (MangaDexSource.requireSafeImageUrl),

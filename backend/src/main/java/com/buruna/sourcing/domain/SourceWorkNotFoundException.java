@@ -6,6 +6,10 @@ import com.buruna.shared.exception.DomainException;
 public final class SourceWorkNotFoundException extends DomainException {
 
     public SourceWorkNotFoundException(String externalId) {
-        super(DomainErrorType.NOT_FOUND, "Obra não encontrada no MangaDex: " + externalId);
+        this("MangaDex", externalId);
+    }
+
+    public SourceWorkNotFoundException(String sourceName, String externalId) {
+        super(DomainErrorType.NOT_FOUND, "Obra não encontrada no " + sourceName + ": " + externalId);
     }
 }

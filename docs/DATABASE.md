@@ -67,7 +67,7 @@ User ──< PasswordResetToken
 | source_chapters       | INDEX(tracked_work_id, external_id), INDEX(state, tracked_work_id) | V32 — sem UNIQUE: uma versão por id externo, checada sob lock na obra acompanhada |
 | tracked_work_languages | PK(tracked_work_id, language)                 | V32 |
 | tracked_work_ignored_groups | PK(tracked_work_id, group_id)            | V33 |
-| source_leases         | PK(source)                                     | V32 — linha do MANGADEX semeada na migration |
+| source_leases         | PK(source)                                     | V32 — linha do MANGADEX semeada na migration; a do MANGA_DOWNLOADER na V35 |
 
 Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-indices-seletivos-banco.md).
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
@@ -113,6 +113,9 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V31    | Capítulo-arquivo (livro): chapters.file_object_name, file_format (enum chapter_file_format: PDF, EPUB), file_size_bytes, file_page_count; reading_progress.position (CFI) e percent (0 a 1) para EPUB ([ADR-44](adr/ADR-44-capitulo-como-unidade-de-leitura.md), [ADR-21](adr/ADR-21-progresso-leitura-por-volume.md)) |
 | V32    | Contexto sourcing: tracked_works (enum external_source, tracked_work_status), tracked_work_languages, source_chapters (enum source_chapter_state), source_leases com a linha do MANGADEX ([ADR-47](adr/ADR-47-contexto-sourcing.md)). Sem UNIQUE em (fonte, id externo) (ADR-53) |
 | V33    | Sync (ADR-49): tracked_works.listing_requested, paused_at, paused_reason; tracked_work_ignored_groups; source_chapters.attempts, failed_at, removed_at_source, source_update_detected_at, replaces_chapter_id; source_leases.last_digest_at |
+| V34    | Fonte MANGA_DOWNLOADER no enum external_source ([ADR-54](adr/ADR-54-fontes-pelo-manga-downloader-e-anilist.md)); tracked_works.external_id e source_chapters.external_id sobem para 500 (a URL da série e o id do capítulo no site); tracked_work_languages.source_language (código do idioma no site) |
+| V35    | Linha do MANGA_DOWNLOADER em source_leases (migration própria: o valor novo do enum não pode ser usado na transação que o cria) |
+| V36    | works.anilist_id com índice comum, sem UNIQUE (ADR-53): o import de site acha por ele a obra que já existe (ADR-54) |
 
 > Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
 > transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill

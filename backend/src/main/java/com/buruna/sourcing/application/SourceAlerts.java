@@ -3,6 +3,7 @@ package com.buruna.sourcing.application;
 import com.buruna.sourcing.domain.ChapterSelection;
 import com.buruna.sourcing.domain.SourceChapter;
 import com.buruna.sourcing.domain.SourceChapterState;
+import com.buruna.sourcing.domain.SourceName;
 import com.buruna.sourcing.domain.TrackedWork;
 
 import java.time.OffsetDateTime;
@@ -21,9 +22,12 @@ final class SourceAlerts {
     }
 
     static List<SourceAlert> of(TrackedWork tracked, Collection<SourceChapter> versions) {
+        // o sync do MangaDex tenta de novo sozinho, e o aviso espera a última tentativa; os sites
+        // ainda não têm sync (ADR-54), então a primeira falha já pede o ADM
+        int failuresBeforeAlert = tracked.getSource() == SourceName.MANGADEX ? SourceChapter.MAX_ATTEMPTS : 1;
         List<SourceAlert> alerts = new ArrayList<>();
         for (SourceChapter version : versions) {
-            if (version.getState() == SourceChapterState.FAILED && version.getAttempts() >= SourceChapter.MAX_ATTEMPTS) {
+            if (version.getState() == SourceChapterState.FAILED && version.getAttempts() >= failuresBeforeAlert) {
                 alerts.add(alert(tracked, version, SourceAlert.Type.FAILED, version.getLastError(), version.getFailedAt()));
             }
             if (version.isRemovedAtSource() && version.getChapterId().isPresent()) {

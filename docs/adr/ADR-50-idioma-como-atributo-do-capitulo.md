@@ -3,7 +3,7 @@
 **Status:** Aceita
 
 **Contexto:** Com o capítulo como unidade de leitura ([ADR-44](ADR-44-capitulo-como-unidade-de-leitura.md))
-e o import do MangaDex ([ADR-46](ADR-46-mangadex-como-fonte-externa.md)), a mesma obra passa a
+e o import do MangaDex, a mesma obra passa a
 ter capítulos em vários idiomas, às vezes por grupos diferentes. As opções eram uma obra por
 idioma, o idioma na obra, ou o idioma em cada capítulo.
 

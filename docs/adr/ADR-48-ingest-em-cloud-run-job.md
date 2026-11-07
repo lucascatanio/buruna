@@ -96,3 +96,9 @@ bytes originais. Se a execução cair, a versão continua PENDING com o capítul
 próxima rodada (`POST /admin/sourcing/run`, outro import ou o sync) retoma do mesmo capítulo.
 Uma obra longa leva horas (cerca de 1,4 s por imagem, serial), então o Job roda com
 `--task-timeout` de 24 h.
+
+**Atualização (2026-11-02), imagem própria:** o Job deixa de usar a imagem do backend. O Dockerfile
+tem dois alvos sobre a mesma base: `service` (o serviço web, alvo padrão) e `ingest` (o Job), que
+acrescenta o Chromium, a tela virtual e um script de entrada que sobe o Xvfb antes da JVM, para o
+manga-downloader ([ADR-54](ADR-54-fontes-pelo-manga-downloader-e-anilist.md)). O deploy publica
+`buruna-backend` e `buruna-ingest` e atualiza o Job com a segunda.

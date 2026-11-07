@@ -1,6 +1,5 @@
 package com.buruna.sourcing.application;
 
-import com.buruna.shared.source.ExternalSource;
 import com.buruna.shared.source.ExternalSourceException;
 import com.buruna.shared.source.SourceChapterInfo;
 import com.buruna.shared.source.SourceGroup;
@@ -37,18 +36,18 @@ class ListSourceChaptersStep {
 
     private static final Logger log = LoggerFactory.getLogger(ListSourceChaptersStep.class);
 
-    private final ExternalSource source;
+    private final ChapterSources chapterSources;
     private final TrackedWorkRepository trackedWorkRepository;
     private final SourceChapterRepository sourceChapterRepository;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
 
-    ListSourceChaptersStep(ExternalSource source,
+    ListSourceChaptersStep(ChapterSources chapterSources,
                            TrackedWorkRepository trackedWorkRepository,
                            SourceChapterRepository sourceChapterRepository,
                            PlatformTransactionManager transactionManager,
                            Clock clock) {
-        this.source = source;
+        this.chapterSources = chapterSources;
         this.trackedWorkRepository = trackedWorkRepository;
         this.sourceChapterRepository = sourceChapterRepository;
         // transação própria: no profile local isto roda dentro do afterCommit de quem importou
@@ -60,7 +59,7 @@ class ListSourceChaptersStep {
     void run(TrackedWork tracked) {
         List<SourceChapterInfo> versions;
         try {
-            versions = source.listChapters(tracked.getExternalId(), tracked.languageTags());
+            versions = inBurunaLanguages(tracked, chapterSources.of(tracked.getSource()).listChapters(tracked));
         } catch (ExternalSourceException e) {
             log.warn("Falha ao listar os capítulos da obra acompanhada {}", tracked.getId(), e);
             transactionTemplate.executeWithoutResult(tx -> trackedWorkRepository.lockById(tracked.getId())
@@ -69,6 +68,17 @@ class ListSourceChaptersStep {
         }
         transactionTemplate.executeWithoutResult(tx -> trackedWorkRepository.lockById(tracked.getId())
                 .ifPresent(locked -> store(locked, versions)));
+    }
+
+    // o idioma vem como a fonte o escreve; fica só o que é acompanhado, já como tag do Burūna
+    private static List<SourceChapterInfo> inBurunaLanguages(TrackedWork tracked, List<SourceChapterInfo> versions) {
+        List<SourceChapterInfo> result = new ArrayList<>();
+        for (SourceChapterInfo version : versions) {
+            tracked.languageFromSource(version.language()).ifPresent(language -> result.add(new SourceChapterInfo(
+                    version.externalId(), language, version.number(), version.volume(), version.title(),
+                    version.groups(), version.pages(), version.publishedAt(), version.updatedAt())));
+        }
+        return result;
     }
 
     /**

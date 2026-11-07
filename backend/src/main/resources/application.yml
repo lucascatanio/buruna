@@ -84,6 +84,15 @@ app:
   sourcing:
     # O MangaDex exige um User-Agent próprio e não falsificado (nada de imitar navegador).
     user-agent: ${APP_SOURCING_USER_AGENT:Buruna/1.0 (+https://github.com/lucascatanio/buruna)}
+    # CLI dos sites (ADR-54). Um capítulo por vez e poucas páginas em paralelo: o Job sai por IP
+    # de datacenter, e site que recebe rajada bloqueia.
+    manga-downloader:
+      binary: ${APP_SOURCING_MANGA_DOWNLOADER_BINARY:manga-downloader}
+      list-timeout: ${APP_SOURCING_MANGA_DOWNLOADER_LIST_TIMEOUT:PT2M}
+      # abaixo dos 30 min do lease, renovado a cada capítulo (SourcingRunner)
+      download-timeout: ${APP_SOURCING_MANGA_DOWNLOADER_DOWNLOAD_TIMEOUT:PT20M}
+      concurrency-chapters: ${APP_SOURCING_MANGA_DOWNLOADER_CONCURRENCY_CHAPTERS:1}
+      concurrency-pages: ${APP_SOURCING_MANGA_DOWNLOADER_CONCURRENCY_PAGES:4}
   security:
     # Quantos saltos de proxy confiável (infra própria) precedem a entrada do
     # cliente no X-Forwarded-For. Ver docs/DEPLOYMENT.md.
