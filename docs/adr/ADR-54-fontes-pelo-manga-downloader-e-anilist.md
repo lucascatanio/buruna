@@ -147,6 +147,13 @@ onde vêm as páginas.
   inglês e não trouxe nada. O Job lista cada idioma acompanhado com `--language <código>`, e o
   capítulo fica com o código pedido. A tela e o painel "Idiomas" mostram também os idiomas que o site
   oferece no filtro dele, mesmo os que a listagem padrão não trouxe.
+- **Código do site visível e corrigível** (2026-11-09, #142). No modo manual, o código vazio passava
+  sem aviso: o Jujutsu Kaisen do mangafire ficou sem capítulos, porque vazio lista o padrão do site
+  (inglês) e guarda só os capítulos sem idioma. Agora a lista de acompanhadas mostra o código de cada
+  idioma, e um idioma sem capítulos, com o site listando outros, vira aviso na obra
+  (`tracked_works.listing_notice`, regravado a cada listagem que dá certo). O painel "Idiomas" aceita
+  o código digitado à mão, e acompanhar de novo um idioma do Burūna troca o código dele. Código vazio
+  digitado à mão só passa com a confirmação "Este site não informa idioma".
 - **Proteção da CLI:** a URL precisa ser `http(s)` e vai depois de `--`, para não virar flag.
 - **Colisão** continua como no MangaDex (`FAILED` com o motivo, sem baixar, porque o registro vem
   antes do download). O `IGNORED` e o "usar esta versão" na obra inteira ficaram para um PR próprio.

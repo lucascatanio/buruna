@@ -57,17 +57,22 @@ class ListSourceChaptersStep {
     }
 
     void run(TrackedWork tracked) {
-        List<SourceChapterInfo> versions;
+        ChapterListing listing;
         try {
-            versions = inBurunaLanguages(tracked, chapterSources.of(tracked.getSource()).listChapters(tracked));
+            listing = chapterSources.of(tracked.getSource()).listChapters(tracked);
         } catch (ExternalSourceException e) {
             log.warn("Falha ao listar os capítulos da obra acompanhada {}", tracked.getId(), e);
             transactionTemplate.executeWithoutResult(tx -> trackedWorkRepository.lockById(tracked.getId())
                     .ifPresent(t -> t.recordFailure(e.getMessage(), OffsetDateTime.now(clock))));
             return;
         }
+        List<SourceChapterInfo> versions = inBurunaLanguages(tracked, listing.versions());
+        String notice = listing.notice().orElse(null);
+        if (notice != null) {
+            log.warn("Obra acompanhada {}: {}", tracked.getId(), notice);
+        }
         transactionTemplate.executeWithoutResult(tx -> trackedWorkRepository.lockById(tracked.getId())
-                .ifPresent(locked -> store(locked, versions)));
+                .ifPresent(locked -> store(locked, versions, notice)));
     }
 
     // o idioma vem como a fonte o escreve; fica só o que é acompanhado, já como tag do Burūna
@@ -85,16 +90,17 @@ class ListSourceChaptersStep {
      * Compara a listagem com o que já se conhece (ADR-49): versão nova entra na escolha, versão
      * que sumiu ganha o aviso "removida na fonte" (o capítulo baixado continua no ar), versão
      * baixada com páginas mais novas ganha o aviso "páginas trocadas", e falha volta para a
-     * fila até {@link SourceChapter#MAX_ATTEMPTS} tentativas.
+     * fila até {@link SourceChapter#MAX_ATTEMPTS} tentativas. {@code notice} é o aviso da listagem
+     * (idioma que voltou vazio), nulo quando não há.
      */
-    private void store(TrackedWork tracked, List<SourceChapterInfo> versions) {
+    private void store(TrackedWork tracked, List<SourceChapterInfo> versions, String notice) {
         OffsetDateTime now = OffsetDateTime.now(clock);
         Map<String, SourceChapter> known = sourceChapterRepository.findByTrackedWorkId(tracked.getId()).stream()
                 .collect(Collectors.toMap(SourceChapter::getExternalId, Function.identity()));
         // listagem vazia de uma obra que tinha capítulos é mais provável ser erro da fonte do que
         // tudo ter sido removido de uma vez: não marca nada como removido
         if (versions.isEmpty() && !known.isEmpty()) {
-            tracked.recordFailure("A fonte não devolveu nenhum capítulo.", now);
+            tracked.recordFailure(notice != null ? notice : "A fonte não devolveu nenhum capítulo.", now);
             return;
         }
         List<SourceChapter> all = new ArrayList<>(known.values());
@@ -117,7 +123,7 @@ class ListSourceChaptersStep {
         }
         ChapterSelection.apply(all, tracked::preferredGroupFor, tracked.ignoredGroupIds());
         sourceChapterRepository.saveAll(all);
-        tracked.recordSuccess(now);
+        tracked.recordSuccess(now, notice);
         log.info("Obra acompanhada {}: {} versões na fonte, {} novas", tracked.getId(), versions.size(),
                 all.size() - known.size());
     }

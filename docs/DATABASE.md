@@ -73,7 +73,7 @@ Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-in
 Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
 e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 
-## 3. Migrations Flyway (V1–V33)
+## 3. Migrations Flyway (V1–V37)
 
 > Verificado em `backend/src/main/resources/db/migration/` — atualize esta tabela ao
 > adicionar uma migration nova.
@@ -116,6 +116,7 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V34    | Fonte MANGA_DOWNLOADER no enum external_source ([ADR-54](adr/ADR-54-fontes-pelo-manga-downloader-e-anilist.md)); tracked_works.external_id e source_chapters.external_id sobem para 500 (a URL da série e o id do capítulo no site); tracked_work_languages.source_language (código do idioma no site) |
 | V35    | Linha do MANGA_DOWNLOADER em source_leases (migration própria: o valor novo do enum não pode ser usado na transação que o cria) |
 | V36    | works.anilist_id com índice comum, sem UNIQUE (ADR-53): o import de site acha por ele a obra que já existe (ADR-54) |
+| V37    | tracked_works.listing_notice: aviso da última listagem, quando um idioma acompanhado volta sem capítulos e o site lista outros (#142) |
 
 > Valores de enum novos (`ALTER TYPE ... ADD VALUE`) não podem ser usados na mesma
 > transação em que foram criados, e o Flyway roda cada migration numa transação: um backfill

@@ -16,7 +16,7 @@ export interface LanguageChoice {
     language: string;
     preferredGroupId: string | null;
     preferredGroupName: string | null;
-    /** Num site do manga-downloader: o código do idioma como o site o escreve ("" se ele não informa). */
+    /** Num site do manga-downloader: o código do idioma como o site o escreve ("" se ele não informa); null no MangaDex. */
     sourceLanguage?: string | null;
 }
 
@@ -100,6 +100,8 @@ export interface TrackedWork {
     lastSuccessAt: string | null;
     consecutiveFailures: number;
     lastError: string | null;
+    /** Aviso da última verificação: um idioma voltou sem capítulos enquanto o site listou outros. */
+    listingNotice: string | null;
     pausedAt: string | null;
     /** Só na pausa automática (falhas seguidas ao verificar). */
     pausedReason: string | null;

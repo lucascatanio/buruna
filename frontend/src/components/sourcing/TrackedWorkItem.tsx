@@ -1,7 +1,7 @@
 import {useState} from "react";
 import {Link} from "react-router-dom";
 import {toast} from "sonner";
-import {AlertCircle, ExternalLink, Loader2, Pause, Play, RefreshCw} from "lucide-react";
+import {AlertCircle, AlertTriangle, ExternalLink, Loader2, Pause, Play, RefreshCw} from "lucide-react";
 import {
     checkTrackedWork,
     ignoreGroup,
@@ -128,11 +128,20 @@ export function TrackedWorkItem({tracked: t, onChanged}: TrackedWorkItemProps) {
                 </a>
             </div>
             <p className="text-sm text-muted-foreground">
-                {t.languages.map((l) => {
+                {t.languages.map((l, index) => {
                     const ignored = t.ignoredGroups.some((g) => g.id === l.preferredGroupId);
                     const group = l.preferredGroupName ? ` (${l.preferredGroupName}${ignored ? ", ignorado" : ""})` : "";
-                    return languageName(l.language) + group;
-                }).join(" · ")}
+                    return (
+                        <span key={l.language}>
+                            {index > 0 && " · "}
+                            {languageName(l.language) + group}
+                            {/* o código que o site usa para o idioma: vazio, a listagem só traz capítulos sem idioma */}
+                            {t.source === "MANGA_DOWNLOADER" && (l.sourceLanguage
+                                ? <>, <code className="font-mono text-xs text-foreground">{l.sourceLanguage}</code> no site</>
+                                : ", sem código no site")}
+                        </span>
+                    );
+                })}
             </p>
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-muted-foreground">
                 {paused && <span className="text-foreground">pausada</span>}
@@ -148,6 +157,11 @@ export function TrackedWorkItem({tracked: t, onChanged}: TrackedWorkItemProps) {
                 <span>{plural(counts.IGNORED ?? 0, "versão de outro grupo", "versões de outros grupos")}</span>
                 <span>verificada {formatDate(t.lastCheckedAt)}</span>
             </p>
+            {t.listingNotice && (
+                <p className="flex items-start gap-1 text-xs">
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-shu"/> {t.listingNotice}
+                </p>
+            )}
             {(t.pausedReason || t.lastError) && (
                 <p className="flex items-center gap-1 text-xs text-destructive">
                     <AlertCircle className="size-3.5 shrink-0"/> {t.pausedReason ?? t.lastError}
