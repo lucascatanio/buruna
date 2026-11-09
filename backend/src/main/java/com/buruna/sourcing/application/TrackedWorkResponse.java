@@ -26,6 +26,8 @@ public record TrackedWorkResponse(
         OffsetDateTime lastSuccessAt,
         int consecutiveFailures,
         String lastError,
+        /** Aviso da última listagem: um idioma voltou vazio enquanto a fonte listou outros. */
+        String listingNotice,
         OffsetDateTime pausedAt,
         /** Preenchido só na pausa automática. */
         String pausedReason,
@@ -37,10 +39,12 @@ public record TrackedWorkResponse(
     public record Group(String id, String name) {
     }
 
-    public record Language(String language, String preferredGroupId, String preferredGroupName) {
+    /** {@code sourceLanguage}: o código do idioma no site; nulo no MangaDex, vazio no site que não informa. */
+    public record Language(String language, String preferredGroupId, String preferredGroupName,
+                           String sourceLanguage) {
         static Language from(TrackedLanguage language) {
             return new Language(language.getLanguage(), language.getPreferredGroupId().orElse(null),
-                    language.getPreferredGroupName());
+                    language.getPreferredGroupName(), language.getSourceLanguage());
         }
     }
 
@@ -54,7 +58,7 @@ public record TrackedWorkResponse(
                 counts.entrySet().stream().collect(Collectors.toMap(
                         entry -> entry.getKey().name(), Map.Entry::getValue)),
                 tracked.getLastCheckedAt(), tracked.getLastSuccessAt(), tracked.getConsecutiveFailures(),
-                tracked.getLastError(), tracked.getPausedAt(), tracked.getPausedReason().orElse(null),
+                tracked.getLastError(), tracked.getListingNotice().orElse(null), tracked.getPausedAt(), tracked.getPausedReason().orElse(null),
                 tracked.getIgnoredGroups().stream().map(g -> new Group(g.getGroupId(), g.getGroupName())).toList(),
                 alertCount, tracked.getCreatedAt());
     }

@@ -1,11 +1,9 @@
 package com.buruna.sourcing.application;
 
-import com.buruna.shared.source.SourceChapterInfo;
 import com.buruna.sourcing.domain.SourceChapter;
 import com.buruna.sourcing.domain.SourceName;
 import com.buruna.sourcing.domain.TrackedWork;
 
-import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -19,9 +17,9 @@ interface ChapterSource {
 
     /**
      * Versões publicadas nos idiomas acompanhados, sem as bloqueadas, com o idioma como a fonte o
-     * escreve ({@link TrackedWork#languageFromSource} traduz).
+     * escreve ({@link TrackedWork#languageFromSource} traduz), e os idiomas que voltaram vazios.
      */
-    List<SourceChapterInfo> listChapters(TrackedWork tracked);
+    ChapterListing listChapters(TrackedWork tracked);
 
     /** Idiomas em que a fonte tem a obra, como ela os escreve. */
     Set<String> availableLanguages(TrackedWork tracked);

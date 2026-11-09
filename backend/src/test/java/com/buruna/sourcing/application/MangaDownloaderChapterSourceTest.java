@@ -109,8 +109,7 @@ class MangaDownloaderChapterSourceTest {
                 TrackedLanguage.fromSite("pt-BR", "pt-br", null, null),
                 TrackedLanguage.fromSite("en", "en", null, null)), UUID.randomUUID());
 
-        List<SourceChapterInfo> versions =
-                new MangaDownloaderChapterSource(client, mock(PageExtractor.class), 1000, 1024, 50).listChapters(tracked);
+        List<SourceChapterInfo> versions = source(client).listChapters(tracked).versions();
 
         assertThat(versions).extracting(SourceChapterInfo::externalId).containsExactlyInAnyOrder("p1", "e1");
         assertThat(versions).filteredOn(v -> v.externalId().equals("p1"))
@@ -125,10 +124,59 @@ class MangaDownloaderChapterSourceTest {
         TrackedWork tracked = TrackedWork.track(UUID.randomUUID(), SourceName.MANGA_DOWNLOADER, URL,
                 List.of(TrackedLanguage.fromSite("es-419", "", null, null)), UUID.randomUUID());
 
-        List<SourceChapterInfo> versions =
-                new MangaDownloaderChapterSource(client, mock(PageExtractor.class), 1000, 1024, 50).listChapters(tracked);
+        List<SourceChapterInfo> versions = source(client).listChapters(tracked).versions();
 
         assertThat(versions).extracting(SourceChapterInfo::externalId).containsExactly("a");
+    }
+
+    static MangaDownloaderChapterSource source(MangaDownloaderClient client) {
+        return new MangaDownloaderChapterSource(client, mock(PageExtractor.class), 1000, 1024, 50);
+    }
+
+    static TrackedWork trackedIn(String language, String siteCode) {
+        return TrackedWork.track(UUID.randomUUID(), SourceName.MANGA_DOWNLOADER, URL,
+                List.of(TrackedLanguage.fromSite(language, siteCode, null, null)), UUID.randomUUID());
+    }
+
+    @Test
+    void shouldReportEmptyLanguage_whenCodeIsBlankAndSiteListsOtherLanguages() {
+        // o Jujutsu Kaisen do mangafire (#142): código vazio lista o padrão do site, que é inglês
+        MangaDownloaderClient client = mock(MangaDownloaderClient.class);
+        when(client.list(URL, "")).thenReturn(listing(new SiteListing.Filter(List.of("en", "es-la"), false),
+                chapter("e1", 1, "en", false), chapter("e2", 2, "en", false)));
+
+        ChapterListing result = source(client).listChapters(trackedIn("pt-BR", ""));
+
+        assertThat(result.versions()).isEmpty();
+        assertThat(result.emptyLanguages()).containsExactly(new ChapterListing.EmptyLanguage("", List.of("en", "es-la")));
+        assertThat(result.notice()).contains(
+                "Nenhum capítulo sem idioma informado; o site listou en, es-la. Confira o código no painel Idiomas.");
+    }
+
+    @Test
+    void shouldReportEmptyLanguageWithFilterCodes_whenCodeListsNothing() {
+        MangaDownloaderClient client = mock(MangaDownloaderClient.class);
+        when(client.list(URL, "pt")).thenReturn(listing(new SiteListing.Filter(List.of("en", "pt-br", "pt"), false)));
+
+        ChapterListing result = source(client).listChapters(trackedIn("pt-BR", "pt"));
+
+        assertThat(result.notice()).contains(
+                "Nenhum capítulo em pt; o site listou en, pt-br. Confira o código no painel Idiomas.");
+    }
+
+    @Test
+    void shouldNotReport_whenLanguageHasOnlyLockedChaptersOrSiteListsNothingElse() {
+        MangaDownloaderClient client = mock(MangaDownloaderClient.class);
+        when(client.list(URL, "pt-br")).thenReturn(listing(new SiteListing.Filter(List.of("en", "pt-br"), false),
+                chapter("p1", 1, "Portuguese (Br)", true)));
+        when(client.list(URL, "en")).thenReturn(listing(null));
+
+        ChapterListing result = source(client).listChapters(TrackedWork.track(UUID.randomUUID(),
+                SourceName.MANGA_DOWNLOADER, URL, List.of(TrackedLanguage.fromSite("pt-BR", "pt-br", null, null),
+                        TrackedLanguage.fromSite("en", "en", null, null)), UUID.randomUUID()));
+
+        assertThat(result.versions()).isEmpty();
+        assertThat(result.notice()).isEmpty();
     }
 
     @Test

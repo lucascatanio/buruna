@@ -57,11 +57,37 @@ class TrackedWorkTest {
         OffsetDateTime now = OffsetDateTime.parse("2026-10-17T12:00:00Z");
         tracked.recordFailure("timeout", now);
 
-        tracked.recordSuccess(now.plusHours(1));
+        tracked.recordSuccess(now.plusHours(1), null);
 
         assertThat(tracked.getConsecutiveFailures()).isZero();
         assertThat(tracked.getLastError()).isNull();
         assertThat(tracked.needsListing()).isFalse();
+    }
+
+    @Test
+    void shouldKeepNoticeUntilNextCleanListing_whenListingSucceedsWithNotice() {
+        TrackedWork tracked = tracked(List.of(TrackedLanguage.of("en", null, null)));
+        OffsetDateTime now = OffsetDateTime.parse("2026-11-07T12:00:00Z");
+
+        tracked.recordSuccess(now, "Nenhum capítulo em pt-br; o site listou en.");
+
+        assertThat(tracked.getListingNotice()).contains("Nenhum capítulo em pt-br; o site listou en.");
+        tracked.recordSuccess(now.plusHours(1), " ");
+        assertThat(tracked.getListingNotice()).isEmpty();
+    }
+
+    @Test
+    void shouldReplaceSourceCodeAndKeepOtherLanguages_whenSiteLanguageIsTrackedAgain() {
+        TrackedWork tracked = TrackedWork.track(UUID.randomUUID(), SourceName.MANGA_DOWNLOADER,
+                "https://mangafire.test/manga/obra", List.of(TrackedLanguage.fromSite("pt-BR", "", "g1", "Grupo"),
+                        TrackedLanguage.fromSite("en", "en", null, null)), UUID.randomUUID());
+
+        tracked.trackLanguage(TrackedLanguage.fromSite("pt-BR", " pt-br ", "g1", "Grupo"));
+
+        assertThat(tracked.sourceLanguageCodes()).containsExactlyInAnyOrder("pt-br", "en");
+        assertThat(tracked.languageFromSource("pt-br")).contains("pt-BR");
+        assertThat(tracked.languageFromSource("")).isEmpty();
+        assertThat(tracked.preferredGroupFor("pt-BR")).contains("g1");
     }
 
     @Test
@@ -83,7 +109,7 @@ class TrackedWorkTest {
     void shouldClearFailuresAndAskForCheck_whenResumed() {
         TrackedWork tracked = tracked(List.of(TrackedLanguage.of("en", null, null)));
         OffsetDateTime now = OffsetDateTime.parse("2026-10-17T12:00:00Z");
-        tracked.recordSuccess(now);
+        tracked.recordSuccess(now, null);
         tracked.pause(now);
 
         tracked.resume();
@@ -108,7 +134,7 @@ class TrackedWorkTest {
     @Test
     void shouldAddLanguageOrReplaceItsGroup_whenTrackingALanguage() {
         TrackedWork tracked = tracked(List.of(TrackedLanguage.of("pt-BR", "g1", "Grupo 1")));
-        tracked.recordSuccess(OffsetDateTime.parse("2026-10-29T12:00:00Z"));
+        tracked.recordSuccess(OffsetDateTime.parse("2026-10-29T12:00:00Z"), null);
 
         tracked.trackLanguage(TrackedLanguage.of("en", null, null));
         tracked.trackLanguage(TrackedLanguage.of("pt-br", "g2", "Grupo 2"));

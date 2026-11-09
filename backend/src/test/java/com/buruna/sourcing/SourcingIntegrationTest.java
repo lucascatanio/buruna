@@ -598,6 +598,44 @@ class SourcingIntegrationTest {
     }
 
     @Test
+    void shouldWarnAndFixCodeByLanguagesPanel_whenSiteCodeIsLeftBlank() throws Exception {
+        // o Jujutsu Kaisen do mangafire (#142): import manual com o código do site vazio
+        String workId = createWork();
+        siteServes(SITE_URL);
+        siteDownloadsWriteArchives();
+        mockMvc.perform(post("/admin/sourcing/imports").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"source":"MANGA_DOWNLOADER","externalId":"%s","linkWorkId":"%s",
+                                 "languages":[{"language":"en","sourceLanguage":"","preferredGroupId":"Alpha","preferredGroupName":"Alpha"}]}
+                                """.formatted(SITE_URL, workId)).with(auth(admin)))
+                .andExpect(status().isCreated());
+
+        assertThat(chaptersOf(workId)).isEmpty();
+        mockMvc.perform(get("/admin/sourcing/tracked").with(auth(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].languages[0].sourceLanguage").value(""))
+                .andExpect(jsonPath("$[0].lastError").doesNotExist())
+                .andExpect(jsonPath("$[0].listingNotice").value(
+                        "Nenhum capítulo sem idioma informado; o site listou en, es. Confira o código no painel Idiomas."));
+
+        // o painel "Idiomas" acompanha de novo o mesmo idioma, agora com o código do site
+        UUID trackedId = trackedWorkRepository.findAll().get(0).getId();
+        mockMvc.perform(post("/admin/sourcing/tracked/" + trackedId + "/languages").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"language":"en","sourceLanguage":"en","preferredGroupId":"Alpha","preferredGroupName":"Alpha"}
+                                """).with(auth(admin)))
+                .andExpect(status().isAccepted());
+
+        assertThat(chaptersOf(workId)).hasSize(2);
+        mockMvc.perform(get("/admin/sourcing/tracked").with(auth(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].languages.length()").value(1))
+                .andExpect(jsonPath("$[0].languages[0].sourceLanguage").value("en"))
+                .andExpect(jsonPath("$[0].languages[0].preferredGroupId").value("Alpha"))
+                .andExpect(jsonPath("$[0].listingNotice").doesNotExist());
+    }
+
+    @Test
     void shouldRefuseSeriesUrl_whenItIsNotHttp() throws Exception {
         mockMvc.perform(get("/admin/sourcing/site-listing").param("url", "--output-dir=/tmp").with(auth(admin)))
                 .andExpect(status().isBadRequest());

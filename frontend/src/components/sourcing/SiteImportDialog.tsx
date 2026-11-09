@@ -16,15 +16,20 @@ import {apiErrorMessage} from "@/lib/apiError";
 import {guessLanguage, SITE_LANGUAGES, siteGroupId} from "@/lib/siteLanguage";
 import {FORMAT_LABELS} from "@/lib/workLabels";
 import {MetadataCover} from "./MetadataCover";
+import {SiteCodeField} from "./SiteCodeField";
 
 type Step = 1 | 2 | 3;
 
 /** Obra que recebe os capítulos: a do AniList (criada, ou a que já está ligada a ele) ou outra do catálogo. */
 type Target = { kind: "aniList" } | { kind: "catalog"; workId: string; title: string };
 
-/** Idioma marcado: o código do site, a tag do Burūna que ele vira e o grupo preferido. */
+/**
+ * Idioma marcado: o código do site, a tag do Burūna que ele vira e o grupo preferido. No modo
+ * manual, {@code noLanguage} confirma que o código vazio é de propósito.
+ */
 interface LanguageRow {
     siteCode: string;
+    noLanguage: boolean;
     language: string;
     groupId: string | null;
     groupName: string | null;
@@ -97,7 +102,7 @@ export function SiteImportDialog({work, onClose, onImported}: SiteImportDialogPr
             setListing(result);
             // pt-BR já marcado quando o site tem
             const ptBr = result.languages.find((l) => guessLanguage(l.code) === "pt-BR");
-            setRows(ptBr ? [{siteCode: ptBr.code, language: "pt-BR", groupId: null, groupName: null}] : []);
+            setRows(ptBr ? [{siteCode: ptBr.code, noLanguage: false, language: "pt-BR", groupId: null, groupName: null}] : []);
         } catch (err) {
             setListingError(apiErrorMessage(err, "Não deu para listar esta série."));
         } finally {
@@ -107,13 +112,14 @@ export function SiteImportDialog({work, onClose, onImported}: SiteImportDialogPr
 
     function startManual() {
         setManual(true);
-        setRows([{siteCode: "", language: "", groupId: null, groupName: null}]);
+        setRows([{siteCode: "", noLanguage: false, language: "", groupId: null, groupName: null}]);
     }
 
     const canAdvance: Record<Step, boolean> = {
         1: preview !== undefined && preview !== null,
         2: isHttpUrl(url) && ((listing !== null && !listing.tracked) || manual),
-        3: rows.length > 0 && rows.every((row) => row.language !== ""),
+        3: rows.length > 0 && rows.every((row) => row.language !== ""
+            && (!manual || row.noLanguage || row.siteCode.trim() !== "")),
     };
 
     async function handleSubmit() {
@@ -363,7 +369,7 @@ function LanguagesStep({listing, rows, onRows, createsWork, synopsis, onSynopsis
     function toggle(code: string) {
         onRows(rows.some((row) => row.siteCode === code)
             ? rows.filter((row) => row.siteCode !== code)
-            : [...rows, {siteCode: code, language: guessLanguage(code), groupId: null, groupName: null}]);
+            : [...rows, {siteCode: code, noLanguage: false, language: guessLanguage(code), groupId: null, groupName: null}]);
     }
 
     return (
@@ -393,11 +399,10 @@ function LanguagesStep({listing, rows, onRows, createsWork, synopsis, onSynopsis
                         {listing
                             ? <p className="text-sm font-medium">No site: {siteLanguageLabel(row.siteCode)}</p>
                             : (
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="manual-code">Código do idioma no site</Label>
-                                    <Input id="manual-code" value={row.siteCode} maxLength={35} placeholder="es-la, en… vazio se o site não informa"
-                                           onChange={(e) => onRows([{...row, siteCode: e.target.value, language: guessLanguage(e.target.value) || row.language}])}/>
-                                </div>
+                                <SiteCodeField id="manual-code" code={row.siteCode} noLanguage={row.noLanguage}
+                                               onChange={(siteCode, noLanguage) => onRows([{
+                                                   ...row, siteCode, noLanguage, language: guessLanguage(siteCode) || row.language,
+                                               }])}/>
                             )}
                         <div className="space-y-1.5">
                             <Label htmlFor={`language-${index}`}>Idioma no Burūna</Label>

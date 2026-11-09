@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -79,18 +80,45 @@ class MangaDownloaderChapterSource implements ChapterSource {
      * trazem só o idioma padrão deles. O capítulo listado num idioma fica com o código pedido, como o
      * ADM o escreveu, e não com o que o site devolve no campo. Idioma vazio (site que não informa)
      * lista sem filtro e fica com os capítulos sem idioma.
+     *
+     * <p>Idioma sem nenhum capítulo, com o site listando outros, volta em
+     * {@link ChapterListing#emptyLanguages()}: quase sempre é o código do site errado ou vazio (#142).
      */
     @Override
-    public List<SourceChapterInfo> listChapters(TrackedWork tracked) {
+    public ChapterListing listChapters(TrackedWork tracked) {
         Map<String, SourceChapterInfo> byId = new LinkedHashMap<>();
+        List<ChapterListing.EmptyLanguage> empty = new ArrayList<>();
         for (String code : tracked.sourceLanguageCodes()) {
-            client.list(tracked.getExternalId(), code).chapters().stream()
-                    .filter(chapter -> !chapter.locked())
+            SiteListing listing = client.list(tracked.getExternalId(), code);
+            List<SiteListing.Chapter> inLanguage = listing.chapters().stream()
                     .filter(chapter -> !code.isEmpty() || languageOf(chapter).isEmpty())
+                    .toList();
+            inLanguage.stream()
+                    .filter(chapter -> !chapter.locked())
                     .map(chapter -> toInfo(withLanguage(chapter, code)))
                     .forEach(info -> byId.putIfAbsent(info.externalId(), info));
+            Set<String> others = otherLanguages(listing, code);
+            if (inLanguage.isEmpty() && !others.isEmpty()) {
+                empty.add(new ChapterListing.EmptyLanguage(code, List.copyOf(others)));
+            }
         }
-        return List.copyOf(byId.values());
+        return new ChapterListing(List.copyOf(byId.values()), empty);
+    }
+
+    /**
+     * Os idiomas que o site oferece no filtro e, na listagem sem filtro, os dos capítulos que ela
+     * trouxe. Com filtro, o campo do capítulo vem do jeito do site ("Portuguese (Br)"), e não serve.
+     */
+    private static Set<String> otherLanguages(SiteListing listing, String code) {
+        Set<String> languages = new LinkedHashSet<>();
+        if (listing.languages() != null && listing.languages().values() != null) {
+            languages.addAll(listing.languages().values());
+        }
+        if (code.isEmpty()) {
+            listing.chapters().forEach(chapter -> languages.add(languageOf(chapter)));
+        }
+        languages.removeIf(language -> language.isBlank() || language.equalsIgnoreCase(code));
+        return languages;
     }
 
     /** Os idiomas dos capítulos listados e os que o site oferece no filtro dele. */
