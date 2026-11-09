@@ -3,7 +3,7 @@
 > 📋 **Documento de processo — diário da migração, não documentação viva.** Registra o
 > plano de execução (issues por epic) da refatoração, hoje concluída. Para o estado
 > atual, ver [CLAUDE.md](../../CLAUDE.md) e [`docs/`](../). O backlog de achados fora
-> de escopo foi migrado para [`docs/BACKLOG.md`](../BACKLOG.md).
+> de escopo foi migrado para as [issues do GitHub](https://github.com/lucascatanio/buruna/issues).
 
 > **Base:** `01-analise-estado-atual.md` (diagnóstico) + `02-arquitetura-alvo.md` + ADR-31…38, ambos aprovados.
 > **Natureza:** plano de execução. Nenhum código foi alterado. Cada item abaixo é uma **issue acionável**, formatada para colar direto no GitHub Issues/Projects.
@@ -348,7 +348,7 @@ Após o deploy de cada um destes, **pare e teste manualmente em produção** ant
 
 ### Backlog (achados durante o Epic 6, fora do escopo — não fazer sem issue própria)
 
-Migrado para [`docs/BACKLOG.md`](../BACKLOG.md).
+Migrado para as [issues do GitHub](https://github.com/lucascatanio/buruna/issues).
 
 ---
 
