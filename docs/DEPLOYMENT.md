@@ -397,3 +397,65 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).
+
+## 8. Manutenção periódica
+
+Uma rotina agendada abre no dia 1º de cada mês a issue "Manutenção mensal AAAA-MM", com
+este checklist. Os itens marcados **(trimestral)** só entram em janeiro, abril, julho e
+outubro, e o **(anual)** só em janeiro. O que der para automatizar sai do checklist: a
+limpeza de imagens já é automática (abaixo).
+
+### Custos
+
+- Relatório de faturamento do mês (Console → Faturamento → Relatórios, projeto `buruna`):
+  o que saiu do free tier e por quê, comparando com o mês anterior.
+- Alerta de orçamento em Faturamento → Orçamentos e alertas. Em 2026-11-09, a API de
+  Budgets nem estava ligada no projeto: se ainda não houver alerta, crie um.
+- Artifact Registry: a política `manter-3-mais-recentes` do repositório `us-east1/buruna`
+  mantém as 3 versões mais recentes de cada imagem e apaga o resto com mais de 7 dias. Se o
+  tamanho crescer mês a mês, a política parou. O `describe` mostra o tamanho e as políticas:
+  `gcloud artifacts repositories describe buruna --location=us-east1`.
+- Cloud Logging: volume ingerido no mês (Logging → Armazenamento de logs). A cota grátis é
+  de 50 GiB por mês. Log de DEBUG esquecido ligado é a causa mais comum de estouro (ver §7,
+  calibração do `APP_TRUSTED_PROXY_HOPS`).
+- Bucket: `gcloud storage du -s --readable-sizes gs://buruna-files-catanio`, comparando com o
+  mês anterior (38,8 GiB em 2026-11-09).
+
+### Saúde e desempenho
+
+- Erros do mês no backend e no Job:
+  `gcloud logging read 'severity>=ERROR AND resource.type=("cloud_run_revision" OR "cloud_run_job")' --freshness=30d --format="value(textPayload)" | grep -vE '^\s+(at |\.\.\. )|^\s*$' | cut -c1-140 | sort | uniq -c | sort -rn | head`
+  (o `grep` tira as linhas do stack trace). Erro que se repete vira issue; para a data, rode
+  de novo com `--format="value(timestamp,textPayload)"` e um trecho da mensagem no filtro.
+- Métricas do `buruna-backend` (Cloud Run → Métricas): latência p95, memória perto do
+  limite e partidas a frio. Ajuste memória e CPU se faltar ou sobrar.
+- Jobs do Cloud Scheduler (`buruna-inactivity`, `buruna-sourcing-sync`,
+  `buruna-storage-orphans`) ativos e sem erro na última tentativa:
+  `gcloud scheduler jobs list --location=us-east1 --format="table(name.basename(),state,lastAttemptTime,status.code)"`.
+- Execuções do `buruna-ingest` com falha:
+  `gcloud run jobs executions list --job buruna-ingest --region us-east1 --limit 30`.
+- `/admin/import`: obras acompanhadas pausadas, com falha ou com aviso de idioma.
+
+### Banco (PostgreSQL na VM e2-micro, [ADR-23](adr/ADR-23-postgresql-gce-e2-micro-docker.md))
+
+- Disco livre da VM (`df -h` por SSH).
+- Backup: o ADR-23 deixa o backup na mão (`pg_dump`). Confira que há um dump recente
+  guardado fora da VM.
+- Tabelas que mais crescem e tuplas mortas (o autovacuum está dando conta?):
+  `SELECT relname, pg_size_pretty(pg_total_relation_size(relid)), n_dead_tup FROM pg_stat_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 10;`
+- **(trimestral)** Restaurar o último dump num Postgres local e subir o backend contra ele
+  (backup que nunca foi restaurado não está comprovado).
+- **(trimestral)** Patch do PostgreSQL 16 (imagem Docker) e atualização do sistema da VM.
+
+### Dependências e segurança
+
+- PRs abertos do Dependabot. Ele só cobre a imagem Docker do backend (o que inclui o
+  manga-downloader): npm e Maven ficam com `npm outdated` (em `frontend/`) e
+  `./mvnw versions:display-dependency-updates` (em `backend/`).
+- `npm audit --omit=dev` em `frontend/` e a aba Security do GitHub.
+- **(trimestral)** Revisões antigas do Cloud Run: as que apontam para imagens já apagadas
+  pela política não servem mais para rollback. Apague as que não recebem tráfego
+  (`gcloud run revisions list --service <serviço> --region us-east1`).
+- **(anual)** Avaliar a rotação de `buruna-jwt-secret`, `buruna-jobs-secret` e
+  `buruna-proxy-secret`: nova versão no Secret Manager, deploy e só então desabilitar a
+  antiga.
