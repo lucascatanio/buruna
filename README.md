@@ -69,7 +69,6 @@ Variáveis de ambiente obrigatórias e notas de setup: [docs/DEVELOPMENT.md](doc
 | [docs/adr/](docs/adr/)                                 | Decisões de arquitetura                                                         |
 | [docs/glossario-dominio.md](docs/glossario-dominio.md) | Vocabulário de domínio                                                          |
 | [docs/brand/BRAND.md](docs/brand/BRAND.md)             | Marca: logo, cores e regras de uso                                              |
-| [docs/BACKLOG.md](docs/BACKLOG.md)                     | Achados fora de escopo, aguardando issue própria                                |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                     | Fluxo de PR e regras de arquitetura                                             |
 
 ## Licença

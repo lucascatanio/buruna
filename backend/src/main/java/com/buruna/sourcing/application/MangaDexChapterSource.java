@@ -5,7 +5,6 @@ import com.buruna.shared.media.ImageInspector.InspectedImage;
 import com.buruna.shared.media.InvalidArchiveException;
 import com.buruna.shared.source.ExternalSource;
 import com.buruna.shared.source.ExternalSourceException;
-import com.buruna.shared.source.SourceChapterInfo;
 import com.buruna.shared.source.SourcePage;
 import com.buruna.sourcing.domain.SourceChapter;
 import com.buruna.sourcing.domain.SourceName;
@@ -45,8 +44,8 @@ class MangaDexChapterSource implements ChapterSource {
     }
 
     @Override
-    public List<SourceChapterInfo> listChapters(TrackedWork tracked) {
-        return source.listChapters(tracked.getExternalId(), tracked.languageTags());
+    public ChapterListing listChapters(TrackedWork tracked) {
+        return ChapterListing.of(source.listChapters(tracked.getExternalId(), tracked.languageTags()));
     }
 
     @Override

@@ -98,6 +98,10 @@ public class TrackedWork {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
+    // idioma que voltou vazio na última listagem, com o site listando outros (#142)
+    @Column(name = "listing_notice", columnDefinition = "TEXT")
+    private String listingNotice;
+
     @Column(name = "created_by", nullable = false, updatable = false)
     private UUID createdBy;
 
@@ -251,12 +255,19 @@ public class TrackedWork {
         return status == TrackedWorkStatus.ACTIVE;
     }
 
-    public void recordSuccess(OffsetDateTime now) {
+    /** Listagem feita; {@code listingNotice} é o aviso dela, nulo quando não há o que avisar. */
+    public void recordSuccess(OffsetDateTime now, String listingNotice) {
         lastCheckedAt = now;
         lastSuccessAt = now;
         listingRequested = false;
         consecutiveFailures = 0;
         lastError = null;
+        this.listingNotice = listingNotice == null || listingNotice.isBlank() ? null : truncate(listingNotice);
+    }
+
+    /** Aviso da última listagem que deu certo, como "nenhum capítulo em pt-br; o site listou en". */
+    public Optional<String> getListingNotice() {
+        return Optional.ofNullable(listingNotice);
     }
 
     /** Depois de {@link #FAILURES_BEFORE_PAUSE} falhas seguidas, a obra pausa sozinha. */
@@ -264,12 +275,16 @@ public class TrackedWork {
         lastCheckedAt = now;
         listingRequested = false;
         consecutiveFailures++;
-        lastError = error == null ? null : error.substring(0, Math.min(error.length(), MAX_ERROR_LENGTH));
+        lastError = error == null ? null : truncate(error);
         if (consecutiveFailures >= FAILURES_BEFORE_PAUSE && status == TrackedWorkStatus.ACTIVE) {
             status = TrackedWorkStatus.PAUSED;
             pausedAt = now;
             pausedReason = "Pausada depois de " + consecutiveFailures + " falhas seguidas ao verificar a fonte.";
         }
+    }
+
+    private static String truncate(String text) {
+        return text.substring(0, Math.min(text.length(), MAX_ERROR_LENGTH));
     }
 
     public void pause(OffsetDateTime now) {
