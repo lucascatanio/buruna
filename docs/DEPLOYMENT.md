@@ -413,18 +413,20 @@ limpeza de imagens já é automática (abaixo).
   Budgets nem estava ligada no projeto: se ainda não houver alerta, crie um.
 - Artifact Registry: a política `manter-3-mais-recentes` do repositório `us-east1/buruna`
   mantém as 3 versões mais recentes de cada imagem e apaga o resto com mais de 7 dias. Se o
-  tamanho crescer mês a mês, a política parou:
-  `gcloud artifacts repositories describe buruna --location=us-east1 --format="value(sizeBytes,cleanupPolicies)"`.
+  tamanho crescer mês a mês, a política parou. O `describe` mostra o tamanho e as políticas:
+  `gcloud artifacts repositories describe buruna --location=us-east1`.
 - Cloud Logging: volume ingerido no mês (Logging → Armazenamento de logs). A cota grátis é
   de 50 GiB por mês. Log de DEBUG esquecido ligado é a causa mais comum de estouro (ver §7,
   calibração do `APP_TRUSTED_PROXY_HOPS`).
-- Bucket: `gcloud storage du -s gs://buruna-files-catanio`, comparando com o mês anterior.
+- Bucket: `gcloud storage du -s --readable-sizes gs://buruna-files-catanio`, comparando com o
+  mês anterior (38,8 GiB em 2026-11-09).
 
 ### Saúde e desempenho
 
 - Erros do mês no backend e no Job:
-  `gcloud logging read 'severity>=ERROR AND resource.type=("cloud_run_revision" OR "cloud_run_job")' --freshness=30d --format="value(textPayload)" | cut -c1-120 | sort | uniq -c | sort -rn | head`.
-  Erro que se repete vira issue.
+  `gcloud logging read 'severity>=ERROR AND resource.type=("cloud_run_revision" OR "cloud_run_job")' --freshness=30d --format="value(textPayload)" | grep -vE '^\s+(at |\.\.\. )|^\s*$' | cut -c1-140 | sort | uniq -c | sort -rn | head`
+  (o `grep` tira as linhas do stack trace). Erro que se repete vira issue; para a data, rode
+  de novo com `--format="value(timestamp,textPayload)"` e um trecho da mensagem no filtro.
 - Métricas do `buruna-backend` (Cloud Run → Métricas): latência p95, memória perto do
   limite e partidas a frio. Ajuste memória e CPU se faltar ou sobrar.
 - Jobs do Cloud Scheduler (`buruna-inactivity`, `buruna-sourcing-sync`,
