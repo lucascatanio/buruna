@@ -6,7 +6,7 @@ COPY src ./src
 RUN mvn package -DskipTests -q
 
 # binário do manga-downloader (ADR-54), fixado pela tag; o Dependabot abre PR a cada release
-FROM elboletaire/manga-downloader:25.0.0 AS manga-downloader
+FROM elboletaire/manga-downloader:25.1.0 AS manga-downloader
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 # bsdtar (libarchive) extrai os CBR (RAR4 e RAR5) dos capítulos enviados (ADR-48)
