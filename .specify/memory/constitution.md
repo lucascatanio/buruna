@@ -133,27 +133,50 @@ passagem.
 
 ## Fluxo de desenvolvimento
 
-1. **Issue primeiro.** Toda mudança nasce de uma issue no GitHub.
-2. **Spec para o que muda comportamento.** `/speckit-specify` (o quê e o porquê, sem
-   tecnologia), `/speckit-clarify` se houver decisão em aberto, `/speckit-plan` (o como,
-   conferido contra esta constituição), `/speckit-tasks`, `/speckit-analyze`,
-   `/speckit-implement`. A pasta fica em `specs/NNN-nome/` e cita a issue.
-3. **Sem spec:** correção de uma linha, bump de dependência sem mudança de API e ajuste de
-   texto ou doc vão direto para PR. Na dúvida, escreva a spec.
-4. **Decisões:** a decisão de uma feature fica no `research.md` dela. Se virar regra para o
+O fluxo de uma feature tem quatro fases. Cada uma entrega um arquivo que a seguinte usa.
+
+1. **Definir.** Toda mudança nasce de uma issue no GitHub. Mudança de comportamento vira spec:
+   `/speckit-specify` (o quê e o porquê, sem tecnologia) e `/speckit-clarify` quando houver
+   decisão em aberto. A pasta fica em `specs/NNN-nome/` e cita a issue.
+2. **Planejar.** `/speckit-plan` (o como, conferido contra esta constituição),
+   `/speckit-tasks` e `/speckit-analyze`. Achado do analyze é corrigido no arquivo de origem
+   (spec, plano ou tarefas) e o analyze roda de novo antes de implementar.
+   - O `quickstart.md` do plano é um **roteiro verificável**: cada passo tem ação e resultado
+     esperado, cita o requisito ou cenário que cobre (FR, SC, user story) e fica numa seção
+     "depois do deploy" quando só vale em produção.
+3. **Construir.** `/speckit-implement` segue o `tasks.md` e **para em cada checkpoint**: só
+   passa para a próxima fase com `./mvnw clean test` verde em `backend/` (e `npm run build`
+   em `frontend/` quando o front muda), mostrando a saída do comando. Afirmar que passou não
+   conta. Depois, `/speckit-converge` compara o código com a spec, o plano e esta
+   constituição, e o que faltar volta para o implement, até o converge não achar lacuna.
+4. **Validar e entregar.** `/validar-quickstart` sobe o app local (`scripts/dev-env.sh`),
+   segue o roteiro no navegador pelo Playwright MCP (`.mcp.json`) e grava
+   `specs/NNN-nome/validation.md`. O PR com o código da feature só abre com o
+   `validation.md` em **APROVADA**. Falha volta para a fase 3.
+
+Regras que valem em todas as fases:
+
+5. **Sem spec:** correção de uma linha, bump de dependência sem mudança de API, mudança só
+   em teste e ajuste de texto ou doc vão direto para PR, com a label `sem-spec` quando tocam
+   código de aplicação. Na dúvida, escreva a spec.
+6. **Decisões:** a decisão de uma feature fica no `research.md` dela. Se virar regra para o
    projeto todo, entra aqui (emenda) ou como linha nova em
    [ARCHITECTURE.md §7](../../docs/ARCHITECTURE.md#7-registro-de-decisões). Não existem mais
    ADRs avulsos.
-5. **Docs de referência acompanham o código.** Mudou fluxo, schema, deploy, setup ou
+7. **Docs de referência acompanham o código.** Mudou fluxo, schema, deploy, setup ou
    segurança? O mesmo PR atualiza `docs/ARCHITECTURE.md`, `docs/DATABASE.md`,
    `docs/DEPLOYMENT.md`, `docs/DEVELOPMENT.md` ou `SECURITY.md`. Esses documentos descrevem
    o sistema como ele é hoje. Regra não é repetida neles: eles apontam para cá.
-6. **Branch e PR:** branch a partir de `dev`, PR para `dev`, título e commits em
+8. **Branch e PR:** branch a partir de `dev`, PR para `dev`, título e commits em
    `tipo(escopo): descrição`. Um commit por unidade lógica, squash no merge (detalhes no
    [CONTRIBUTING.md](../../CONTRIBUTING.md)).
-7. **Portões antes do PR:** `./mvnw clean test` verde em `backend/` (inclui
-   `ArchitectureTest`), `npm run build` verde em `frontend/` quando o front muda, e o
-   checklist do template de PR marcado.
+9. **Portões do PR**, cobrados pelo CI (`.github/workflows/ci.yml` e `spec-check.yml`):
+   - `./mvnw clean test` verde (inclui `ArchitectureTest`) e `npm run build` verde;
+   - PR que muda código de aplicação (`backend/src/main/` ou `frontend/src/`) traz uma pasta
+     em `specs/`, ou tem a label `sem-spec` (regra 5). PR do Dependabot é isento;
+   - toda pasta de `specs/` num PR com código de aplicação tem `validation.md` com
+     `**Resultado**: APROVADA`;
+   - o checklist do template de PR marcado (este a revisão confere).
 
 ## Governança
 
@@ -166,4 +189,4 @@ passagem.
 - A revisão de todo PR confere conformidade. Exceção aceita fica registrada no
   *Complexity Tracking* do plano da feature.
 
-**Versão**: 1.0.0 | **Ratificada**: 2026-11-15 | **Última emenda**: 2026-11-15
+**Versão**: 1.1.0 | **Ratificada**: 2026-11-15 | **Última emenda**: 2026-11-15

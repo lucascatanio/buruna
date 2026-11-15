@@ -27,10 +27,14 @@ legibilidade, porque o projeto recebe contribuições da comunidade.
 
 ## Fluxo com o Spec Kit
 
-Mudança de comportamento segue `/speckit-specify` → `/speckit-clarify` (se houver decisão
-em aberto) → `/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` → `/speckit-implement`.
-A spec cita a issue do GitHub. Decisão tomada no caminho vai para o `research.md` da
-feature, não para um ADR novo.
+Mudança de comportamento segue as quatro fases da constituição (*Fluxo de
+desenvolvimento*): `/speckit-specify` → `/speckit-clarify` (se houver decisão em aberto) →
+`/speckit-plan` → `/speckit-tasks` → `/speckit-analyze` → `/speckit-implement` →
+`/speckit-converge` → `/validar-quickstart`. A spec cita a issue do GitHub. Decisão tomada
+no caminho vai para o `research.md` da feature, não para um ADR novo.
+
+No `/speckit-implement`, pare em cada checkpoint do `tasks.md` e rode os comandos de
+verificação abaixo, mostrando a saída. Não passe de fase com teste vermelho.
 
 Quando o comportamento muda, atualize no mesmo commit o doc de referência afetado
 (ARCHITECTURE, DATABASE, DEPLOYMENT, DEVELOPMENT, SECURITY). Regra nova ou alterada é
@@ -41,6 +45,8 @@ emenda da constituição, nunca texto solto neste arquivo.
 - Backend: `./mvnw clean test` (dentro de `backend/`; sobe Testcontainers, então o Docker
   precisa estar rodando).
 - Frontend: `npm run build` (dentro de `frontend/`; typecheck e build).
+- App local para testar no navegador: `scripts/dev-env.sh up` e `scripts/dev-env.sh admin`
+  (o `/validar-quickstart` faz isso sozinho; `down` derruba).
 
 ## Forma de trabalhar
 
