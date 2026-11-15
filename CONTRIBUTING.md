@@ -1,9 +1,18 @@
 # Contribuindo com o Burūna
 
-Obrigado por considerar contribuir. O Burūna usa **spec-driven development** com o
-[GitHub Spec Kit](https://github.com/github/spec-kit): toda mudança de comportamento é
-especificada antes de ser codada, e as regras do projeto moram num lugar só, a
+Obrigado por considerar contribuir. As regras do projeto moram num lugar só, a
 [constituição](.specify/memory/constitution.md).
+
+## Contribuindo de fora do time
+
+Você **não precisa** usar o Spec Kit nem escrever spec. Abra uma issue (ou pegue uma
+aberta), faça a mudança numa branch a partir da `dev` e mande o PR para a `dev`, seguindo o
+[fluxo de PR](#fluxo-de-pr) e o [checklist](#checklist-antes-de-abrir-o-pr). A revisão
+confere as regras de arquitetura no código e, se a mudança pedir uma spec, quem é do time a
+escreve. O check `Spec` passa sozinho no seu PR.
+
+Se quiser usar o fluxo spec-driven mesmo assim, a seção [Spec antes do
+código](#spec-antes-do-código) explica como. É opcional para você.
 
 ## Setup de desenvolvimento
 
@@ -29,9 +38,15 @@ Pré-requisitos, comandos de setup local e variáveis de ambiente:
   inclui `ArchitectureTest`.
 - O workflow `Spec` (`.github/workflows/spec-check.yml`) roda em todo PR para `dev`: código de
   aplicação sem pasta em `specs/` (e sem a label `sem-spec`), ou spec sem `validation.md`
-  APROVADA, falha. Para conferir antes do push: `scripts/check-spec.sh`.
+  APROVADA, falha. PR de quem é de fora do time e do Dependabot passa direto. Para conferir
+  antes do push: `scripts/check-spec.sh`.
 
 ## Spec antes do código
+
+Obrigatório para o time do projeto (quem tem acesso de escrita ao repositório), opcional para
+quem contribui de fora. O time usa **spec-driven development** com o
+[GitHub Spec Kit](https://github.com/github/spec-kit): toda mudança de comportamento é
+especificada antes de ser codada.
 
 Para feature, bug com decisão em aberto ou qualquer mudança de comportamento:
 
@@ -80,8 +95,8 @@ de abrir o PR pega isso antes do CI.
 
 - [ ] `./mvnw clean test` verde (dentro de `backend/`) — inclui `ArchitectureTest`.
 - [ ] `npm run build` verde (dentro de `frontend/`, se a mudança tocar o front).
-- [ ] Mudança de comportamento tem a pasta `specs/NNN-nome/` no PR, o `plan.md` passou
-      no *Constitution Check* e o `validation.md` está APROVADA (o CI confere).
+- [ ] (Time do projeto) Mudança de comportamento tem a pasta `specs/NNN-nome/` no PR, o
+      `plan.md` passou no *Constitution Check* e o `validation.md` está APROVADA (o CI confere).
 - [ ] Mudança de comportamento tem teste automatizado equivalente (rede de
       segurança) — não abra PR de refatoração de fluxo sem cobertura do comportamento
       atual.
