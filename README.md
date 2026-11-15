@@ -60,16 +60,17 @@ Variáveis de ambiente obrigatórias e notas de setup: [docs/DEVELOPMENT.md](doc
 
 | Documento                                              | Conteúdo                                                                        |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)           | Clean Architecture por bounded context, regra de dependência, fluxos de usuário |
+| [Constituição](.specify/memory/constitution.md)        | Regras do projeto: arquitetura, domínio, segurança, testes e fluxo              |
+| [specs/](specs/)                                       | Specs, planos e tarefas de cada feature (Spec Kit)                              |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)           | Como o sistema está montado, fluxos de usuário e registro de decisões           |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)             | Setup local completo, variáveis obrigatórias e comandos                         |
 | [docs/DATABASE.md](docs/DATABASE.md)                   | Modelo de dados, constraints, índices e migrations                              |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)               | Infraestrutura GCP, Cloud Run, GCE, GCS e Secret Manager                        |
 | [docs/TESTING.md](docs/TESTING.md)                     | Pirâmide de testes, convenções e como rodar                                     |
 | [SECURITY.md](SECURITY.md)                             | JWT/refresh, RBAC, rate limit, 2FA e reporte de vulnerabilidades                |
-| [docs/adr/](docs/adr/)                                 | Decisões de arquitetura                                                         |
 | [docs/glossario-dominio.md](docs/glossario-dominio.md) | Vocabulário de domínio                                                          |
 | [docs/brand/BRAND.md](docs/brand/BRAND.md)             | Marca: logo, cores e regras de uso                                              |
-| [CONTRIBUTING.md](CONTRIBUTING.md)                     | Fluxo de PR e regras de arquitetura                                             |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                     | Fluxo de PR e como escrever uma spec                                            |
 
 ## Licença
 

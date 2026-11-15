@@ -15,6 +15,8 @@ labels: enhancement
 
 ## Bounded context afetado
 
-<!-- identity / manga / reading / engagement / admin / frontend / infra -->
+<!-- identity / work / reading / engagement / sourcing / admin / frontend / infra -->
 
 ## Contexto adicional
+
+<!-- Depois de aceita, a issue vira spec com /speckit-specify (ver CONTRIBUTING.md). -->

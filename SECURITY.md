@@ -49,9 +49,9 @@ Logout
 
 Cada chamada a `/auth/refresh` invalida o token usado e emite um novo — se um refresh
 token vazar, a janela de exploração cai de 7 dias para um único ciclo. Detalhe e
-tradeoff: [ADR-28](docs/adr/ADR-28-refresh-token-rotation.md). O cookie httpOnly (em vez
+tradeoff: [ADR-28](docs/ARCHITECTURE.md#adr-28). O cookie httpOnly (em vez
 de `localStorage`) e o hash do token no banco (em vez do valor em claro) são
-[ADR-41](docs/adr/ADR-41-refresh-token-cookie-httponly-e-hash.md) — inclusive por que
+[ADR-41](docs/ARCHITECTURE.md#adr-41) — inclusive por que
 `SameSite=Strict` dispensa um token CSRF dedicado nesse fluxo.
 
 ## Deleção de conta
@@ -69,13 +69,13 @@ Segurança → "Excluir conta".
 
 BCrypt via `PasswordEncoder` do Spring Security — hashing adaptativo com salt
 automático, deliberadamente mais lento que SHA-256 para dificultar brute force.
-Decisão: [ADR-06](docs/adr/ADR-06-bcrypt-hashing-senhas.md).
+Decisão: [ADR-06](docs/ARCHITECTURE.md#adr-06).
 
 ## 2FA (TOTP)
 
 Compatível com Google Authenticator, Authy e qualquer app RFC 6238. Quando habilitado,
 é exigido tanto no login quanto no reset de senha. Sem recovery code — perda do
-dispositivo exige intervenção manual de um admin. Decisão: [ADR-30](docs/adr/ADR-30-2fa-totp-google-authenticator.md).
+dispositivo exige intervenção manual de um admin. Decisão: [ADR-30](docs/ARCHITECTURE.md#adr-30).
 
 ## RBAC (controle de acesso por role)
 
@@ -97,7 +97,7 @@ dispositivo exige intervenção manual de um admin. Decisão: [ADR-30](docs/adr/
 Usuários com status `PENDING`, `INACTIVE` ou `DELETED` são bloqueados no login. RBAC é aplicado
 na borda (`@PreAuthorize` no controller); ownership (posse de um recurso) é uma regra
 de `application`, verificada por `actorId` — nunca no domínio de outro contexto. Ver
-[ADR-35](docs/adr/ADR-35-autorizacao-unificada.md).
+[ADR-35](docs/ARCHITECTURE.md#adr-35).
 
 ## Rate limiting
 
@@ -119,7 +119,7 @@ limpas pelo próprio filtro, dentro de uma requisição, no máximo uma vez por 
 `POST /auth/register` exige um token `captchaToken` validado contra
 `https://api.hcaptcha.com/siteverify`. Em desenvolvimento, sem `HCAPTCHA_SECRET`
 configurado, a validação é pulada automaticamente (`CaptchaService`). Rate limit +
-hCaptcha combinados: [ADR-10](docs/adr/ADR-10-rate-limit-hcaptcha-registro.md).
+hCaptcha combinados: [ADR-10](docs/ARCHITECTURE.md#adr-10).
 
 ## Arquivos (GCS)
 
