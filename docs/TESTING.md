@@ -40,6 +40,10 @@ Docker precisa estar rodando.
 `npm run build` (dentro de `frontend/`) — typecheck (`tsc -b`) + build (`vite build`).
 Sem suíte de testes automatizados de UI no momento.
 
+O teste no navegador de cada feature é o `/validar-quickstart`: ele sobe o app com
+`scripts/dev-env.sh`, segue o `quickstart.md` da spec pelo Playwright MCP e grava o
+resultado em `validation.md` (constituição, fluxo de desenvolvimento, fase 4).
+
 Mudança em leitor, upload ou tela nova é testada no navegador antes do PR, de preferência
 com o CSP de produção: um `vite preview` com o header `Content-Security-Policy` copiado do
 `nginx.conf` (num config temporário, fora do commit) e o backend local. O `vite dev` não

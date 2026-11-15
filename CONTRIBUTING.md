@@ -27,24 +27,39 @@ Pré-requisitos, comandos de setup local e variáveis de ambiente:
   `work` + `identity`), considere se não deveria ser dois PRs.
 - CI (`.github/workflows/ci.yml`) roda `./mvnw test` em todo PR para `dev`/`main` —
   inclui `ArchitectureTest`.
+- O workflow `Spec` (`.github/workflows/spec-check.yml`) roda em todo PR para `dev`: código de
+  aplicação sem pasta em `specs/` (e sem a label `sem-spec`), ou spec sem `validation.md`
+  APROVADA, falha. Para conferir antes do push: `scripts/check-spec.sh`.
 
 ## Spec antes do código
 
 Para feature, bug com decisão em aberto ou qualquer mudança de comportamento:
 
-1. Abra (ou escolha) uma issue.
-2. Com um agente compatível com o Spec Kit (o projeto vem configurado para o Claude Code,
-   em `.claude/skills/`), rode na ordem:
-   - `/speckit-specify` com a issue: gera `specs/NNN-nome/spec.md` (o quê e o porquê);
-   - `/speckit-clarify`, se a spec tiver decisões em aberto;
-   - `/speckit-plan`: gera `plan.md`, `research.md`, `data-model.md` e `contracts/`, e
-     confere o plano contra a constituição;
-   - `/speckit-tasks` e `/speckit-analyze`: lista de tarefas e checagem de consistência;
-   - `/speckit-implement`.
-3. A pasta `specs/NNN-nome/` entra no mesmo PR que o código.
+Abra (ou escolha) uma issue e, com um agente compatível com o Spec Kit (o projeto vem
+configurado para o Claude Code, em `.claude/skills/`), siga as quatro fases da
+[constituição](.specify/memory/constitution.md#fluxo-de-desenvolvimento):
 
-Correção de uma linha, bump de dependência e ajuste de texto ou doc dispensam spec. Na
-dúvida, escreva. Sem agente, dá para preencher os templates de `.specify/templates/` à mão.
+| Fase | Comandos | Sai daqui |
+|---|---|---|
+| Definir | `/speckit-specify` com a issue; `/speckit-clarify` se houver decisão em aberto | `spec.md` |
+| Planejar | `/speckit-plan`, `/speckit-tasks`, `/speckit-analyze` | `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md`, `tasks.md` |
+| Construir | `/speckit-implement`, parando em cada checkpoint com os testes verdes; `/speckit-converge` até não sobrar lacuna | código e testes |
+| Validar | `/validar-quickstart` | `validation.md` com resultado APROVADA |
+
+A pasta `specs/NNN-nome/`, com o `validation.md`, entra no mesmo PR que o código.
+
+Correção de uma linha, bump de dependência, mudança só em teste e ajuste de texto ou doc
+dispensam spec; se o PR tocar código de aplicação, ponha a label `sem-spec`. Na dúvida,
+escreva a spec. Sem agente, dá para preencher os templates de `.specify/templates/` à mão.
+
+### Validação no navegador
+
+O `/validar-quickstart` usa o [Playwright MCP](https://github.com/microsoft/playwright-mcp),
+configurado em `.mcp.json`. Na primeira vez, o Claude Code pede para aprovar o servidor
+(`/mcp`); ele usa o Chrome instalado na máquina. O app sobe com `scripts/dev-env.sh up`
+(Postgres do docker compose, backend no profile `local` e Vite), que precisa do `.env` na
+raiz, e `scripts/dev-env.sh admin` cria uma conta ADMIN local para o teste. O mesmo script
+serve para subir o ambiente à mão.
 
 Para instalar a CLI (`specify`), que só é necessária para atualizar os templates:
 `uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v1.4.0`.
@@ -65,8 +80,8 @@ de abrir o PR pega isso antes do CI.
 
 - [ ] `./mvnw clean test` verde (dentro de `backend/`) — inclui `ArchitectureTest`.
 - [ ] `npm run build` verde (dentro de `frontend/`, se a mudança tocar o front).
-- [ ] Mudança de comportamento tem a pasta `specs/NNN-nome/` no PR, e o `plan.md` passou
-      no *Constitution Check*.
+- [ ] Mudança de comportamento tem a pasta `specs/NNN-nome/` no PR, o `plan.md` passou
+      no *Constitution Check* e o `validation.md` está APROVADA (o CI confere).
 - [ ] Mudança de comportamento tem teste automatizado equivalente (rede de
       segurança) — não abra PR de refatoração de fluxo sem cobertura do comportamento
       atual.

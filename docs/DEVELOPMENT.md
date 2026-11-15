@@ -94,6 +94,23 @@ APP_JOBS_SECRET=<qualquer-string-para-dev> \
   "-Dspring-boot.run.arguments=--app.storage.local.path=/tmp/buruna-storage --app.storage.local.base-url=http://localhost:5173"
 ```
 
+## Subir tudo de uma vez
+
+`scripts/dev-env.sh up` faz os três passos desta página (Postgres do docker compose, backend
+no profile `local` com o storage em `.dev-env/storage` e o `base-url` do Vite, e o Vite) e
+espera cada um responder. O que já estiver rodando nas portas 5433, 8080 e 5173 é
+reaproveitado. Lê o `.env` da raiz (`DB_NAME`, `DB_USER` e `DB_PASSWORD` são obrigatórios;
+sem `JWT_SECRET`, `ADMIN_EMAIL` ou `APP_JOBS_SECRET`, usa um valor só de desenvolvimento)
+e força o hCaptcha desligado no backend e no Vite.
+
+- `scripts/dev-env.sh admin [email senha]`: cadastra a conta e a promove a ADMIN ativa pelo
+  banco (não existe seed de ADMIN). Sem argumentos, gera e-mail e senha na primeira vez e
+  os guarda em `.dev-env/admin.env` (fora do git), que as próximas chamadas reaproveitam.
+- `scripts/dev-env.sh status` e `scripts/dev-env.sh down` (derruba só o que o `up` subiu).
+
+Logs em `.dev-env/backend.log` e `.dev-env/frontend.log`. É o que o `/validar-quickstart`
+usa para testar uma feature no navegador.
+
 ## Rodar o frontend local
 
 ```
