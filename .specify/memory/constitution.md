@@ -135,6 +135,12 @@ passagem.
 
 O fluxo de uma feature tem quatro fases. Cada uma entrega um arquivo que a seguinte usa.
 
+**A quem se aplica.** O fluxo spec-driven é obrigatório para o time do projeto (quem tem
+acesso de escrita ao repositório). Contribuição de fora é bem-vinda sem spec: a pessoa abre
+o PR como em qualquer projeto, e a revisão confere as regras desta constituição no código.
+Se a mudança pedir uma spec, quem é do time a escreve, junto ou depois. O Spec Kit fica
+disponível para quem quiser usar.
+
 1. **Definir.** Toda mudança nasce de uma issue no GitHub. Mudança de comportamento vira spec:
    `/speckit-specify` (o quê e o porquê, sem tecnologia) e `/speckit-clarify` quando houver
    decisão em aberto. A pasta fica em `specs/NNN-nome/` e cita a issue.
@@ -173,7 +179,8 @@ Regras que valem em todas as fases:
 9. **Portões do PR**, cobrados pelo CI (`.github/workflows/ci.yml` e `spec-check.yml`):
    - `./mvnw clean test` verde (inclui `ArchitectureTest`) e `npm run build` verde;
    - PR que muda código de aplicação (`backend/src/main/` ou `frontend/src/`) traz uma pasta
-     em `specs/`, ou tem a label `sem-spec` (regra 5). PR do Dependabot é isento;
+     em `specs/`, ou tem a label `sem-spec` (regra 5). PR de fora do time e do Dependabot
+     são isentos;
    - toda pasta de `specs/` num PR com código de aplicação tem `validation.md` com
      `**Resultado**: APROVADA`;
    - o checklist do template de PR marcado (este a revisão confere).
@@ -189,4 +196,4 @@ Regras que valem em todas as fases:
 - A revisão de todo PR confere conformidade. Exceção aceita fica registrada no
   *Complexity Tracking* do plano da feature.
 
-**Versão**: 1.1.0 | **Ratificada**: 2026-11-15 | **Última emenda**: 2026-11-15
+**Versão**: 1.2.0 | **Ratificada**: 2026-11-15 | **Última emenda**: 2026-11-15
