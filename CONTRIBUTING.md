@@ -1,8 +1,9 @@
 # Contribuindo com o Burūna
 
-Obrigado por considerar contribuir. Este projeto está em Clean Architecture + DDD por
-bounded context — as regras abaixo são um resumo; a fonte completa é
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e [CLAUDE.md](CLAUDE.md).
+Obrigado por considerar contribuir. O Burūna usa **spec-driven development** com o
+[GitHub Spec Kit](https://github.com/github/spec-kit): toda mudança de comportamento é
+especificada antes de ser codada, e as regras do projeto moram num lugar só, a
+[constituição](.specify/memory/constitution.md).
 
 ## Setup de desenvolvimento
 
@@ -27,47 +28,45 @@ Pré-requisitos, comandos de setup local e variáveis de ambiente:
 - CI (`.github/workflows/ci.yml`) roda `./mvnw test` em todo PR para `dev`/`main` —
   inclui `ArchitectureTest`.
 
-## Regras de arquitetura que todo PR precisa respeitar
+## Spec antes do código
 
-Resumo — detalhes completos e exemplos em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md):
+Para feature, bug com decisão em aberto ou qualquer mudança de comportamento:
 
-- **Clean Architecture por bounded context**: cada contexto (`identity`, `work`,
-  `reading`, `engagement`, `sourcing`, `admin`) segue `domain/ → application/ → persistence/ → web/`.
-  Não crie `service/` nem `repository/` como nome de pacote.
-- **Cross-contexto só via `application` pública do outro contexto.** Nunca importe
-  `domain`/`persistence` de outro contexto. Referências cross-contexto são por **UUID**
-  (`actorId`, `ownerId`) — nunca a entidade de outro contexto.
-- **Domínio rico, sem setter público.** Regra de negócio é método com invariante no
-  agregado (`work.promoteToPublic()`, `user.approve()`), não um setter chamado de
-  fora.
-- **Exceções de domínio são puras** (sem `HttpStatus`) — tradução para HTTP só no
-  `GlobalExceptionHandler`. Estenda `DomainException` com um `DomainErrorType`; nenhuma
-  exceção do projeto carrega `HttpStatus`.
-- **RBAC na borda** (`@PreAuthorize` no controller); **ownership** é verificada na
-  `application` via `actorId`, nunca no domínio de outro contexto.
-- **Proibido** `@Query(nativeQuery = true)` cross-contexto e `JOIN` entre tabelas de
-  contextos diferentes — passe por um use case público ([ADR-39](docs/adr/ADR-39-cross-context-read-via-use-case.md)).
-- **Unicidade em código novo fica na aplicação**, com lock pessimista e consulta, sem
-  `UNIQUE` no banco ([ADR-53](docs/adr/ADR-53-regra-de-negocio-na-aplicacao-sem-unique.md)).
-  Os `UNIQUE` antigos (slug, e-mail, progresso) ficam como estão.
-- **Trabalho longo não roda na requisição:** vai para o Cloud Run Job de ingest
-  ([ADR-48](docs/adr/ADR-48-ingest-em-cloud-run-job.md)), disparado depois do commit.
+1. Abra (ou escolha) uma issue.
+2. Com um agente compatível com o Spec Kit (o projeto vem configurado para o Claude Code,
+   em `.claude/skills/`), rode na ordem:
+   - `/speckit-specify` com a issue: gera `specs/NNN-nome/spec.md` (o quê e o porquê);
+   - `/speckit-clarify`, se a spec tiver decisões em aberto;
+   - `/speckit-plan`: gera `plan.md`, `research.md`, `data-model.md` e `contracts/`, e
+     confere o plano contra a constituição;
+   - `/speckit-tasks` e `/speckit-analyze`: lista de tarefas e checagem de consistência;
+   - `/speckit-implement`.
+3. A pasta `specs/NNN-nome/` entra no mesmo PR que o código.
 
-**Isso é garantido por teste, não por revisão manual:** `ArchitectureTest`
+Correção de uma linha, bump de dependência e ajuste de texto ou doc dispensam spec. Na
+dúvida, escreva. Sem agente, dá para preencher os templates de `.specify/templates/` à mão.
+
+Para instalar a CLI (`specify`), que só é necessária para atualizar os templates:
+`uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v1.4.0`.
+
+## Regras de arquitetura
+
+Estão na [constituição](.specify/memory/constitution.md): camadas por bounded context,
+fronteiras entre contextos, domínio rico, segurança, testes, simplicidade e trabalho
+longo fora da requisição. O [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) mostra como o
+sistema está montado hoje e resume as decisões antigas (ADRs) no §7.
+
+**Boa parte disso é garantida por teste, não por revisão manual:** `ArchitectureTest`
 (`backend/src/test/java/com/buruna/architecture/ArchitectureTest.java`), com ArchUnit,
-**falha o build** se uma dessas fronteiras for violada. Rodar `./mvnw clean test`
-localmente antes de abrir o PR pega isso antes do CI.
-
-## Rede de segurança antes de refatorar
-
-Ao tocar um fluxo de comportamento existente (não só estrutura), garanta que existe
-teste automatizado cobrindo o comportamento atual antes de mudar a implementação. Ver
-[docs/TESTING.md](docs/TESTING.md).
+**falha o build** se uma fronteira for violada. Rodar `./mvnw clean test` localmente antes
+de abrir o PR pega isso antes do CI.
 
 ## Checklist antes de abrir o PR
 
 - [ ] `./mvnw clean test` verde (dentro de `backend/`) — inclui `ArchitectureTest`.
 - [ ] `npm run build` verde (dentro de `frontend/`, se a mudança tocar o front).
+- [ ] Mudança de comportamento tem a pasta `specs/NNN-nome/` no PR, e o `plan.md` passou
+      no *Constitution Check*.
 - [ ] Mudança de comportamento tem teste automatizado equivalente (rede de
       segurança) — não abra PR de refatoração de fluxo sem cobertura do comportamento
       atual.

@@ -66,7 +66,7 @@ Variáveis **obrigatórias** (sem default em `application.yml`) — só estas 8:
   hCaptcha, só têm o bypass aceito com o profile `local` ativo: local não tem Pub/Sub, e
   `POST /auth/password/forgot` processa o pedido na própria requisição
   (`InlinePasswordResetRequests`, `@Profile("local")`) em vez de publicar — ver
-  [ADR-42](adr/ADR-42-forgot-password-via-pubsub.md).
+  [ADR-42](ARCHITECTURE.md#adr-42).
 
 O profile `local` ativa `LocalStorageClient` (`LocalStorageConfig`, `@Profile("local")`),
 que exige `app.storage.local.path` e `app.storage.local.base-url`. Os defaults em

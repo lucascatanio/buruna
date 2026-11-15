@@ -58,7 +58,7 @@ User ──< PasswordResetToken
 | users                 | totp_last_used_step, totp_failed_attempts, totp_locked_until | V21 — força bruta e replay de TOTP |
 | refresh_tokens        | token VARCHAR(64)                              | V22 — SHA-256 hex do token, não mais o valor em claro |
 | reading_progress      | total_pages, CHECK(current_page <= total_pages) | V23 — total de páginas do volume (nulo até o leitor informar) |
-| chapters              | INDEX(work_id, language, number), CHECK(number OR label) | V28 — sem UNIQUE: número único por obra e idioma é regra da aplicação, sob lock na obra ([ADR-53](adr/ADR-53-regra-de-negocio-na-aplicacao-sem-unique.md)) |
+| chapters              | INDEX(work_id, language, number), CHECK(number OR label) | V28 — sem UNIQUE: número único por obra e idioma é regra da aplicação, sob lock na obra ([ADR-53](ARCHITECTURE.md#adr-53)) |
 | chapter_pages         | PK(chapter_id, page_index)                     | V28 — páginas de um capítulo de imagens |
 | reading_progress      | UNIQUE(user_id, chapter_id), CHECK(volume_id XOR chapter_id) | V30 — progresso por capítulo, convivendo com o de volume |
 | reading_history       | INDEX(chapter_id), CHECK(volume_id XOR chapter_id) | V30 |
@@ -69,9 +69,9 @@ User ──< PasswordResetToken
 | tracked_work_ignored_groups | PK(tracked_work_id, group_id)            | V33 |
 | source_leases         | PK(source)                                     | V32 — linha do MANGADEX semeada na migration; a do MANGA_DOWNLOADER na V35 |
 
-Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](adr/ADR-09-indices-seletivos-banco.md).
-Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](adr/ADR-17-remocao-unique-file-hash-v15.md)
-e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
+Por que só 7 índices manuais em vez de indexar toda FK: [ADR-09](ARCHITECTURE.md#adr-09).
+Por que `volumes` não tem mais `UNIQUE(file_hash)` global: [ADR-17](ARCHITECTURE.md#adr-17)
+e [ADR-18](ARCHITECTURE.md#adr-18).
 
 ## 3. Migrations Flyway (V1–V37)
 
@@ -106,14 +106,14 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 | V24    | Adicionou valor `APPROVED` ao enum manga_submission_status                         |
 | V25    | Backfill: aprovados antigos (público + reviewed_at, status nulo) → `APPROVED`; público com `PENDING`/`REJECTED` (promovido com submissão aberta) → status e motivo nulos |
 | V26    | Adicionou valor `DELETED` ao enum user_status (conta anonimizada)                  |
-| V27    | Renomeia mangas → works, manga_tags → work_tags, colunas manga_id → work_id, tipos enum manga_* → work_* e constraints/índices ([ADR-45](adr/ADR-45-renomear-manga-para-work.md)) |
-| V28    | Tabelas chapters e chapter_pages, enums chapter_kind e chapter_status ([ADR-44](adr/ADR-44-capitulo-como-unidade-de-leitura.md)) |
-| V29    | Colunas source_object_name e source_size_bytes em chapters: arquivo enviado guardado até a extração das páginas ([ADR-48](adr/ADR-48-ingest-em-cloud-run-job.md)) |
-| V30    | reading_progress e reading_history ganham chapter_id (volume_id passa a ser opcional; CHECK de exatamente um dos dois) e UNIQUE(user_id, chapter_id) no progresso ([ADR-21](adr/ADR-21-progresso-leitura-por-volume.md), atualização) |
-| V31    | Capítulo-arquivo (livro): chapters.file_object_name, file_format (enum chapter_file_format: PDF, EPUB), file_size_bytes, file_page_count; reading_progress.position (CFI) e percent (0 a 1) para EPUB ([ADR-44](adr/ADR-44-capitulo-como-unidade-de-leitura.md), [ADR-21](adr/ADR-21-progresso-leitura-por-volume.md)) |
-| V32    | Contexto sourcing: tracked_works (enum external_source, tracked_work_status), tracked_work_languages, source_chapters (enum source_chapter_state), source_leases com a linha do MANGADEX ([ADR-47](adr/ADR-47-contexto-sourcing.md)). Sem UNIQUE em (fonte, id externo) (ADR-53) |
+| V27    | Renomeia mangas → works, manga_tags → work_tags, colunas manga_id → work_id, tipos enum manga_* → work_* e constraints/índices ([ADR-45](ARCHITECTURE.md#adr-45)) |
+| V28    | Tabelas chapters e chapter_pages, enums chapter_kind e chapter_status ([ADR-44](ARCHITECTURE.md#adr-44)) |
+| V29    | Colunas source_object_name e source_size_bytes em chapters: arquivo enviado guardado até a extração das páginas ([ADR-48](ARCHITECTURE.md#adr-48)) |
+| V30    | reading_progress e reading_history ganham chapter_id (volume_id passa a ser opcional; CHECK de exatamente um dos dois) e UNIQUE(user_id, chapter_id) no progresso ([ADR-21](ARCHITECTURE.md#adr-21), atualização) |
+| V31    | Capítulo-arquivo (livro): chapters.file_object_name, file_format (enum chapter_file_format: PDF, EPUB), file_size_bytes, file_page_count; reading_progress.position (CFI) e percent (0 a 1) para EPUB ([ADR-44](ARCHITECTURE.md#adr-44), [ADR-21](ARCHITECTURE.md#adr-21)) |
+| V32    | Contexto sourcing: tracked_works (enum external_source, tracked_work_status), tracked_work_languages, source_chapters (enum source_chapter_state), source_leases com a linha do MANGADEX ([ADR-47](ARCHITECTURE.md#adr-47)). Sem UNIQUE em (fonte, id externo) (ADR-53) |
 | V33    | Sync (ADR-49): tracked_works.listing_requested, paused_at, paused_reason; tracked_work_ignored_groups; source_chapters.attempts, failed_at, removed_at_source, source_update_detected_at, replaces_chapter_id; source_leases.last_digest_at |
-| V34    | Fonte MANGA_DOWNLOADER no enum external_source ([ADR-54](adr/ADR-54-fontes-pelo-manga-downloader-e-anilist.md)); tracked_works.external_id e source_chapters.external_id sobem para 500 (a URL da série e o id do capítulo no site); tracked_work_languages.source_language (código do idioma no site) |
+| V34    | Fonte MANGA_DOWNLOADER no enum external_source ([ADR-54](ARCHITECTURE.md#adr-54)); tracked_works.external_id e source_chapters.external_id sobem para 500 (a URL da série e o id do capítulo no site); tracked_work_languages.source_language (código do idioma no site) |
 | V35    | Linha do MANGA_DOWNLOADER em source_leases (migration própria: o valor novo do enum não pode ser usado na transação que o cria) |
 | V36    | works.anilist_id com índice comum, sem UNIQUE (ADR-53): o import de site acha por ele a obra que já existe (ADR-54) |
 | V37    | tracked_works.listing_notice: aviso da última listagem, quando um idioma acompanhado volta sem capítulos e o site lista outros (#142) |
@@ -131,4 +131,4 @@ e [ADR-18](adr/ADR-18-promote-valida-unicidade-mangas-publicos.md).
 - Migrations nomeadas `V{n}__{descricao}.sql`, nunca editadas após aplicadas em
   qualquer ambiente — mudança de schema é sempre uma nova migration.
 - `alternative_titles` e `content_warnings` em `works` são `TEXT` com JSON serializado,
-  não `TEXT[]` nativo — ver [ADR-11](adr/ADR-11-alternative-titles-content-warnings-text-json.md).
+  não `TEXT[]` nativo — ver [ADR-11](ARCHITECTURE.md#adr-11).

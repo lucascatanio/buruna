@@ -1,8 +1,8 @@
 # Glossário de Domínio — Burūna
 
 > Linguagem ubíqua extraída do código real (agregados, Value Objects, enums, exceções de
-> domínio e use cases), pós-refatoração Clean Architecture + DDD (Epics 0–6). Fonte da
-> verdade: `backend/src/main/java/com/buruna/{identity,work,reading,engagement,admin}`.
+> domínio e use cases), Fonte da verdade:
+> `backend/src/main/java/com/buruna/{identity,work,reading,engagement,sourcing,admin}`.
 > Ordenado por contexto; termos cross-contexto no topo.
 
 ---
@@ -122,7 +122,7 @@
 | **actorId** | UUID do usuário autenticado, passado como primitivo para a `application` — nunca a entidade `User` de `identity` cruza para outro contexto (ADR-35/ADR-39). |
 | **Ownership** | Regra "o recurso pertence ao actorId" verificada na `application` (não no `@PreAuthorize`, que cobre só RBAC). |
 | **RBAC na borda** | `@PreAuthorize` no controller decide **papel** (`Role`); a `application` decide **posse** (ownership) via query/`actorId`. |
-| **Exceção de domínio pura** | Estende `DomainException` com um `DomainErrorType`, sem `HttpStatus` (ADR-33); tradução para HTTP só no `GlobalExceptionHandler`. O padrão antigo (`LegacyHttpDomainException`) foi removido no Epic 6. |
+| **Exceção de domínio pura** | Estende `DomainException` com um `DomainErrorType`, sem `HttpStatus` (ADR-33); tradução para HTTP só no `GlobalExceptionHandler`. |
 | **Domain service** | Só quando a lógica não pertence a uma entidade e precisa de I/O (ex.: `QuotaService`, `SlugAllocator` em `work/application` — a parte pura fica no VO/policy, a parte com repositório fica na `application`). |
 
 ---
@@ -133,5 +133,5 @@
 |---|---|
 | **Inatividade** | > 75 dias sem acesso → aviso por e-mail; > 90 dias → desativação (`UserStatus.INACTIVE`) + apagar coleção privada (`DeletePrivateCollectionForUserUseCase`). Ver `InactivityPolicy` (§2). |
 | **Promoção direta** | `COLLABORATOR`+ pode promover o próprio privado sem revisão (`promoteToPublic()`). |
-| **Submissão com revisão** | Qualquer `ACTIVE` pode submeter; só `ADMIN` aprova/rejeita. Ambos os caminhos coexistem (decisão travada na Fase 1, ver `docs/refactor/01-analise-estado-atual.md` §D7/R6). |
+| **Submissão com revisão** | Qualquer `ACTIVE` pode submeter; só `ADMIN` aprova/rejeita. Ambos os caminhos coexistem, por decisão de domínio. |
 | **Conflito de publicação** | Promoção/aprovação falha se já existe título público igual (`PublicTitleConflictException`) ou hash de arquivo já público (`PublicVolumeConflictException`). |
