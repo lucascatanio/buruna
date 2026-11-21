@@ -26,7 +26,7 @@ import com.buruna.work.persistence.WorkRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
@@ -37,7 +37,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -51,7 +51,9 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -59,6 +61,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -74,7 +77,7 @@ class ChapterReadingIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16");
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16");
 
     static final OffsetDateTime PUBLISHED_AT = OffsetDateTime.parse("2026-10-09T12:00:00Z");
 
@@ -175,7 +178,9 @@ class ChapterReadingIntegrationTest {
                 .andExpect(jsonPath("$.previousChapterId").value(first.getId().toString()))
                 .andExpect(jsonPath("$.nextChapterId").value(third.getId().toString()))
                 .andExpect(jsonPath("$.scanlationGroup").value("Grupo X"))
-                .andExpect(jsonPath("$.urlsExpireAt").exists());
+                // Instant em ISO-8601 UTC, nunca número (FR-009 da spec 003)
+                .andExpect(jsonPath("$.urlsExpireAt")
+                        .value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z")));
         assertThat(workRepository.findById(publicWork.getId()).orElseThrow().getViewCount()).isEqualTo(1);
     }
 
@@ -325,7 +330,10 @@ class ChapterReadingIntegrationTest {
                 .andExpect(jsonPath("$.file.format").value("PDF"))
                 .andExpect(jsonPath("$.file.pageCount").value(120))
                 .andExpect(jsonPath("$.file.url").value(org.hamcrest.Matchers.startsWith("https://storage.example.com/chapter-sources/livro/")))
-                .andExpect(jsonPath("$.nextChapterId").value(nullValue()));
+                .andExpect(jsonPath("$.nextChapterId").value(nullValue()))
+                // nulo sem @JsonInclude vai como null, não some (FR-009 da spec 003);
+                // value(nullValue()) também passaria com o campo ausente
+                .andExpect(content().string(containsString("\"nextChapterId\":null")));
     }
 
     @Test

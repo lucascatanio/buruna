@@ -113,7 +113,7 @@ O `ArchitectureTest` (ArchUnit) falha o build quando uma destas regras é quebra
 
 ## Padrões técnicos
 
-**Stack:** Java 21, Spring Boot 3.5, PostgreSQL 16, Flyway, Testcontainers e ArchUnit no
+**Stack:** Java 21, Spring Boot 4.1, PostgreSQL 16, Flyway, Testcontainers e ArchUnit no
 backend. React 19, TypeScript 5.9, Vite, shadcn/ui, Tailwind, Axios e Zustand no frontend.
 Docker, GitHub Actions, Cloud Run (serviço e Job), GCS, Pub/Sub, Secret Manager e Cloud
 Scheduler na infra. Versão nova de uma dependência principal é decisão de plano, não de
@@ -196,4 +196,4 @@ Regras que valem em todas as fases:
 - A revisão de todo PR confere conformidade. Exceção aceita fica registrada no
   *Complexity Tracking* do plano da feature.
 
-**Versão**: 1.2.0 | **Ratificada**: 2026-11-15 | **Última emenda**: 2026-11-15
+**Versão**: 1.2.1 | **Ratificada**: 2026-11-15 | **Última emenda**: 2026-11-21

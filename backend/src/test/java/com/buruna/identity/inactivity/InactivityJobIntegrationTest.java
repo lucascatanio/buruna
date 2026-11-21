@@ -20,13 +20,13 @@ import com.buruna.work.persistence.VolumeRepository;
 import com.buruna.shared.notification.EmailRecipient;
 import com.buruna.shared.notification.EmailService;
 import com.buruna.shared.storage.StorageClient;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -36,7 +36,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -87,7 +87,7 @@ class InactivityJobIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16");
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16");
 
     /** Instante fixo do relógio do use case, para bordas de limiar determinísticas. */
     private static final Instant FIXED_INSTANT = Instant.parse("2026-07-04T02:00:00Z");
@@ -356,7 +356,7 @@ class InactivityJobIntegrationTest {
             // storageByUser contém o owner com o mesmo storage privado (público excluído).
             JsonNode ownerEntry = storageEntryFor(body, "dashOwner");
             assertThat(ownerEntry).isNotNull();
-            assertThat(ownerEntry.get("userId").asText()).isEqualTo(owner.getId().toString());
+            assertThat(ownerEntry.get("userId").asString()).isEqualTo(owner.getId().toString());
             assertThat(ownerEntry.get("usedGb").decimalValue())
                     .isEqualByComparingTo(new BigDecimal("0.20"));
             assertThat(ownerEntry.get("quotaGb").decimalValue())
@@ -365,7 +365,7 @@ class InactivityJobIntegrationTest {
 
         private JsonNode storageEntryFor(JsonNode body, String username) {
             for (JsonNode entry : body.get("storageByUser")) {
-                if (username.equals(entry.get("username").asText())) {
+                if (username.equals(entry.get("username").asString())) {
                     return entry;
                 }
             }

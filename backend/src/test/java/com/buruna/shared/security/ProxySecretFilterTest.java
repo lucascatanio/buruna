@@ -1,6 +1,6 @@
 package com.buruna.shared.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -19,7 +19,7 @@ class ProxySecretFilterTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-08T12:00:00Z"), ZoneOffset.UTC);
 
     private ProxySecretFilter filterWith(String secret) {
-        return new ProxySecretFilter(secret, new ObjectMapper(), clock);
+        return new ProxySecretFilter(secret, JsonMapper.builder().build(), clock);
     }
 
     private MockHttpServletResponse call(ProxySecretFilter filter, String uri, String headerValue) throws Exception {

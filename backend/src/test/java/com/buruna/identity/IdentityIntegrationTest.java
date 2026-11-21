@@ -15,8 +15,8 @@ import com.buruna.identity.domain.User;
 import com.buruna.identity.domain.UserStatus;
 import com.buruna.identity.domain.Username;
 import com.buruna.identity.persistence.UserRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 import dev.samstevens.totp.code.CodeGenerator;
 import dev.samstevens.totp.code.DefaultCodeGenerator;
@@ -26,7 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -43,7 +43,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -89,7 +89,7 @@ class IdentityIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16");
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16");
 
     /** Emails são externos: substituídos por um no-op para hermeticidade. */
     @TestConfiguration
@@ -293,8 +293,13 @@ class IdentityIntegrationTest {
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
 
         JsonNode body = body(result);
-        assertThat(body.get("accessToken").asText()).isNotBlank();
+        assertThat(body.get("accessToken").asString()).isNotBlank();
         assertThat(body.has("refreshToken")).isFalse();
+        // Formato do JSON (FR-009 da spec 003): campos nulos somem (@JsonInclude(NON_NULL)) e o
+        // refresh token nunca vai no corpo (@JsonIgnore).
+        assertThat(result.getResponse().getContentAsString())
+                .contains("\"requires2FA\":false", "\"accessToken\":")
+                .doesNotContain("tempToken", "refreshToken");
 
         String setCookie = result.getResponse().getHeader("Set-Cookie");
         assertThat(setCookie).isNotNull();
@@ -336,7 +341,7 @@ class IdentityIntegrationTest {
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         JsonNode body = body(result);
         assertThat(body.get("requires2FA").asBoolean()).isTrue();
-        assertThat(body.get("tempToken").asText()).isNotBlank();
+        assertThat(body.get("tempToken").asString()).isNotBlank();
         assertThat(body.has("accessToken")).isFalse();
         // Sem 2FA concluído ainda não há sessão — nenhum cookie de refresh é emitido.
         assertThat(result.getResponse().getHeader("Set-Cookie")).isNull();
@@ -353,7 +358,7 @@ class IdentityIntegrationTest {
         MvcResult result = refresh(r1);
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         JsonNode body = body(result);
-        assertThat(body.get("accessToken").asText()).isNotBlank();
+        assertThat(body.get("accessToken").asString()).isNotBlank();
         assertThat(body.has("refreshToken")).isFalse();
         assertThat(extractRefreshCookieValue(result)).isNotBlank();
     }
@@ -436,7 +441,7 @@ class IdentityIntegrationTest {
     @Test
     void accessToken_deactivatedUser_returns401_onNextRequest() throws Exception {
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
-        String accessToken = body(loginResult).get("accessToken").asText();
+        String accessToken = body(loginResult).get("accessToken").asString();
 
         mockMvc.perform(get("/auth/2fa/status")
                         .header("Authorization", "Bearer " + accessToken))
@@ -699,8 +704,8 @@ class IdentityIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         JsonNode body = body(result);
-        assertThat(body.get("secret").asText()).isNotBlank();
-        assertThat(body.get("qrUri").asText()).isNotBlank();
+        assertThat(body.get("secret").asString()).isNotBlank();
+        assertThat(body.get("qrUri").asString()).isNotBlank();
     }
 
     @Test
@@ -708,7 +713,7 @@ class IdentityIntegrationTest {
         MvcResult setup = mockMvc.perform(post("/auth/2fa/setup").with(auth(activeUser)))
                 .andExpect(status().isOk())
                 .andReturn();
-        String secret = body(setup).get("secret").asText();
+        String secret = body(setup).get("secret").asString();
 
         mockMvc.perform(post("/auth/2fa/verify")
                         .with(auth(activeUser))
@@ -757,7 +762,7 @@ class IdentityIntegrationTest {
         String secret = enableTotp(activeUser);
 
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
-        String tempToken = body(loginResult).get("tempToken").asText();
+        String tempToken = body(loginResult).get("tempToken").asString();
 
         MvcResult result = mockMvc.perform(post("/auth/2fa/authenticate")
                         .contentType(JSON)
@@ -766,7 +771,7 @@ class IdentityIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
         JsonNode body = body(result);
-        assertThat(body.get("accessToken").asText()).isNotBlank();
+        assertThat(body.get("accessToken").asString()).isNotBlank();
         assertThat(body.has("refreshToken")).isFalse();
         assertThat(extractRefreshCookieValue(result)).isNotBlank();
     }
@@ -776,7 +781,7 @@ class IdentityIntegrationTest {
         enableTotp(activeUser);
 
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
-        String tempToken = body(loginResult).get("tempToken").asText();
+        String tempToken = body(loginResult).get("tempToken").asString();
 
         mockMvc.perform(post("/auth/2fa/authenticate")
                         .contentType(JSON)
@@ -792,7 +797,7 @@ class IdentityIntegrationTest {
         // de novo dentro da mesma janela de 30s.
         String secret = enableTotp(activeUser);
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
-        String tempToken = body(loginResult).get("tempToken").asText();
+        String tempToken = body(loginResult).get("tempToken").asString();
         String code = currentTotpCode(secret);
 
         mockMvc.perform(post("/auth/2fa/authenticate")
@@ -812,7 +817,7 @@ class IdentityIntegrationTest {
     void twoFA_authenticate_fifthInvalidAttempt_locksAndRejectsCorrectCodeWith429() throws Exception {
         String secret = enableTotp(activeUser);
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
-        String tempToken = body(loginResult).get("tempToken").asText();
+        String tempToken = body(loginResult).get("tempToken").asString();
 
         for (int i = 0; i < 5; i++) {
             mockMvc.perform(post("/auth/2fa/authenticate")
@@ -840,7 +845,7 @@ class IdentityIntegrationTest {
         enableTotp(activeUser);
 
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
-        String tempToken = body(loginResult).get("tempToken").asText();
+        String tempToken = body(loginResult).get("tempToken").asString();
 
         // O tempToken (purpose=2fa) tem que ser recusado como Bearer de
         // um endpoint autenticado comum — senão a 2FA fica inútil.
@@ -882,7 +887,7 @@ class IdentityIntegrationTest {
     void shouldReturn403_whenDisablingWithAlreadyUsedCode() throws Exception {
         String secret = enableTotp(activeUser);
         MvcResult loginResult = login("active@id.test", KNOWN_PASSWORD);
-        String tempToken = body(loginResult).get("tempToken").asText();
+        String tempToken = body(loginResult).get("tempToken").asString();
         String code = currentTotpCode(secret);
         mockMvc.perform(post("/auth/2fa/authenticate")
                         .contentType(JSON)

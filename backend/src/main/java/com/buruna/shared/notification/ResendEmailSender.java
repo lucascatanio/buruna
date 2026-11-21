@@ -1,12 +1,13 @@
 package com.buruna.shared.notification;
 
+import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.http.*;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -35,14 +36,11 @@ public class ResendEmailSender implements EmailSender {
             @Value("${resend.api-key}") String apiKey,
             @Value("${app.mail.from}") String from) {
         this(new RestTemplateBuilder()
-                .requestFactory(() -> {
-                    HttpComponentsClientHttpRequestFactory factory =
-                            new HttpComponentsClientHttpRequestFactory();
-                    factory.setConnectTimeout(TIMEOUT);
-                    factory.setConnectionRequestTimeout(TIMEOUT);
-                    factory.setReadTimeout(TIMEOUT);
-                    return factory;
-                })
+                .requestFactoryBuilder(ClientHttpRequestFactoryBuilder.httpComponents()
+                        .withDefaultRequestConfigCustomizer(
+                                config -> config.setConnectionRequestTimeout(Timeout.of(TIMEOUT))))
+                .connectTimeout(TIMEOUT)
+                .readTimeout(TIMEOUT)
                 .build(), apiKey, from);
     }
 
