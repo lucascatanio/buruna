@@ -9,6 +9,11 @@ RUN mvn package -DskipTests -q
 FROM elboletaire/manga-downloader:25.1.0 AS manga-downloader
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
+# Piso de versão da JVM: abaixo de 21.0.13.1 ela está exposta ao Java4Shell (CVE-2026-114938,
+# execução remota pelo decodificador Base64). Se um cache ou espelho entregar a imagem antiga,
+# o build falha em vez de publicar uma JVM vulnerável (#163).
+RUN java -version 2>&1 | grep -Eq 'version "21\.0\.(13\.[1-9]|1[4-9]|[2-9][0-9])' \
+    || { java -version; echo "JVM abaixo de 21.0.13.1 (Java4Shell, CVE-2026-114938): atualize a imagem base" >&2; exit 1; }
 # bsdtar (libarchive) extrai os CBR (RAR4 e RAR5) dos capítulos enviados (ADR-48)
 RUN apk add --no-cache libarchive-tools
 # o serviço usa o binário só para listar uma série na tela de import, sem navegador
