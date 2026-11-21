@@ -10,7 +10,7 @@
 ![CI](https://github.com/lucascatanio/buruna/actions/workflows/ci.yml/badge.svg?branch=dev)
 ![Deploy](https://github.com/lucascatanio/buruna/actions/workflows/deploy.yml/badge.svg?branch=main)
 ![Java](https://img.shields.io/badge/Java-21-blue)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-brightgreen)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.3-brightgreen)
 ![React](https://img.shields.io/badge/React-19-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
@@ -24,7 +24,7 @@ MangaDex.
 
 ## Stack
 
-Backend em Java 21 + Spring Boot 3.5.16, Clean Architecture por bounded context
+Backend em Java 21 + Spring Boot 4.1.3, Clean Architecture por bounded context
 (`identity`, `work`, `reading`, `engagement`, `sourcing`, `admin`), PostgreSQL + Flyway,
 JWT + Refresh Token + 2FA (TOTP), arquivos no Google Cloud Storage via URLs
 assinadas, extração de páginas (PDFBox, bsdtar) num Cloud Run Job. Frontend em React 19 +

@@ -131,9 +131,9 @@ baseline, inclusive o CORS, são iguais, salvo `timestamp`, `Date` e valores de 
 refresh, 2FA, logout, cadastro, aprovação, reset e push do Pub/Sub), `ReadingIntegrationTest`,
 `ChapterReadingIntegrationTest`, `EngagementIntegrationTest` e `ProxySecretIntegrationTest`.
 
-- [ ] T020 [US1] Subir o app no Boot 4 (`scripts/dev-env.sh status`, com a mesma regra de portas de T003, e depois `scripts/dev-env.sh up`). Fazer `POST /api/auth/refresh` com o cookie guardado em T004 e conferir que responde 200 com `accessToken` novo, sem novo login (FR-004, SC-004, US1 cenário 1). O cookie ainda vale porque T003 não chamou o refresh e ele dura 7 dias. Depois, apagar `/tmp/claude-1000/-home-lucascatanio-Projects-buruna/104c5265-034f-4405-8eb8-80cd839ea1c2/scratchpad/refresh-boot3.txt`
-- [ ] T021 [US1] Repetir os `curl -s -i` de T003, inclusive os dois preflights de CORS, e comparar com `specs/003-migrar-spring-boot-4/baseline-boot3.md`. Só podem diferir `timestamp`, `Date` e valores de token. Uma diferença em status, campo, cabeçalho de segurança, cabeçalho CORS ou `Set-Cookie` é corrigida na configuração (por exemplo, `server.error.*` no `backend/src/main/resources/application.yml`) e registrada em `research.md` (FR-009, FR-010, FR-011, US1 cenários 4–5)
-- [ ] T022 [US1] Checkpoint: `./mvnw clean test` em `backend/` verde, com a saída mostrada (constituição, Fluxo item 3), mesmo que T021 não tenha mudado nada
+- [X] T020 [US1] Subir o app no Boot 4 (`scripts/dev-env.sh status`, com a mesma regra de portas de T003, e depois `scripts/dev-env.sh up`). Fazer `POST /api/auth/refresh` com o cookie guardado em T004 e conferir que responde 200 com `accessToken` novo, sem novo login (FR-004, SC-004, US1 cenário 1). O cookie ainda vale porque T003 não chamou o refresh e ele dura 7 dias. Depois, apagar `/tmp/claude-1000/-home-lucascatanio-Projects-buruna/104c5265-034f-4405-8eb8-80cd839ea1c2/scratchpad/refresh-boot3.txt`
+- [X] T021 [US1] Repetir os `curl -s -i` de T003, inclusive os dois preflights de CORS, e comparar com `specs/003-migrar-spring-boot-4/baseline-boot3.md`. Só podem diferir `timestamp`, `Date` e valores de token. Uma diferença em status, campo, cabeçalho de segurança, cabeçalho CORS ou `Set-Cookie` é corrigida na configuração (por exemplo, `server.error.*` no `backend/src/main/resources/application.yml`) e registrada em `research.md` (FR-009, FR-010, FR-011, US1 cenários 4–5)
+- [X] T022 [US1] Checkpoint: `./mvnw clean test` em `backend/` verde, com a saída mostrada (constituição, Fluxo item 3), mesmo que T021 não tenha mudado nada
 
 **Checkpoint**: US1 conferida e suíte verde. Já daria para fazer o deploy só com a garantia
 da leitura.
@@ -153,8 +153,8 @@ falso é recusado.
 - `IdentityIntegrationTest` (aprovação e reset, US2 cenários 4–5).
 - Os clientes que desserializam pelo Jackson 3 do `RestTemplate` (R3): `MangaDexSourceTest`, `AniListSourceTest`, `CaptchaServiceTest`, `PubSubPublisherTest`, `CloudRunJobLauncherTest`, `ResendEmailSenderTest` e `MangaDownloaderClientTest`.
 
-- [ ] T023 [US2] Com o app de T020 no ar, enviar um capítulo em PDF, um CBZ e um EPUB a uma obra do admin, e um `.pdf` falso. Conferir que os três são publicados e o falso é recusado com a mesma mensagem de antes. Esses são os passos 6–7 do [quickstart.md](quickstart.md), feitos aqui por `curl` ou pelo navegador para pegar a quebra cedo. O `/validar-quickstart` repete tudo no fim (FR-006, US2 cenários 1–2)
-- [ ] T024 [US2] Checkpoint: `./mvnw clean test` em `backend/` verde, com a saída mostrada
+- [X] T023 [US2] Com o app de T020 no ar, enviar um capítulo em PDF, um CBZ e um EPUB a uma obra do admin, e um `.pdf` falso. Conferir que os três são publicados e o falso é recusado com a mesma mensagem de antes. Esses são os passos 6–7 do [quickstart.md](quickstart.md), feitos aqui por `curl` ou pelo navegador para pegar a quebra cedo. O `/validar-quickstart` repete tudo no fim (FR-006, US2 cenários 1–2)
+- [X] T024 [US2] Checkpoint: `./mvnw clean test` em `backend/` verde, com a saída mostrada
 
 **Checkpoint**: US1 e US2 conferidas.
 
@@ -171,13 +171,13 @@ duas vezes não duplica nada.
 `StorageOrphansJobIntegrationTest`, `SourcingSyncIntegrationTest` e
 `DeletePrivateCollectionForUserIntegrationTest`.
 
-- [ ] T025 [US3] Com o app de T020 no ar:
+- [X] T025 [US3] Com o app de T020 no ar:
   - `POST /api/admin/jobs/inactivity` e `POST /api/admin/jobs/storage-orphans` com `X-Job-Secret: dev-secret`: 200 com o resumo.
   - Os mesmos pedidos sem o header: a mesma recusa de hoje.
   - `POST /api/admin/sourcing/run` duas vezes seguidas, como admin: nenhum capítulo duplicado.
   - Esses são os passos 11–13 do quickstart. Depois, `scripts/dev-env.sh down`.
   - Cobre FR-008 e US3 cenários 1–3.
-- [ ] T026 [US3] Checkpoint: `./mvnw clean test` em `backend/` verde, com a saída mostrada
+- [X] T026 [US3] Checkpoint: `./mvnw clean test` em `backend/` verde, com a saída mostrada
 
 **Checkpoint**: as três stories conferidas localmente.
 
@@ -185,11 +185,11 @@ duas vezes não duplica nada.
 
 ## Phase 6: Polish, docs e validação
 
-- [ ] T027 [P] Em `.specify/memory/constitution.md`:
+- [X] T027 [P] Em `.specify/memory/constitution.md`:
   - Em *Padrões técnicos*, "Spring Boot 3.5" → "Spring Boot 4.1".
   - O rodapé passa a `**Versão**: 1.2.1 | **Ratificada**: 2026-11-15 | **Última emenda**: 2026-11-21`. É emenda PATCH, só redação de versão (R12).
-- [ ] T028 [P] Em `README.md`, trocar o badge `Spring%20Boot-3.5.16` → `Spring%20Boot-4.1.3` e o texto "Spring Boot 3.5.16" → "Spring Boot 4.1.3" (R12)
-- [ ] T029 Rodar `grep -rn "3\.5\.16\|Boot 3\.5" --exclude-dir=node_modules --exclude-dir=specs --exclude-dir=.git .` e confirmar que não sobrou menção à versão antiga fora das specs. Commit: `docs: Spring Boot 4.1 na constituição e no README (#124)` (FR-015)
+- [X] T028 [P] Em `README.md`, trocar o badge `Spring%20Boot-3.5.16` → `Spring%20Boot-4.1.3` e o texto "Spring Boot 3.5.16" → "Spring Boot 4.1.3" (R12)
+- [X] T029 Rodar `grep -rn "3\.5\.16\|Boot 3\.5" --exclude-dir=node_modules --exclude-dir=specs --exclude-dir=.git .` e confirmar que não sobrou menção à versão antiga fora das specs. Commit: `docs: Spring Boot 4.1 na constituição e no README (#124)` (FR-015)
 - [ ] T030 Varredura (passos V1–V4 do [quickstart.md](quickstart.md)):
   - `docker build --target service -t buruna-backend:boot4 backend`.
   - `docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity CRITICAL,HIGH buruna-backend:boot4`.
