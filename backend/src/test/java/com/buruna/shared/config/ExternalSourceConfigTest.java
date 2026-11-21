@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,7 +25,7 @@ class ExternalSourceConfigTest {
 
     @BeforeEach
     void startServer() throws IOException {
-        server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0);
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/origem", exchange -> {
             exchange.getResponseHeaders().add("Location", "/destino");
             exchange.sendResponseHeaders(302, -1);

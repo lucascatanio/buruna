@@ -25,7 +25,8 @@ class MangaDownloaderClientTest {
         Path binary = temp.resolve("manga-downloader");
         Files.writeString(binary, "#!/bin/sh\n" + script);
         assertThat(binary.toFile().setExecutable(true)).isTrue();
-        // os mesmos padrões do mapper que o Boot injeta (spring.jackson.use-jackson2-defaults)
+        // padrões do Jackson 2 (null em primitivo vira 0), como o new ObjectMapper() de antes; o mapper
+        // que o Boot injeta também os usa, por spring.jackson.use-jackson2-defaults
         JsonMapper mapper = JsonMapper.builder().configureForJackson2().build();
         return new MangaDownloaderClient(binary.toString(), mapper, timeout, timeout, 1, 4);
     }

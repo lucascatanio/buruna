@@ -198,7 +198,7 @@ duas vezes não duplica nada.
 - [X] T031 Rodar `/speckit-converge` e voltar ao implement para cada lacuna até ele não achar nenhuma
 - [X] T032 Checkpoint da fase: `./mvnw clean test` em `backend/` verde, com a saída mostrada. `git diff --stat dev -- frontend/` sai vazio (FR-014)
 - [X] T033 Rodar `/validar-quickstart` (roteiro local completo, passos 1–18). O resultado vai em `specs/003-migrar-spring-boot-4/validation.md` e precisa ficar **APROVADA**
-- [ ] T034 Rodar `/engineering:code-review` no diff contra a `dev` e corrigir o que for real. Depois, repetir T032. Deixar pronta a descrição do PR para `dev`: cita o review, a pasta `specs/003-migrar-spring-boot-4` e `Refs #124` (não `Closes`, porque o merge na `dev`, a branch padrão, fecharia a issue antes do pós-deploy). Push e abertura do PR só quando o usuário pedir
+- [X] T034 Rodar `/engineering:code-review` no diff contra a `dev` e corrigir o que for real. Depois, repetir T032. Deixar pronta a descrição do PR para `dev`: cita o review, a pasta `specs/003-migrar-spring-boot-4` e `Refs #124` (não `Closes`, porque o merge na `dev`, a branch padrão, fecharia a issue antes do pós-deploy). Push e abertura do PR só quando o usuário pedir
 
 ---
 
