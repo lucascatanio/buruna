@@ -49,7 +49,7 @@ class GlobalExceptionHandlerTest {
         when(request.getRequestURI()).thenReturn("/api/swagger-ui.html");
 
         ResponseEntity<ErrorResponse> response = handler.handleGeneric(
-                new NoResourceFoundException(HttpMethod.GET, "swagger-ui.html"), request);
+                new NoResourceFoundException(HttpMethod.GET, "/api/swagger-ui.html", "swagger-ui.html"), request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();

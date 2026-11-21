@@ -126,6 +126,28 @@ Imports que mudam de pacote (conferidos nos jars 4.1.3):
   em 12 testes.
 - `ServiceConnection`, `SpringBootTest` e `TestConfiguration` não mudam.
 
+**Encontrado na implementação (T018)**:
+
+- O Framework 7 tirou o `setConnectTimeout` do `HttpComponentsClientHttpRequestFactory`.
+  Quebravam dois lugares:
+  - O `ResendEmailSender` não compilava.
+  - O `ExternalSourceConfig` compilava, mas falharia no startup. O
+    `requestFactory(supplier)` com `.connectTimeout()` passa pelo builder por reflexão do Boot
+    4 (`ReflectiveComponentsClientHttpRequestFactoryBuilder`), que lança
+    `IllegalStateException` sem esse método.
+
+  Os dois passam a usar `ClientHttpRequestFactoryBuilder.httpComponents()` do Boot, que aplica
+  os timeouts no `ConnectionConfig`. O "não seguir redirect" das fontes externas passa de
+  `HttpClients.custom().disableRedirectHandling()` para `.redirects(HttpRedirects.DONT_FOLLOW)`.
+  O timeout de pedido de conexão do Resend fica no `withDefaultRequestConfigCustomizer`. Nenhum
+  teste cobria o "não seguir redirect", que é uma proteção de segurança, então entrou o
+  `ExternalSourceConfigTest`, com um servidor HTTP local que responde 302.
+- O construtor de `NoResourceFoundException` ganhou o `requestUri`. Só o
+  `GlobalExceptionHandlerTest` muda. O `detail` que vai para o `message` continua
+  `No static resource X.`, igual à baseline.
+- No Jackson 3, o `JsonNode.asText()` ficou obsoleto. Os testes de identity passam a
+  `asString()`.
+
 O `flyway-database-postgresql` continua. `spring-security-test` continua como está
 (gerenciado pelo BOM).
 

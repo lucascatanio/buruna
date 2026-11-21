@@ -5,6 +5,11 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+  jackson:
+    # Jackson 3 com os padrões que o Boot 3 usava no Jackson 2: o JSON da API não muda (spec 003,
+    # FR-009). Adotar os padrões novos do Jackson 3 é decisão de outra issue.
+    use-jackson2-defaults: true
+
   jpa:
     hibernate:
       ddl-auto: validate

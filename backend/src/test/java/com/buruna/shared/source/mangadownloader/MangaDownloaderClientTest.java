@@ -1,7 +1,7 @@
 package com.buruna.shared.source.mangadownloader;
 
 import com.buruna.shared.source.ExternalSourceException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -25,7 +25,9 @@ class MangaDownloaderClientTest {
         Path binary = temp.resolve("manga-downloader");
         Files.writeString(binary, "#!/bin/sh\n" + script);
         assertThat(binary.toFile().setExecutable(true)).isTrue();
-        return new MangaDownloaderClient(binary.toString(), new ObjectMapper(), timeout, timeout, 1, 4);
+        // os mesmos padrões do mapper que o Boot injeta (spring.jackson.use-jackson2-defaults)
+        JsonMapper mapper = JsonMapper.builder().configureForJackson2().build();
+        return new MangaDownloaderClient(binary.toString(), mapper, timeout, timeout, 1, 4);
     }
 
     @Test

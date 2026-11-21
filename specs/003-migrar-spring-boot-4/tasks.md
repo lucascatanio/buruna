@@ -62,7 +62,7 @@ Docker ligado.
 
 ### 2b. Troca de versão (research R1–R9)
 
-- [ ] T010 Em `backend/pom.xml`:
+- [X] T010 Em `backend/pom.xml`:
   - parent `spring-boot-starter-parent` 3.5.16 → `4.1.3`.
   - Apagar o comentário "Sobrescrevem versões gerenciadas…" e as oito propriedades `tomcat.version`, `postgresql.version`, `jackson-bom.version`, `httpclient5.version`, `httpcore5.version`, `commons-lang3.version`, `log4j2.version` e `opentelemetry.version`, com seus comentários. Ficam `java.version`, `pdfbox.version` e `jbig2-imageio.version` (R1).
   - Na exclusão de `commons-logging` do `pdfbox`, o comentário passa a dizer que o `spring-core` já traz o `commons-logging` 1.3 e a exclusão evita a segunda cópia (R9).
@@ -71,16 +71,16 @@ Docker ligado.
   - `springdoc-openapi-starter-webmvc-ui` 2.8.17 → `3.1.1` (R8).
   - Em test: acrescentar `spring-boot-starter-webmvc-test`. Trocar `org.testcontainers:junit-jupiter` → `org.testcontainers:testcontainers-junit-jupiter` e `org.testcontainers:postgresql` → `org.testcontainers:testcontainers-postgresql` (R5).
   - Não mexer em `spring-boot-starter-security`, `spring-boot-starter-data-jpa`, `spring-boot-starter-validation`, `spring-boot-starter-test`, `spring-security-test`, `spring-boot-testcontainers`, `flyway-core`, `flyway-database-postgresql`, `postgresql`, `lombok`, `jjwt-*` 0.12.6, `google-cloud-storage`, `totp`, `httpclient5`, `archunit-junit5` 1.3.0 nem nos plugins.
-- [ ] T011 Em `backend/src/main/resources/application.yml`, sob `spring:`, acrescentar `jackson: use-jackson2-defaults: true`, com um comentário de uma linha: mantém o JSON igual ao do Boot 3 (FR-009) e desligar é decisão de outra issue (R2)
-- [ ] T012 [P] Em `backend/src/main/java/com/buruna/BurunaApplication.java`, trocar o import para `org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration` (R4)
-- [ ] T013 [P] Trocar o import `org.springframework.boot.web.client.RestTemplateBuilder` → `org.springframework.boot.restclient.RestTemplateBuilder` em `backend/src/main/java/com/buruna/shared/config/IngestJobConfig.java`, `backend/src/main/java/com/buruna/shared/config/PubSubConfig.java` e `backend/src/main/java/com/buruna/shared/notification/ResendEmailSender.java` (R4)
-- [ ] T014 [P] Passar para o Jackson 3, no contexto identity (R2): em `backend/src/main/java/com/buruna/identity/web/PasswordResetPushController.java` e `backend/src/main/java/com/buruna/identity/application/account/PubSubPasswordResetRequests.java`, o `com.fasterxml.jackson.databind.ObjectMapper` vira `tools.jackson.databind.ObjectMapper`, e o `com.fasterxml.jackson.core.JsonProcessingException` vira `tools.jackson.core.JacksonException`. Onde a exceção só era declarada em `throws` e relançada, tirar o `throws`. Onde era embrulhada, manter o `catch` com o tipo novo
-- [ ] T015 [P] Passar para o Jackson 3, em shared (R2):
+- [X] T011 Em `backend/src/main/resources/application.yml`, sob `spring:`, acrescentar `jackson: use-jackson2-defaults: true`, com um comentário de uma linha: mantém o JSON igual ao do Boot 3 (FR-009) e desligar é decisão de outra issue (R2)
+- [X] T012 [P] Em `backend/src/main/java/com/buruna/BurunaApplication.java`, trocar o import para `org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration` (R4)
+- [X] T013 [P] Trocar o import `org.springframework.boot.web.client.RestTemplateBuilder` → `org.springframework.boot.restclient.RestTemplateBuilder` em `backend/src/main/java/com/buruna/shared/config/IngestJobConfig.java`, `backend/src/main/java/com/buruna/shared/config/PubSubConfig.java` e `backend/src/main/java/com/buruna/shared/notification/ResendEmailSender.java` (R4)
+- [X] T014 [P] Passar para o Jackson 3, no contexto identity (R2): em `backend/src/main/java/com/buruna/identity/web/PasswordResetPushController.java` e `backend/src/main/java/com/buruna/identity/application/account/PubSubPasswordResetRequests.java`, o `com.fasterxml.jackson.databind.ObjectMapper` vira `tools.jackson.databind.ObjectMapper`, e o `com.fasterxml.jackson.core.JsonProcessingException` vira `tools.jackson.core.JacksonException`. Onde a exceção só era declarada em `throws` e relançada, tirar o `throws`. Onde era embrulhada, manter o `catch` com o tipo novo
+- [X] T015 [P] Passar para o Jackson 3, em shared (R2):
   - `backend/src/main/java/com/buruna/shared/security/ProxySecretFilter.java` e `backend/src/main/java/com/buruna/shared/source/mangadownloader/MangaDownloaderClient.java`: mesma troca de T014.
   - `backend/src/main/java/com/buruna/shared/converter/StringListConverter.java`: `new ObjectMapper()` → `tools.jackson.databind.json.JsonMapper.builder().build()`, e as exceções viram `JacksonException`.
   - `backend/src/main/java/com/buruna/shared/config/ExternalSourceConfig.java`: o `ObjectMapper` de `tools.jackson` e o `RestTemplateBuilder` de `org.springframework.boot.restclient`.
   - Imports de `com.fasterxml.jackson.annotation.*` não mudam.
-- [ ] T016 Testcontainers 2 e `AutoConfigureMockMvc` (R4, R5). Nos 15 arquivos abaixo, o `org.testcontainers.containers.PostgreSQLContainer` vira `org.testcontainers.postgresql.PostgreSQLContainer`, e `static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")` vira `static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16")`. Nos 12 que usam `AutoConfigureMockMvc`, o import vira `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`. Arquivos em `backend/src/test/java/com/buruna/`:
+- [X] T016 Testcontainers 2 e `AutoConfigureMockMvc` (R4, R5). Nos 15 arquivos abaixo, o `org.testcontainers.containers.PostgreSQLContainer` vira `org.testcontainers.postgresql.PostgreSQLContainer`, e `static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16")` vira `static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16")`. Nos 12 que usam `AutoConfigureMockMvc`, o import vira `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`. Arquivos em `backend/src/test/java/com/buruna/`:
   - `SmokeApplicationTest.java` (só o Testcontainers)
   - `engagement/EngagementIntegrationTest.java`
   - `identity/IdentityIntegrationTest.java`
@@ -96,19 +96,19 @@ Docker ligado.
   - `work/RegisterChapterIntegrationTest.java` (só o Testcontainers)
   - `work/StorageOrphansJobIntegrationTest.java`
   - `work/WorkIntegrationTest.java`
-- [ ] T017 Depois de T016, nos quatro testes que usam `ObjectMapper`:
+- [X] T017 Depois de T016, nos quatro testes que usam `ObjectMapper`:
   - `backend/src/test/java/com/buruna/identity/IdentityIntegrationTest.java` e `backend/src/test/java/com/buruna/identity/inactivity/InactivityJobIntegrationTest.java`: o `@Autowired ObjectMapper` passa a `tools.jackson.databind.ObjectMapper`.
   - `backend/src/test/java/com/buruna/shared/security/ProxySecretFilterTest.java`: `new ObjectMapper()` → `JsonMapper.builder().build()`.
   - `backend/src/test/java/com/buruna/shared/source/mangadownloader/MangaDownloaderClientTest.java`: `new ObjectMapper()` → `JsonMapper.builder().configureForJackson2().build()`, igual ao mapper que o Boot monta com `use-jackson2-defaults` (R2, R10).
   - Só imports e a construção do mapper mudam, nenhuma asserção.
-- [ ] T018 Rodar `./mvnw clean test` em `backend/` e tratar cada falha pela tabela *Riscos* do [plan.md](plan.md):
+- [X] T018 Rodar `./mvnw clean test` em `backend/` e tratar cada falha pela tabela *Riscos* do [plan.md](plan.md):
   - Flyway: confirmar o starter de T010.
   - Validação de esquema do Hibernate 7: ajustar o mapeamento, nunca criar migration (FR-012).
   - Descoberta de testes quebrada pelo motor do ArchUnit: trocar `com.tngtech.archunit:archunit-junit5` por `com.tngtech.archunit:archunit` 1.3.0 em `backend/pom.xml` (R8).
   - Cliente HTTP externo falhando na desserialização: corrigir o DTO (tipo wrapper ou `@JsonIgnoreProperties`), não criar mapper global (R3).
   - Cada correção que não estiver no research ganha uma linha em `specs/003-migrar-spring-boot-4/research.md`, na decisão correspondente.
   - Dependência sem versão compatível com o Boot 4: parar a implementação e voltar para a spec (edge case da spec).
-- [ ] T019 Checkpoint da migração:
+- [X] T019 Checkpoint da migração:
   - `./mvnw clean test` verde, com `Tests run` ≥ total de T009 e `ArchitectureTest` passando.
   - Mostrar a saída.
   - `git diff HEAD -- backend/src/test` não altera nenhuma asserção de T005–T008, só imports e mappers.

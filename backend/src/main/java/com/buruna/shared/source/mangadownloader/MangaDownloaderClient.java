@@ -1,8 +1,8 @@
 package com.buruna.shared.source.mangadownloader;
 
 import com.buruna.shared.source.ExternalSourceException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +75,7 @@ public class MangaDownloaderClient {
                 throw new ExternalSourceException("Listagem do manga-downloader sem capítulos: " + seriesUrl);
             }
             return listing;
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new ExternalSourceException("Listagem do manga-downloader ilegível: " + seriesUrl, e);
         }
     }
