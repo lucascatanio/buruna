@@ -21,8 +21,9 @@
              CVE ainda não incluídas nele (trivy, 2026-10-08). O Boot gerencia versões mais
              antigas que todas as abaixo. Remova cada uma quando o Boot gerenciar uma versão
              igual ou mais nova. -->
-        <!-- Boot: 10.1.55. Última da linha 10.1 -->
-        <tomcat.version>10.1.60</tomcat.version>
+        <!-- Boot: 10.1.55. 10.1.61 e 10.1.62 corrigem DoS em HTTP/2 e no upgrade de conexão,
+             entre outros (#163). A 10.1.63 só corrige cluster com TLS-PSK, que o projeto não usa -->
+        <tomcat.version>10.1.62</tomcat.version>
         <!-- Boot: 42.7.11 -->
         <postgresql.version>42.7.14</postgresql.version>
         <!-- Boot: 2.21.4. 2.21.7 corrige DoS em jackson-core e jackson-databind -->
