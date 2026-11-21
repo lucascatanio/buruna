@@ -55,7 +55,7 @@ App local com `scripts/dev-env.sh` (profile `local`), o container `buruna_postgr
 | 16 | Cadastrar conta e aprovar como ADMIN | A conta entra depois da aprovação | Cadastro pela tela; login antes da aprovação recusado (403, "Your account is pending approval"); aprovada em "Aprovações pendentes"; login depois → 200 | ✅ |
 | 17 | Pedir redefinição de senha da conta nova | E-mail no log e o link redefine a senha | Com `RESEND_API_KEY` vazia: `POST /auth/password/forgot` → 200 e `[EMAIL SKIP] … Subject: [Burūna] Password reset` no log. O link usa um token conhecido gravado como `sha256Hex` no registro criado pelo pedido (o log não traz o link): `reset-info` → 200, a tela "Redefinir senha" troca a senha, a antiga dá 401 e a nova 200 | ✅ |
 | 18 | Console do navegador no roteiro | Nenhum erro de rede ou parse de JSON vindo da migração | Nenhum erro de parse. Erros de rede, todos esperados ou de ambiente: 401 em `/auth/refresh` sem sessão (5), 403 no login da conta pendente, 404 em 9 capas cujos arquivos não existem no storage local (dados de 2026-10-17), 500 no "esqueci a senha" com a chave de exemplo do Resend (ver observações) | ✅ |
-| P1–P10 | Seção "depois do deploy" | — | Só vale em produção | — não se aplica |
+| P1–P10 | Seção "depois do deploy" | — | Feita em produção depois do deploy; ver a seção abaixo | — não se aplica (local) |
 
 ## Falhas
 
@@ -63,7 +63,7 @@ Nenhuma.
 
 ## Não executados
 
-Nenhum. A seção "depois do deploy" (P1–P10) não se aplica ao ambiente local e fica para o T035.
+Nenhum. A seção "depois do deploy" (P1–P10) não se aplica ao ambiente local; o resultado em produção está abaixo.
 
 ## Observações (fora do escopo da migração)
 
@@ -80,3 +80,22 @@ Nenhum. A seção "depois do deploy" (P1–P10) não se aplica ao ambiente local
 - **Avisos de obsolescência novos no build**, aceitos pelo research R6: `HttpStatus.UNPROCESSABLE_ENTITY`
   (`GlobalExceptionHandler`), `org.springframework.lang.NonNull` (`JwtFilter`, `ProxySecretFilter`) e
   `HV000271` (`@Valid` na `List` de `ImportWorkRequest#languages`).
+
+## Depois do deploy (produção, v2.3.1)
+
+Deploy de 2026-11-21: release #172, merge `e7387d7` na `main`, revisão `buruna-backend-00053-6kp` com
+100% do tráfego. Para voltar: revisão `buruna-backend-00052-kpc` e Job em
+`buruna-ingest@sha256:32ad5f1ef54f920bb9ffff5c5d3ffd95a2a5f1a3c8ecc6efb70ec8d923774b03`.
+
+| # | Passo | Observado | Resultado |
+|---|---|---|---|
+| P1 | Aba logada antes do deploy, aberta depois | Entrou direto, sem pedir login; `POST /api/auth/refresh` → 200 | ✅ |
+| P2 | Log de startup da revisão nova | `Spring Boot (v4.1.3)`, `Successfully validated 37 migrations`, `Schema "public" is up to date. No migration necessary.`; `/api/health` → 200 | ✅ |
+| P3 | Login e leitura | Attack on Titan aberto no leitor, 2 páginas avançadas, `POST …/progress` → 200, console sem erro. Nenhum livro do catálogo foi aberto | ✅ |
+| P4 | Envio de capítulo curto | Capítulo CBZ numa obra privada (`POST …/chapters/finalize` → 201). O Job `buruna-ingest` rodou com Spring Boot v4.1.3 e saiu com `exit(0)`, e o capítulo abriu no leitor ("1 / 2") | ✅ |
+| P5 | Import | Não foi criada obra pública: o passo usou "Verificar agora" no Jujutsu Kaisen (`POST …/check` → 202). Log do Job: "275 versões na fonte, 0 novas", `exit(0)`, sem erro de JSON | ✅ |
+| P6 | Os três jobs do Cloud Scheduler, rodados pelo mantenedor | `buruna-inactivity` → 200, `buruna-storage-orphans` → 200, `buruna-sourcing-sync` → execução `buruna-ingest-jq56j` com `exit(0)` | ✅ |
+| P7 | "Esqueci minha senha" com conta real | `POST /auth/password/forgot` → 200, push do Pub/Sub em `/internal/pubsub/password-reset` → 204, `ResendEmailSender: Email sent successfully`, `POST /auth/password/reset` → 200. O mantenedor confirmou que o e-mail chegou e que a senha nova entra | ✅ |
+| P8 | Trivy na imagem publicada (`buruna-backend@sha256:3d23521e…`) | 0 CRITICAL, sem CVE-2026-47884/47890; só os 2 HIGH conhecidos (#165, #166) | ✅ |
+| P9 | Próxima execução agendada da `buruna-sourcing-sync` | Zero ERROR no serviço e no Job desde o deploy. A execução vista é a manual do P6; as agendadas (a cada 3 h) entram na checagem do P10 | ⏳ |
+| P10 | Uma semana depois (2026-11-28) | Pendente (T036) | ⏳ |
