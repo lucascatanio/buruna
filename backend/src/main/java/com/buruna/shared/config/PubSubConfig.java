@@ -3,7 +3,7 @@ package com.buruna.shared.config;
 import com.buruna.shared.exception.MessagingException;
 import com.buruna.shared.messaging.PubSubPublisher;
 import com.google.auth.oauth2.GoogleCredentials;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;

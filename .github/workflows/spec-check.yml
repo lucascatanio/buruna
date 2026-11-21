@@ -1,0 +1,29 @@
+name: Spec
+
+# Portão do fluxo spec-driven (constituição, fluxo de desenvolvimento, regra 9).
+# Separado do CI para rodar também quando uma label muda, sem refazer os testes.
+on:
+  pull_request:
+    branches: [dev]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  spec-check:
+    name: Spec e validação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Conferir spec e validation.md
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+        run: scripts/check-spec.sh

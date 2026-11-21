@@ -17,3 +17,10 @@ frontend/.env
 
 .DS_Store
 Thumbs.db
+
+# Claude Code: configuração local de cada pessoa (os skills do Spec Kit em .claude/skills são versionados)
+.claude/settings.local.json
+
+# Ambiente local do /validar-quickstart (logs e pids) e capturas do Playwright MCP
+.dev-env/
+.playwright-mcp/

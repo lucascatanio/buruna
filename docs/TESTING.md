@@ -1,7 +1,8 @@
 # Testes
 
-> Estratégia de testes do backend. Decisão completa (por que essa pirâmide, por que
-> substituir os scripts bash 1:1 antes de remover): [ADR-38](adr/ADR-38-estrategia-de-testes.md).
+> Como testar no Burūna, na prática. As regras (pirâmide, AAA, nomenclatura, rede de
+> segurança antes de refatorar) estão na
+> [constituição, princípio V](../.specify/memory/constitution.md#v-teste-antes-de-mudar-comportamento).
 
 ## Pirâmide
 
@@ -15,16 +16,6 @@
 
 Rodar tudo: `./mvnw clean test` (dentro de `backend/`) — sobe Testcontainers, então
 Docker precisa estar rodando.
-
-## Convenções
-
-- **AAA** (Arrange / Act / Assert) — sem exceções misturando as três fases no mesmo
-  bloco.
-- **Nomenclatura:** `should[Resultado]_when[Condição]` (ex.:
-  `shouldThrowDomainException_whenUserAlreadyActive`).
-- Teste de domínio nunca sobe Spring — se um teste precisa de `@SpringBootTest` para
-  testar uma regra de negócio, é sinal de que a regra está no lugar errado (deveria
-  estar no agregado/domain service).
 
 ## Padrões dos testes de capítulo, Job e import
 
@@ -44,19 +35,14 @@ Docker precisa estar rodando.
 - **Concorrência:** `RegisterChapterIntegrationTest` corre duas transações reais em paralelo
   e falha se o lock na obra sair (ADR-53).
 
-## Rede de segurança antes de refatorar
-
-Ao migrar um contexto legado para Clean Architecture, a ordem é sempre: **portar a
-cobertura equivalente aos scripts bash de smoke test existentes primeiro** (como
-testes automatizados no novo formato), só então refatorar, e só então remover o script
-bash. Nunca refatorar sem rede de segurança automatizada cobrindo o comportamento atual.
-Isso vale para qualquer refatoração futura de um contexto ainda não coberto — não só
-para os epics já concluídos.
-
 ## Frontend
 
 `npm run build` (dentro de `frontend/`) — typecheck (`tsc -b`) + build (`vite build`).
 Sem suíte de testes automatizados de UI no momento.
+
+O teste no navegador de cada feature é o `/validar-quickstart`: ele sobe o app com
+`scripts/dev-env.sh`, segue o `quickstart.md` da spec pelo Playwright MCP e grava o
+resultado em `validation.md` (constituição, fluxo de desenvolvimento, fase 4).
 
 Mudança em leitor, upload ou tela nova é testada no navegador antes do PR, de preferência
 com o CSP de produção: um `vite preview` com o header `Content-Security-Policy` copiado do

@@ -102,14 +102,14 @@
 | Documentação API    | SpringDoc OpenAPI 2.8                 | —                  | Swagger UI em /api/swagger-ui.html  |
 
 Decisões e tradeoffs por trás de cada escolha de infra: Cloud Run separado por serviço
-([ADR-22](adr/ADR-22-cloud-run-separado-frontend-backend.md)), PostgreSQL em GCE
-([ADR-23](adr/ADR-23-postgresql-gce-e2-micro-docker.md)), bucket em
-southamerica-east1 x Cloud Run em us-east1 ([ADR-26](adr/ADR-26-gcs-southamerica-cloudrun-useast1.md)),
-UptimeRobot ([ADR-08](adr/ADR-08-uptimerobot-monitoramento.md)), nginx como reverse
-proxy ([ADR-04](adr/ADR-04-nginx-reverse-proxy-frontend.md)), `@Async`/`@Scheduled` internos
+([ADR-22](ARCHITECTURE.md#adr-22)), PostgreSQL em GCE
+([ADR-23](ARCHITECTURE.md#adr-23)), bucket em
+southamerica-east1 x Cloud Run em us-east1 ([ADR-26](ARCHITECTURE.md#adr-26)),
+UptimeRobot ([ADR-08](ARCHITECTURE.md#adr-08)), nginx como reverse
+proxy ([ADR-04](ARCHITECTURE.md#adr-04)), `@Async`/`@Scheduled` internos
 e a migração do job de inatividade para o Cloud Scheduler
-([ADR-03](adr/ADR-03-async-e-scheduled-internos.md)), forgot password via Pub/Sub push
-([ADR-42](adr/ADR-42-forgot-password-via-pubsub.md)).
+([ADR-03](ARCHITECTURE.md#adr-03)), forgot password via Pub/Sub push
+([ADR-42](ARCHITECTURE.md#adr-42)).
 
 ## 3. URLs assinadas do GCS (V4)
 
@@ -123,7 +123,7 @@ e a migração do job de inatividade para o Cloud Scheduler
   diretamente, sem passar pelo backend.
 - Após expiração, o GCS retorna `403 Forbidden`.
 - O header `Authorization` **não** deve ser enviado ao GCS — quebraria a assinatura.
-- Decisão e tradeoffs: [ADR-07](adr/ADR-07-gcs-urls-assinadas-v4.md) (bucket privado +
+- Decisão e tradeoffs: [ADR-07](ARCHITECTURE.md#adr-07) (bucket privado +
   URLs assinadas em vez de bucket público).
 
 ## 4. CORS
@@ -147,10 +147,10 @@ e a migração do job de inatividade para o Cloud Scheduler
 
 PUT necessário para upload direto; GET/HEAD para leitura de PDF pelo browser.
 `responseHeader` inclui `Range`/`Content-Range` (leitura parcial do PDF) e `x-goog-content-length-range`, que a Signed URL de upload
-assina para limitar o tamanho do PUT ([ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)).
+assina para limitar o tamanho do PUT ([ADR-40](ARCHITECTURE.md#adr-40)).
 
 **GCS Bucket — lifecycle** (`gcs-lifecycle.json`): apaga objetos em `pending/` com
-mais de 1 dia — uploads que nunca chegaram ao finalize ([ADR-40](adr/ADR-40-objectname-vinculado-ao-manga.md)).
+mais de 1 dia — uploads que nunca chegaram ao finalize ([ADR-40](ARCHITECTURE.md#adr-40)).
 O GCS aplica a regra de forma assíncrona, então a remoção pode levar até mais um dia.
 
 Aplicar ou atualizar as duas configurações (o bucket de dev usa `gcs-cors-dev.json`):
@@ -229,7 +229,7 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
 - Bucket GCS criado, com `gcs-credentials.json` de uma Service Account com
   `roles/storage.objectAdmin`.
 - Domínio próprio configurado (DKIM/SPF/DMARC) se for usar Resend para e-mail com
-  domínio customizado — ver [ADR-29](adr/ADR-29-resend-api-email-dominio-proprio.md).
+  domínio customizado — ver [ADR-29](ARCHITECTURE.md#adr-29).
 - `APP_JOBS_SECRET` é **obrigatório** em produção (o backend não sobe sem ele).
   Sem essa variável, o job de inatividade (`/admin/jobs/inactivity`,
   `permitAll`) ficaria disparável por qualquer um.
@@ -259,7 +259,7 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   envia `X-Proxy-Secret` em todo `/api/`; o `ProxySecretFilter` do backend responde 403 a
   qualquer requisição sem o header correto, o que impede chamar o `run.app` do backend
   direto para forjar o `X-Forwarded-For` e burlar o rate limit
-  ([ADR-43](adr/ADR-43-segredo-compartilhado-nginx-backend.md)). Sem `APP_PROXY_SECRET`
+  ([ADR-43](ARCHITECTURE.md#adr-43)). Sem `APP_PROXY_SECRET`
   o filtro fica desligado (dev local/testes) e o backend loga um WARN no startup. Sem
   `BACKEND_PROXY_SECRET`, o nginx sobe normalmente e manda o header vazio, então a imagem
   nova pode ir para produção antes de o segredo existir.
@@ -305,7 +305,7 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
 - `APP_PUBSUB_PASSWORD_RESET_TOPIC`, `APP_PUBSUB_PUSH_AUDIENCE` e
   `APP_PUBSUB_PUSH_SERVICE_ACCOUNT` são **obrigatórios** fora do profile `local`
   (`PubSubPasswordResetRequests` e `PubSubPushAuthenticator` falham no startup sem eles) —
-  ver [ADR-42](adr/ADR-42-forgot-password-via-pubsub.md):
+  ver [ADR-42](ARCHITECTURE.md#adr-42):
   - `APP_PUBSUB_PASSWORD_RESET_TOPIC`: o tópico no formato
     `projects/<projeto>/topics/password-reset-requests`, para onde `POST /auth/password/forgot`
     publica.
@@ -321,7 +321,7 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
 - Job do Cloud Scheduler `buruna-inactivity`: cron `0 2 * * *` (02:00 UTC),
   `POST /api/admin/jobs/inactivity`, header `X-Job-Secret: <APP_JOBS_SECRET>`. Substituiu o
   `@Scheduled` interno de `RunInactivityUseCase` — ver atualização de 2026-09-24 em
-  [ADR-03](adr/ADR-03-async-e-scheduled-internos.md).
+  [ADR-03](ARCHITECTURE.md#adr-03).
 
 - Job do Cloud Scheduler `buruna-storage-orphans`: cron `0 3 * * 0` (domingo, 03:00 UTC),
   `POST /api/admin/jobs/storage-orphans`, header `X-Job-Secret: <APP_JOBS_SECRET>`, mesmo
@@ -332,7 +332,7 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   loga ERROR, porque essa proporção indica descasamento entre o nome no bucket e o `file_url`
   do banco.
 
-- Job do Cloud Scheduler `buruna-sourcing-sync` ([ADR-49](adr/ADR-49-sync-das-obras-acompanhadas.md)):
+- Job do Cloud Scheduler `buruna-sourcing-sync` ([ADR-49](ARCHITECTURE.md#adr-49)):
   cron `0 */3 * * *` (a cada 3 h), chama a API do Cloud Run para rodar o Job `buruna-ingest`
   no modo sync. A conta de serviço do Scheduler precisa de `roles/run.jobsExecutorWithOverrides`
   no Job (a mesma role do backend):
@@ -353,7 +353,7 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
   O e-mail diário do sync sai pela mesma rodada (primeiro sync depois das 8 h de Brasília), sem
   job próprio.
 
-- **Cloud Run Job `buruna-ingest`** ([ADR-48](adr/ADR-48-ingest-em-cloud-run-job.md)):
+- **Cloud Run Job `buruna-ingest`** ([ADR-48](ARCHITECTURE.md#adr-48)):
   precisa existir **antes** do deploy na `main` que traz o upload por capítulo, porque o
   `deploy.yml` atualiza a imagem dele e o backend o dispara. A imagem é a `buruna-ingest` (alvo
   `ingest` do Dockerfile: a do backend mais o Chromium do manga-downloader, ADR-54), com
@@ -397,3 +397,65 @@ como ancestral, e as duas divergiriam para sempre. PRs de feature para `dev` usa
 
 Não são necessários para rodar local — o profile `local` usa `LocalStorageClient`
 (filesystem) em vez do GCS real. Ver [DEVELOPMENT.md](DEVELOPMENT.md).
+
+## 8. Manutenção periódica
+
+Uma rotina agendada abre no dia 1º de cada mês a issue "Manutenção mensal AAAA-MM", com
+este checklist. Os itens marcados **(trimestral)** só entram em janeiro, abril, julho e
+outubro, e o **(anual)** só em janeiro. O que der para automatizar sai do checklist: a
+limpeza de imagens já é automática (abaixo).
+
+### Custos
+
+- Relatório de faturamento do mês (Console → Faturamento → Relatórios, projeto `buruna`):
+  o que saiu do free tier e por quê, comparando com o mês anterior.
+- Alerta de orçamento em Faturamento → Orçamentos e alertas. Em 2026-11-09, a API de
+  Budgets nem estava ligada no projeto: se ainda não houver alerta, crie um.
+- Artifact Registry: a política `manter-3-mais-recentes` do repositório `us-east1/buruna`
+  mantém as 3 versões mais recentes de cada imagem e apaga o resto com mais de 7 dias. Se o
+  tamanho crescer mês a mês, a política parou. O `describe` mostra o tamanho e as políticas:
+  `gcloud artifacts repositories describe buruna --location=us-east1`.
+- Cloud Logging: volume ingerido no mês (Logging → Armazenamento de logs). A cota grátis é
+  de 50 GiB por mês. Log de DEBUG esquecido ligado é a causa mais comum de estouro (ver §7,
+  calibração do `APP_TRUSTED_PROXY_HOPS`).
+- Bucket: `gcloud storage du -s --readable-sizes gs://buruna-files-catanio`, comparando com o
+  mês anterior (38,8 GiB em 2026-11-09).
+
+### Saúde e desempenho
+
+- Erros do mês no backend e no Job:
+  `gcloud logging read 'severity>=ERROR AND resource.type=("cloud_run_revision" OR "cloud_run_job")' --freshness=30d --format="value(textPayload)" | grep -vE '^\s+(at |\.\.\. )|^\s*$' | cut -c1-140 | sort | uniq -c | sort -rn | head`
+  (o `grep` tira as linhas do stack trace). Erro que se repete vira issue; para a data, rode
+  de novo com `--format="value(timestamp,textPayload)"` e um trecho da mensagem no filtro.
+- Métricas do `buruna-backend` (Cloud Run → Métricas): latência p95, memória perto do
+  limite e partidas a frio. Ajuste memória e CPU se faltar ou sobrar.
+- Jobs do Cloud Scheduler (`buruna-inactivity`, `buruna-sourcing-sync`,
+  `buruna-storage-orphans`) ativos e sem erro na última tentativa:
+  `gcloud scheduler jobs list --location=us-east1 --format="table(name.basename(),state,lastAttemptTime,status.code)"`.
+- Execuções do `buruna-ingest` com falha:
+  `gcloud run jobs executions list --job buruna-ingest --region us-east1 --limit 30`.
+- `/admin/import`: obras acompanhadas pausadas, com falha ou com aviso de idioma.
+
+### Banco (PostgreSQL na VM e2-micro, [ADR-23](ARCHITECTURE.md#adr-23))
+
+- Disco livre da VM (`df -h` por SSH).
+- Backup: o ADR-23 deixa o backup na mão (`pg_dump`). Confira que há um dump recente
+  guardado fora da VM.
+- Tabelas que mais crescem e tuplas mortas (o autovacuum está dando conta?):
+  `SELECT relname, pg_size_pretty(pg_total_relation_size(relid)), n_dead_tup FROM pg_stat_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 10;`
+- **(trimestral)** Restaurar o último dump num Postgres local e subir o backend contra ele
+  (backup que nunca foi restaurado não está comprovado).
+- **(trimestral)** Patch do PostgreSQL 16 (imagem Docker) e atualização do sistema da VM.
+
+### Dependências e segurança
+
+- PRs abertos do Dependabot. Ele só cobre a imagem Docker do backend (o que inclui o
+  manga-downloader): npm e Maven ficam com `npm outdated` (em `frontend/`) e
+  `./mvnw versions:display-dependency-updates` (em `backend/`).
+- `npm audit --omit=dev` em `frontend/` e a aba Security do GitHub.
+- **(trimestral)** Revisões antigas do Cloud Run: as que apontam para imagens já apagadas
+  pela política não servem mais para rollback. Apague as que não recebem tráfego
+  (`gcloud run revisions list --service <serviço> --region us-east1`).
+- **(anual)** Avaliar a rotação de `buruna-jwt-secret`, `buruna-jobs-secret` e
+  `buruna-proxy-secret`: nova versão no Secret Manager, deploy e só então desabilitar a
+  antiga.

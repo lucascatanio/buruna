@@ -4,8 +4,7 @@ import com.buruna.identity.application.account.PasswordResetMessage;
 import com.buruna.identity.application.account.ProcessPasswordResetRequestUseCase;
 import com.buruna.shared.messaging.PubSubPushEnvelope;
 import com.buruna.shared.security.PubSubPushAuthenticator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,7 +37,7 @@ public class PasswordResetPushController {
     @PostMapping("/password-reset")
     public ResponseEntity<Void> handle(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-            @RequestBody PubSubPushEnvelope envelope) throws JsonProcessingException {
+            @RequestBody PubSubPushEnvelope envelope) {
         pubSubPushAuthenticator.verify(authorizationHeader);
 
         PasswordResetMessage message =

@@ -10,7 +10,7 @@
 ![CI](https://github.com/lucascatanio/buruna/actions/workflows/ci.yml/badge.svg?branch=dev)
 ![Deploy](https://github.com/lucascatanio/buruna/actions/workflows/deploy.yml/badge.svg?branch=main)
 ![Java](https://img.shields.io/badge/Java-21-blue)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.16-brightgreen)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.3-brightgreen)
 ![React](https://img.shields.io/badge/React-19-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
@@ -24,7 +24,7 @@ MangaDex.
 
 ## Stack
 
-Backend em Java 21 + Spring Boot 3.5.16, Clean Architecture por bounded context
+Backend em Java 21 + Spring Boot 4.1.3, Clean Architecture por bounded context
 (`identity`, `work`, `reading`, `engagement`, `sourcing`, `admin`), PostgreSQL + Flyway,
 JWT + Refresh Token + 2FA (TOTP), arquivos no Google Cloud Storage via URLs
 assinadas, extração de páginas (PDFBox, bsdtar) num Cloud Run Job. Frontend em React 19 +
@@ -60,16 +60,17 @@ Variáveis de ambiente obrigatórias e notas de setup: [docs/DEVELOPMENT.md](doc
 
 | Documento                                              | Conteúdo                                                                        |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)           | Clean Architecture por bounded context, regra de dependência, fluxos de usuário |
+| [Constituição](.specify/memory/constitution.md)        | Regras do projeto: arquitetura, domínio, segurança, testes e fluxo              |
+| [specs/](specs/)                                       | Specs, planos e tarefas de cada feature (Spec Kit)                              |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)           | Como o sistema está montado, fluxos de usuário e registro de decisões           |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)             | Setup local completo, variáveis obrigatórias e comandos                         |
 | [docs/DATABASE.md](docs/DATABASE.md)                   | Modelo de dados, constraints, índices e migrations                              |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)               | Infraestrutura GCP, Cloud Run, GCE, GCS e Secret Manager                        |
 | [docs/TESTING.md](docs/TESTING.md)                     | Pirâmide de testes, convenções e como rodar                                     |
 | [SECURITY.md](SECURITY.md)                             | JWT/refresh, RBAC, rate limit, 2FA e reporte de vulnerabilidades                |
-| [docs/adr/](docs/adr/)                                 | Decisões de arquitetura                                                         |
 | [docs/glossario-dominio.md](docs/glossario-dominio.md) | Vocabulário de domínio                                                          |
 | [docs/brand/BRAND.md](docs/brand/BRAND.md)             | Marca: logo, cores e regras de uso                                              |
-| [CONTRIBUTING.md](CONTRIBUTING.md)                     | Fluxo de PR e regras de arquitetura                                             |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                     | Fluxo de PR e como escrever uma spec                                            |
 
 ## Licença
 

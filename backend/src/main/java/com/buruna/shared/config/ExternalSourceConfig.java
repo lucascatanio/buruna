@@ -7,14 +7,13 @@ import com.buruna.shared.source.anilist.AniListSource;
 import com.buruna.shared.source.mangadex.MangaDexSource;
 import com.buruna.shared.source.mangadownloader.MangaDownloaderClient;
 import com.buruna.shared.time.Sleeper;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.HttpRedirects;
+import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Clock;
@@ -54,10 +53,10 @@ public class ExternalSourceConfig {
 
     // sem seguir redirect: a URL é conferida antes da chamada (MangaDexSource.requireSafeImageUrl),
     // e um redirect levaria a requisição para um endereço que ninguém conferiu
-    private static RestTemplate restTemplate(Duration connectTimeout, Duration readTimeout) {
-        CloseableHttpClient client = HttpClients.custom().disableRedirectHandling().build();
+    static RestTemplate restTemplate(Duration connectTimeout, Duration readTimeout) {
         return new RestTemplateBuilder()
-                .requestFactory(() -> new HttpComponentsClientHttpRequestFactory(client))
+                .requestFactoryBuilder(ClientHttpRequestFactoryBuilder.httpComponents())
+                .redirects(HttpRedirects.DONT_FOLLOW)
                 .connectTimeout(connectTimeout)
                 .readTimeout(readTimeout)
                 .build();

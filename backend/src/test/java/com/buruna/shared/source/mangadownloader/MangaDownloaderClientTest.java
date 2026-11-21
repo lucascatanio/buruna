@@ -1,7 +1,7 @@
 package com.buruna.shared.source.mangadownloader;
 
 import com.buruna.shared.source.ExternalSourceException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -25,7 +25,10 @@ class MangaDownloaderClientTest {
         Path binary = temp.resolve("manga-downloader");
         Files.writeString(binary, "#!/bin/sh\n" + script);
         assertThat(binary.toFile().setExecutable(true)).isTrue();
-        return new MangaDownloaderClient(binary.toString(), new ObjectMapper(), timeout, timeout, 1, 4);
+        // padrões do Jackson 2 (null em primitivo vira 0), como o new ObjectMapper() de antes; o mapper
+        // que o Boot injeta também os usa, por spring.jackson.use-jackson2-defaults
+        JsonMapper mapper = JsonMapper.builder().configureForJackson2().build();
+        return new MangaDownloaderClient(binary.toString(), mapper, timeout, timeout, 1, 4);
     }
 
     @Test
@@ -51,6 +54,20 @@ class MangaDownloaderClientTest {
         assertThat(listing.chapters().get(1).id()).isNull();
         assertThat(listing.languages()).isNull();
         assertThat(Files.readString(temp.resolve("args")).strip()).isEqualTo("list --json --language all -- " + URL);
+    }
+
+    @Test
+    void shouldReadVolumeAsZero_whenCliPrintsNullVolume() throws IOException {
+        // Arrange: o site não diz o volume e a CLI imprime null num campo primitivo
+        MangaDownloaderClient client = client("""
+                echo '{"title":"Obra","grabber":"PlainHTML","chapters":[{"number":1,"volume":null}]}'
+                """, Duration.ofSeconds(10));
+
+        // Act
+        SiteListing listing = client.list(URL);
+
+        // Assert
+        assertThat(listing.chapters().get(0).volume()).isZero();
     }
 
     @Test

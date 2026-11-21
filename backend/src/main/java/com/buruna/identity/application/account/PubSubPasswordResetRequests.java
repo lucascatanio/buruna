@@ -1,8 +1,8 @@
 package com.buruna.identity.application.account;
 
 import com.buruna.shared.messaging.PubSubPublisher;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -35,7 +35,7 @@ public class PubSubPasswordResetRequests implements PasswordResetRequests {
     public void submit(String email) {
         try {
             publisher.publish(topic, objectMapper.writeValueAsString(new PasswordResetMessage(email)));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Falha ao serializar PasswordResetMessage", e);
         }
     }
