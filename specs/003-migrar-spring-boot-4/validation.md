@@ -1,6 +1,6 @@
 # Validação: Migrar o backend para o Spring Boot 4
 
-**Data**: 2026-11-21 | **Commit**: c482980 | **Branch**: chore/124-spring-boot-4
+**Data**: 2026-11-21 | **Commit**: e2da71f | **Branch**: chore/124-spring-boot-4
 
 **Resultado**: APROVADA
 
@@ -13,15 +13,20 @@
 
 ## Varredura (V1–V4)
 
-Imagem `buruna-backend:boot4` (target `service`, JVM 21.0.13.1) montada neste commit, `aquasec/trivy:latest`,
-`--severity CRITICAL,HIGH`.
+Imagem `buruna-backend:boot4` (target `service`, JVM 21.0.13.1), `aquasec/trivy:latest`,
+`--severity CRITICAL,HIGH`. A varredura rodou de novo depois do rebase na `dev`, que trouxe o
+`manga-downloader` 25.2.0 (#162), e deu o mesmo resultado.
+
+O roteiro rodou em `c482980`, antes do rebase. O rebase só trouxe a troca de tag da imagem do
+`manga-downloader` no `backend/Dockerfile` (#162, já validada no próprio PR). Os commits da
+feature não mudaram.
 
 | # | Passo | Esperado | Observado | Resultado |
 |---|---|---|---|---|
 | V1 | Trivy na imagem | Nenhuma CRITICAL | 0 CRITICAL | ✅ |
 | V2 | CVE-2026-47884 e CVE-2026-47890 na saída | Não aparecem | Não aparecem | ✅ |
 | V3 | Bloco de sobrescritas no `pom.xml` | Só `pdfbox.version` e `jbig2-imageio.version` | Só as duas (mais `java.version`) | ✅ |
-| V4 | HIGH que sobram | Lista registrada | CVE-2026-102554 em `com.google.guava:guava` 33.6.0-jre (corrigido em 33.7.2; transitivo do `google-cloud-storage`) e CVE-2026-78661 em `golang.org/x/net` v0.61.0 (corrigido em 0.62.0; binário do `manga-downloader` da imagem `elboletaire/manga-downloader:25.1.0`). Nenhum vem do Spring | ✅ |
+| V4 | HIGH que sobram | Lista registrada | CVE-2026-102554 em `com.google.guava:guava` 33.6.0-jre (corrigido em 33.7.2; transitivo do `google-cloud-storage`) e CVE-2026-78661 em `golang.org/x/net` v0.61.0 (corrigido em 0.62.0; binário do `manga-downloader`, também na imagem 25.2.0). Nenhum vem do Spring | ✅ |
 
 ## Roteiro do quickstart
 
