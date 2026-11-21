@@ -190,14 +190,14 @@ duas vezes não duplica nada.
   - O rodapé passa a `**Versão**: 1.2.1 | **Ratificada**: 2026-11-15 | **Última emenda**: 2026-11-21`. É emenda PATCH, só redação de versão (R12).
 - [X] T028 [P] Em `README.md`, trocar o badge `Spring%20Boot-3.5.16` → `Spring%20Boot-4.1.3` e o texto "Spring Boot 3.5.16" → "Spring Boot 4.1.3" (R12)
 - [X] T029 Rodar `grep -rn "3\.5\.16\|Boot 3\.5" --exclude-dir=node_modules --exclude-dir=specs --exclude-dir=.git .` e confirmar que não sobrou menção à versão antiga fora das specs. Commit: `docs: Spring Boot 4.1 na constituição e no README (#124)` (FR-015)
-- [ ] T030 Varredura (passos V1–V4 do [quickstart.md](quickstart.md)):
+- [X] T030 Varredura (passos V1–V4 do [quickstart.md](quickstart.md)):
   - `docker build --target service -t buruna-backend:boot4 backend`.
   - `docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity CRITICAL,HIGH buruna-backend:boot4`.
   - Zero CRITICAL e sem CVE-2026-47884/47890. Se aparecer CRITICAL com correção, voltar a sobrescrita com o motivo ao lado em `backend/pom.xml` (FR-003) e repetir T019.
   - Guardar o resumo da saída para o `validation.md`.
-- [ ] T031 Rodar `/speckit-converge` e voltar ao implement para cada lacuna até ele não achar nenhuma
-- [ ] T032 Checkpoint da fase: `./mvnw clean test` em `backend/` verde, com a saída mostrada. `git diff --stat dev -- frontend/` sai vazio (FR-014)
-- [ ] T033 Rodar `/validar-quickstart` (roteiro local completo, passos 1–18). O resultado vai em `specs/003-migrar-spring-boot-4/validation.md` e precisa ficar **APROVADA**
+- [X] T031 Rodar `/speckit-converge` e voltar ao implement para cada lacuna até ele não achar nenhuma
+- [X] T032 Checkpoint da fase: `./mvnw clean test` em `backend/` verde, com a saída mostrada. `git diff --stat dev -- frontend/` sai vazio (FR-014)
+- [X] T033 Rodar `/validar-quickstart` (roteiro local completo, passos 1–18). O resultado vai em `specs/003-migrar-spring-boot-4/validation.md` e precisa ficar **APROVADA**
 - [ ] T034 Rodar `/engineering:code-review` no diff contra a `dev` e corrigir o que for real. Depois, repetir T032. Deixar pronta a descrição do PR para `dev`: cita o review, a pasta `specs/003-migrar-spring-boot-4` e `Refs #124` (não `Closes`, porque o merge na `dev`, a branch padrão, fecharia a issue antes do pós-deploy). Push e abertura do PR só quando o usuário pedir
 
 ---

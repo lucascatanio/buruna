@@ -71,7 +71,7 @@ a conta de `scripts/dev-env.sh admin`. Para o import, use uma série curta do Ma
 | 15b | `curl -s -i localhost:8080/api/nao-existe` com token | Mesmo status e mesmo corpo da baseline | FR-009 |
 | 15c | Preflight `OPTIONS /api/works` com `Origin: http://localhost:5173`, e de novo com `Origin: http://evil.invalid` | Cabeçalhos `Access-Control-*` iguais aos da baseline: liberado para a origem do front, recusado para a outra | FR-011 |
 | 16 | Cadastrar uma conta nova e aprová-la como ADMIN | A conta entra depois da aprovação | FR-004, US2 cenário 4 |
-| 17 | Pedir redefinição de senha da conta nova | No profile `local`, o e-mail sai no log e o link redefine a senha | FR-004, US2 cenário 5 |
+| 17 | Pedir redefinição de senha da conta nova, com `RESEND_API_KEY` vazia (uma chave de exemplo faz o Resend recusar e o pedido virar 500) | O pedido responde 200 e o log registra `[EMAIL SKIP]`. O link não aparece no log: para segui-lo, grave o `sha256Hex` de um token conhecido no registro criado e abra `/reset-password?token=…`. A senha nova entra e a antiga não | FR-004, US2 cenário 5 |
 | 18 | Abrir o console do navegador durante o roteiro | Nenhum erro de rede ou de parse de JSON | FR-009, FR-014 |
 
 ## Depois do deploy (produção)
