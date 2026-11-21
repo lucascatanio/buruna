@@ -54,6 +54,20 @@ class MangaDownloaderClientTest {
     }
 
     @Test
+    void shouldReadVolumeAsZero_whenCliPrintsNullVolume() throws IOException {
+        // Arrange: o site não diz o volume e a CLI imprime null num campo primitivo
+        MangaDownloaderClient client = client("""
+                echo '{"title":"Obra","grabber":"PlainHTML","chapters":[{"number":1,"volume":null}]}'
+                """, Duration.ofSeconds(10));
+
+        // Act
+        SiteListing listing = client.list(URL);
+
+        // Assert
+        assertThat(listing.chapters().get(0).volume()).isZero();
+    }
+
+    @Test
     void shouldListOneLanguage_whenLanguageIsGiven() throws IOException {
         MangaDownloaderClient client = client("""
                 echo "$@" >> "$(dirname "$0")/args"

@@ -295,6 +295,11 @@ class IdentityIntegrationTest {
         JsonNode body = body(result);
         assertThat(body.get("accessToken").asText()).isNotBlank();
         assertThat(body.has("refreshToken")).isFalse();
+        // Formato do JSON (FR-009 da spec 003): campos nulos somem (@JsonInclude(NON_NULL)) e o
+        // refresh token nunca vai no corpo (@JsonIgnore).
+        assertThat(result.getResponse().getContentAsString())
+                .contains("\"requires2FA\":false", "\"accessToken\":")
+                .doesNotContain("tempToken", "refreshToken");
 
         String setCookie = result.getResponse().getHeader("Set-Cookie");
         assertThat(setCookie).isNotNull();

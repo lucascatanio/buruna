@@ -33,14 +33,14 @@ Docker ligado.
 
 **Purpose**: deixar registrado como o sistema se comporta hoje, antes de qualquer mudança.
 
-- [ ] T001 Fazer o commit da pasta da spec sem código: `git add specs/003-migrar-spring-boot-4 && git commit -m "docs(specs): spec, plano e tarefas da migração para o Boot 4 (#124)"`. Rodar depois do `/speckit-analyze` limpo. Sem rodapé de co-autoria de IA
-- [ ] T002 Rodar `./mvnw clean test` em `backend/` ainda no Boot 3.5.16 e confirmar que passa. Anotar a linha final `Tests run: N, Failures: 0, Errors: 0, Skipped: S` na seção "Suíte" de `specs/003-migrar-spring-boot-4/baseline-boot3.md` (criar o arquivo com o título `# Baseline do Boot 3.5.16` e a data)
-- [ ] T003 Gravar a baseline HTTP em `specs/003-migrar-spring-boot-4/baseline-boot3.md`:
+- [X] T001 Fazer o commit da pasta da spec sem código: `git add specs/003-migrar-spring-boot-4 && git commit -m "docs(specs): spec, plano e tarefas da migração para o Boot 4 (#124)"`. Rodar depois do `/speckit-analyze` limpo. Sem rodapé de co-autoria de IA
+- [X] T002 Rodar `./mvnw clean test` em `backend/` ainda no Boot 3.5.16 e confirmar que passa. Anotar a linha final `Tests run: N, Failures: 0, Errors: 0, Skipped: S` na seção "Suíte" de `specs/003-migrar-spring-boot-4/baseline-boot3.md` (criar o arquivo com o título `# Baseline do Boot 3.5.16` e a data)
+- [X] T003 Gravar a baseline HTTP em `specs/003-migrar-spring-boot-4/baseline-boot3.md`:
   1. Rodar `scripts/dev-env.sh status`. Se 5433, 8080 ou 5173 estiverem ocupadas por outra sessão (checkout principal ou outra worktree), parar e perguntar ao usuário, porque o script reaproveita o que já roda nessas portas.
   2. `scripts/dev-env.sh up` e `scripts/dev-env.sh admin`.
   3. Gravar a saída de `curl -s -i` de cada pedido numa seção própria: `GET /api/health`; `GET /api/works` sem token (401); `POST /api/auth/login` com a conta de admin (mascarar `accessToken`); `GET /api/nao-existe` com token; `GET /api/works/00000000-0000-0000-0000-000000000000` com token (404); preflight `OPTIONS /api/works` com `Origin: http://localhost:5173` e `Access-Control-Request-Method: GET`; o mesmo preflight com `Origin: http://evil.invalid`.
   4. Manter os cabeçalhos de resposta (segurança, CORS, `Set-Cookie` com o valor mascarado) e só mascarar valor de token.
-- [ ] T004 Guardar o cookie `buruna_refresh` do login de T003 (sem mascarar) num arquivo de rascunho **fora do repositório**: `/tmp/claude-1000/-home-lucascatanio-Projects-buruna/104c5265-034f-4405-8eb8-80cd839ea1c2/scratchpad/refresh-boot3.txt`. Depois rodar `scripts/dev-env.sh down` sem apagar o volume do Postgres. Esse cookie prova em T020 que uma sessão aberta no Boot 3 sobrevive à troca (FR-004, SC-004)
+- [X] T004 Guardar o cookie `buruna_refresh` do login de T003 (sem mascarar) num arquivo de rascunho **fora do repositório**: `/tmp/claude-1000/-home-lucascatanio-Projects-buruna/104c5265-034f-4405-8eb8-80cd839ea1c2/scratchpad/refresh-boot3.txt`. Depois rodar `scripts/dev-env.sh down` sem apagar o volume do Postgres. Esse cookie prova em T020 que uma sessão aberta no Boot 3 sobrevive à troca (FR-004, SC-004)
 
 **Checkpoint**: suíte verde no Boot 3.5, total anotado, `baseline-boot3.md` com as sete respostas.
 
@@ -52,11 +52,11 @@ Docker ligado.
 
 ### 2a. Caracterização, ainda no Boot 3.5 (research R10)
 
-- [ ] T005 [P] Em `backend/src/test/java/com/buruna/identity/IdentityIntegrationTest.java`, no teste de login com sucesso sem 2FA, acrescentar asserções sobre o corpo bruto (`result.getResponse().getContentAsString()`): contém `"requires2FA":false` e `"accessToken"`; não contém `tempToken` (`@JsonInclude(NON_NULL)`) nem `refreshToken` (`@JsonIgnore`)
-- [ ] T006 [P] Em `backend/src/test/java/com/buruna/reading/ChapterReadingIntegrationTest.java`, no teste que hoje faz `jsonPath("$.urlsExpireAt").exists()` (perto da linha 178), trocar por `jsonPath("$.urlsExpireAt").value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z"))` (ISO-8601 em UTC, `Instant`). No teste que confere `$.nextChapterId` nulo (perto da linha 328), acrescentar `content().string(containsString("\"nextChapterId\":null"))`, porque `value(nullValue())` também passa com o campo ausente
-- [ ] T007 [P] Em `backend/src/test/java/com/buruna/work/WorkIntegrationTest.java`, no `postTag_nonexistentCategory_returns404`, acrescentar `jsonPath("$.status").value(404)` e `jsonPath("$.error").isString()`, `jsonPath("$.message").isString()`, `jsonPath("$.path").isString()`, `jsonPath("$.timestamp").isString()`: os cinco campos do `ErrorResponse`
-- [ ] T008 [P] Em `backend/src/test/java/com/buruna/shared/source/mangadownloader/MangaDownloaderClientTest.java`, criar `shouldReadVolumeAsZero_whenCliPrintsNullVolume`, seguindo o padrão de `shouldParseListing_whenCliPrintsJson`: o CLI falso imprime um capítulo com `"volume": null`, e o resultado tem `volume() == 0`
-- [ ] T009 Rodar `./mvnw clean test` em `backend/`: verde, com o total de T002 mais 1 (o teste novo de T008). Commit: `test(backend): caracteriza o formato JSON antes do Boot 4 (#124)`, com T005–T008 e `specs/003-migrar-spring-boot-4/baseline-boot3.md`
+- [X] T005 [P] Em `backend/src/test/java/com/buruna/identity/IdentityIntegrationTest.java`, no teste de login com sucesso sem 2FA, acrescentar asserções sobre o corpo bruto (`result.getResponse().getContentAsString()`): contém `"requires2FA":false` e `"accessToken"`; não contém `tempToken` (`@JsonInclude(NON_NULL)`) nem `refreshToken` (`@JsonIgnore`)
+- [X] T006 [P] Em `backend/src/test/java/com/buruna/reading/ChapterReadingIntegrationTest.java`, no teste que hoje faz `jsonPath("$.urlsExpireAt").exists()` (perto da linha 178), trocar por `jsonPath("$.urlsExpireAt").value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z"))` (ISO-8601 em UTC, `Instant`). No teste que confere `$.nextChapterId` nulo (perto da linha 328), acrescentar `content().string(containsString("\"nextChapterId\":null"))`, porque `value(nullValue())` também passa com o campo ausente
+- [X] T007 [P] Em `backend/src/test/java/com/buruna/work/WorkIntegrationTest.java`, no `postTag_nonexistentCategory_returns404`, acrescentar `jsonPath("$.status").value(404)` e `jsonPath("$.error").isString()`, `jsonPath("$.message").isString()`, `jsonPath("$.path").isString()`, `jsonPath("$.timestamp").isString()`: os cinco campos do `ErrorResponse`
+- [X] T008 [P] Em `backend/src/test/java/com/buruna/shared/source/mangadownloader/MangaDownloaderClientTest.java`, criar `shouldReadVolumeAsZero_whenCliPrintsNullVolume`, seguindo o padrão de `shouldParseListing_whenCliPrintsJson`: o CLI falso imprime um capítulo com `"volume": null`, e o resultado tem `volume() == 0`
+- [X] T009 Rodar `./mvnw clean test` em `backend/`: verde, com o total de T002 mais 1 (o teste novo de T008). Commit: `test(backend): caracteriza o formato JSON antes do Boot 4 (#124)`, com T005–T008 e `specs/003-migrar-spring-boot-4/baseline-boot3.md`
 
 **Checkpoint**: as asserções descrevem o comportamento do Boot 3.5 e estão verdes. Daqui em diante, nenhuma delas é editada.
 

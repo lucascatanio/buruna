@@ -351,7 +351,13 @@ class WorkIntegrationTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"name\":\"X\",\"slug\":\"itag-nocat\",\"categoryId\":\""
                             + UUID.randomUUID() + "\"}").with(auth(admin)))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    // os cinco campos do ErrorResponse (FR-009 da spec 003)
+                    .andExpect(jsonPath("$.status").value(404))
+                    .andExpect(jsonPath("$.error").isString())
+                    .andExpect(jsonPath("$.message").isString())
+                    .andExpect(jsonPath("$.path").isString())
+                    .andExpect(jsonPath("$.timestamp").isString());
         }
 
         @Test
