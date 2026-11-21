@@ -206,7 +206,7 @@ duas vezes não duplica nada.
 
 Executado no release `dev` → `main`. As mutações do `gcloud` ficam com o usuário.
 
-- [ ] T035 Antes do deploy:
+- [X] T035 Antes do deploy:
   - Deixar uma aba logada em produção.
   - Anotar a revisão atual do serviço (`gcloud run services describe buruna-backend --region us-east1 --format='value(status.latestReadyRevisionName)'`) e a imagem atual do Job (`gcloud run jobs describe buruna-ingest --region us-east1 --format='value(spec.template.spec.template.spec.containers[0].image)'`), para a volta (SC-006).
   - Depois do deploy, executar os passos P1–P10 do [quickstart.md](quickstart.md) e registrar o resultado na seção "Depois do deploy" de `specs/003-migrar-spring-boot-4/validation.md`.
