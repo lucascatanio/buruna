@@ -6,7 +6,7 @@ COPY src ./src
 RUN mvn package -DskipTests -q
 
 # binário do manga-downloader (ADR-54), fixado pela tag; o Dependabot abre PR a cada release
-FROM elboletaire/manga-downloader:25.2.0 AS manga-downloader
+FROM elboletaire/manga-downloader:25.3.0 AS manga-downloader
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 # Piso de versão da JVM: abaixo de 21.0.13.1 ela está exposta ao Java4Shell (CVE-2026-114938,
